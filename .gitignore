@@ -3,8 +3,39 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Morralla
+*_NoLoUso*
+*_old*
+consulta_parcela_dasolidar/
+
+# Varios
+pruebas*.py
+Ayuda.txt
+README_extras.txt
+# Ficheros logging
+*.log
+# Ayuda.txt, qlidtwins.txt, clidtwins.txt, etc.
+*.txt
+# Archivos de configuracion
+*.xls
+*.xlsx
+*.xlsm
+# *.cfg
+*.args
+# Creados por notepad++
+*.bak
+# data
+dist/*.*
+basura/
+*.bat
+# Enlaces directos
+*.lnk
 # C extensions
 *.so
+
+# Iconos (version de trabajo)
+iconos/
+
 
 # Distribution / packaging
 .Python

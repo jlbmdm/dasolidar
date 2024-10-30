@@ -2,6 +2,7 @@
 import os
 import sys
 import subprocess
+import platform
 
 import numpy as np
 
@@ -46,7 +47,8 @@ from qgis.PyQt.QtCore import Qt
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 
 # ==============================================================================
-html_path = r'D:\_clid\pyqgis'
+# html_path = r'D:\_clid\pyqgis'
+html_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
 # ==============================================================================
 intro_dasolidar_html_filename = 'dasolidar_intro.html'
 intro_dasolidar_html_filepath = os.path.join(html_path, intro_dasolidar_html_filename) 
@@ -79,7 +81,6 @@ class Configuracion():
         self.dl_usos  = mi_config.value('dasolidar/usos', 123)
         self.dl_mostrar_ventana_bienvenida = mi_config.value('dasolidar/mostrar_ventana_bienvenida', True)
         self.dl_mostrar_message_bienvenida = mi_config.value('dasolidar/mostrar_message_bienvenida', True)
-
 
 
 # ==============================================================================
@@ -167,6 +168,11 @@ class VentanaAsistente(QDialog):
         self.button_pressed = 'consulta'
         self.accept()
         print(self.text_input.toPlainText(), 'consulta')
+        QMessageBox.information(
+            iface.mainWindow(),
+            "Consulta dasolidar",
+            f"Gracias por la consulta.\nEsta utilidad estará disponible próximamente"
+        )
         # return (self.text_input.toPlainText(), 'consulta')
 
     def lanzar_accion(self):
@@ -174,6 +180,11 @@ class VentanaAsistente(QDialog):
         self.button_pressed = 'accion'
         self.accept()
         print(self.text_input.toPlainText(), 'accion')
+        QMessageBox.information(
+            iface.mainWindow(),
+            "Petición dasolidar",
+            f"Gracias por la petición.\nEsta utilidad estará disponible próximamente"
+        )
         # return (self.text_input.toPlainText(), 'accion')
 
 
@@ -269,6 +280,8 @@ class VentanaBienvenida(QDialog):
         if usar_html:
             self.mi_texto = QTextBrowser()
             self.mi_texto.setHtml(intro_dasolidar_html_read)
+            # Ajusto el scroll para mostrar la parte superior
+            # self.mi_texto.verticalScrollBar().setValue(0)  #  Lo hago abajo
         else:
             self.mi_texto = QLabel(intro_dasolidar_txt_read)
             self.mi_texto.setAlignment(Qt.AlignLeft)
@@ -345,26 +358,31 @@ class VentanaBienvenida(QDialog):
         botones_layout_2 = QHBoxLayout()
         # Añadir botones
         # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        self.asista_button = QPushButton('Asistente')
-        self.lasfile_button = QPushButton('Nube de puntos')
-        self.raster_button = QPushButton('Herramientas raster')
+        self.manual_button = QPushButton('Manual dasolidar')
         self.ldata_button = QPushButton('Explorar LidarData')
+        self.asista_button = QPushButton('Asistente')
+        # self.lasfile_button = QPushButton('cargar nube de puntos')
+        # self.raster_button = QPushButton('Herramientas raster')
 
-        self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+        self.manual_button.setStyleSheet('font-size: 14px; font-weight: bold;')
         self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+        self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+        # self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+        # self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
 
         # Conectar los botones a sus funciones
-        self.asista_button.clicked.connect(self.asistente)
-        self.lasfile_button.clicked.connect(self.cargar_lasfile)
-        self.raster_button.clicked.connect(self.herramientas_raster)
+        self.manual_button.clicked.connect(self.manual_dasolidar)
         self.ldata_button.clicked.connect(self.explorar_ldata)
+        self.asista_button.clicked.connect(self.dasolidar_IA)
+        # self.lasfile_button.clicked.connect(self.cargar_lasfile)
+        # self.raster_button.clicked.connect(self.herramientas_raster)
+
         # Añadir los botones al layout horizontal
-        botones_layout_2.addWidget(self.asista_button)
-        botones_layout_2.addWidget(self.lasfile_button)
-        botones_layout_2.addWidget(self.raster_button)
+        botones_layout_2.addWidget(self.manual_button)
         botones_layout_2.addWidget(self.ldata_button)
+        botones_layout_2.addWidget(self.asista_button)
+        # botones_layout_2.addWidget(self.lasfile_button)
+        # botones_layout_2.addWidget(self.raster_button)
         # ======================================================================
         marco_layout.addLayout(botones_layout_2)
         # # Añadir el layout de botones al layout principal
@@ -377,9 +395,56 @@ class VentanaBienvenida(QDialog):
         # Establecer el layout principal
         self.setLayout(texto_layout)
 
-    def asistente(self):
-        print('---> asistente')
-        mostrar_asistente()
+        # Ajusto el scroll para mostrar la parte superior
+        self.mi_texto.verticalScrollBar().setValue(0)
+
+    def manual_dasolidar(self):
+        # ruta_manual = os.path.dirname(__file__)
+        ruta_manual = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        pdf_path = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
+        if os.path.exists(pdf_path):
+            print(f'pdf_path_ok: {pdf_path}')
+            if platform.system() == 'Windows':
+                os.startfile(pdf_path)
+        else:
+            print(f'Fichero no disponible: {pdf_path}')
+
+    def explorar_ldata(self):
+        print('---> explorar_ldata')
+        ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$'
+        if os.path.exists(ldata_path):
+            print(f'Directorio disponible ok: {ldata_path}')
+        else:
+            print(f'Directorio no accesible: {ldata_path}')
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text=f'No hay acceso a la unidad de red {ldata_path}.',
+                showMore=f'Esto puede ser debido a:\n  1. El usuario {config_class.dl_usuario} no está dado de alta en la lista de usuarios del proyecto dasolidar\n  2. Se está trabajando fuera de la intranet de la Junta de Castilla y León.\n\nEste recurso solo está disponible para los usuarios del proyecto dasolidar con acceso a la intranet de la Junta de Castilla y León',
+                duration=30,
+                level=Qgis.Warning,
+            )
+            return
+        rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+        # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
+        print(f'Directorio explorado: {rpta_ok.args}')
+        print(f'Respuesta: {rpta_ok.returncode}')
+
+    # def dasolidar_IA(self):
+    #     print('---> asistente')
+    #     mostrar_asistente()
+
+    def dasolidar_IA(self):
+        dialog = VentanaAsistente()
+        rpta_ok = dialog.exec_()
+        print(f'Rpta de mostrar_asistente: {rpta_ok}')
+        if rpta_ok == QDialog.Accepted:
+            consulta_usuario = dialog.get_text()
+            boton_pulsado = dialog.button_pressed
+            print('Texto de consulta o petición:', consulta_usuario)
+            print('Botón pulsado:', boton_pulsado)
+        else:
+            print('Consulta o petición canceladas')
+
 
     def cargar_lasfile(self):
         print('---> cargar_lasfile')
@@ -393,8 +458,6 @@ class VentanaBienvenida(QDialog):
         #     print('Botón pulsado:', boton_pulsado)
         # else:
         #     print('Consulta o petición canceladas')
-
-
 
     def herramientas_raster(self):
         print('---> herramientas_raster')
@@ -416,31 +479,12 @@ class VentanaBienvenida(QDialog):
         
         # Llamar a la función
         calcular_valor_medio(capa_raster, x_consulta, y_consulta, mi_radio)
-        
-
-
-
-    def explorar_ldata(self):
-        print('---> explorar_ldata')
-        ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$'
-        rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
-        print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
-        print(f'Directorio explorado: {rpta_ok.args}')
-        print(f'Respuesta: {rpta_ok.returncode}')
-        # print(dir(rpta_ok))
-        [
-            '__class__', '__class_getitem__', '__del__', '__delattr__', '__dict__', '__dir__', '__doc__', '__enter__', '__eq__', '__exit__', '__format__', '__ge__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_check_timeout', '_child_created', '_close_pipe_fds', '_closed_child_pipe_fds', '_communicate', '_communication_started', '_execute_child', '_filter_handle_list', '_get_devnull', '_get_handles', '_handle', '_input', '_internal_poll', '_make_inheritable', '_on_error_fd_closer', '_readerthread', '_remaining_time', '_sigint_wait_secs', '_stdin_write', '_translate_newlines', '_wait', '_waitpid_lock',
-            'args', 'communicate', 'encoding', 'errors', 'kill', 'pid',
-            'pipesize', 'poll', 'returncode', 'send_signal', 'stderr', 'stdin',
-            'stdout', 'terminate', 'text_mode', 'universal_newlines', 'wait'
-         ]
 
     def center(self):
         qr = self.frameGeometry()
         cp = self.screen().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-
 
 
 # ==============================================================================
@@ -464,9 +508,41 @@ def mostrar_ventana_bienvenida():
     else:
         print('Cancelar presionado')
 
+# ==============================================================================
+def mostrar_manual_dasolidar():
+    # ruta_manual = os.path.dirname(__file__)
+    ruta_manual = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+    pdf_path = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
+    # print(f'pdf_path_ok: {pdf_path}')
+    if os.path.exists(pdf_path):
+        if platform.system() == 'Windows':
+            os.startfile(pdf_path)
+    else:
+        print(f'Fichero no disponible: {pdf_path}')
 
 # ==============================================================================
-def mostrar_asistente():
+def mostrar_explorar_ldata():
+    print('---> explorar_ldata')
+    ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$'
+    if os.path.exists(ldata_path):
+        print(f'Directorio disponible ok: {ldata_path}')
+    else:
+        print(f'Directorio no accesible: {ldata_path}')
+        iface.messageBar().pushMessage(
+            title='dasoraster',
+            text=f'No hay acceso a la unidad de red {ldata_path}.',
+            showMore=f'Esto puede ser debido a:\n  1. El usuario {config_class.dl_usuario} no está dado de alta en la lista de usuarios del proyecto dasolidar\n  2. Se está trabajando fuera de la intranet de la Junta de Castilla y León.\n\nEste recurso solo está disponible para los usuarios del proyecto dasolidar con acceso a la intranet de la Junta de Castilla y León',
+            duration=30,
+            level=Qgis.Warning,
+        )
+        return
+    rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
+    print(f'Directorio explorado: {rpta_ok.args}')
+    print(f'Respuesta: {rpta_ok.returncode}')
+
+# ==============================================================================
+def mostrar_dasolidar_IA():
     dialog = VentanaAsistente()
     rpta_ok = dialog.exec_()
     print(f'Rpta de mostrar_asistente: {rpta_ok}')
@@ -477,6 +553,9 @@ def mostrar_asistente():
         print('Botón pulsado:', boton_pulsado)
     else:
         print('Consulta o petición canceladas')
+
+
+
 
 
 
@@ -558,17 +637,24 @@ def mostrar_messagebar_bienvenida():
         # mi_widget.setDuration(30)
         mi_button1 = QPushButton(mi_widget)
         mi_button2 = QPushButton(mi_widget)
+        mi_button3 = QPushButton(mi_widget)
+        mi_button4 = QPushButton(mi_widget)
         mi_button1.setText('Bienvenido a dasolidar')
-        mi_button2.setText('Asistente dasolidar')
+        mi_button2.setText('Manual de usuario')
+        mi_button3.setText('Explorar lidarData')
+        mi_button4.setText('Asistente dasolidar')
         # mi_button1.pressed.connect(mostrar_html_qt)
         # mi_button1.pressed.connect(mostrar_html_qgs)
         mi_button1.pressed.connect(mostrar_ventana_bienvenida)
-        mi_button2.pressed.connect(mostrar_asistente)
+        mi_button2.pressed.connect(mostrar_manual_dasolidar)
+        mi_button3.pressed.connect(mostrar_explorar_ldata)
+        mi_button4.pressed.connect(mostrar_dasolidar_IA)
         # ==============================================================================
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
+        mi_widget.layout().addWidget(mi_button3)
+        mi_widget.layout().addWidget(mi_button4)
         iface.messageBar().pushWidget(mi_widget, Qgis.Info)
-
 
 if False:
     iface.messageBar().pushMessage(
