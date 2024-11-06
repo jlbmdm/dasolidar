@@ -25,10 +25,10 @@
 import os
 import sys
 # import math
-import numpy as np
 import platform
 import subprocess
-
+import numpy as np
+from osgeo import gdal
 
 # imports de plugin builder
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
@@ -41,6 +41,7 @@ from .resources import *
 from .dasoraster_dialog import DasorasterDialog, DasorasterDialog_consulta_rodal
 
 # Imports extras
+from qgis.utils import iface
 from qgis.core import (
     Qgis,
     # QgsApplication,
@@ -49,7 +50,7 @@ from qgis.core import (
     QgsProject,
     QgsSettings,
     QgsVectorLayer,
-    # QgsRasterLayer,
+    QgsRasterLayer,
     QgsRectangle,
     QgsPointXY,
     QgsWkbTypes,
@@ -61,12 +62,14 @@ from qgis.core import (
     QgsCoordinateTransform,
     QgsCoordinateReferenceSystem,
     QgsMapLayer,
+    QgsRasterBandStats,
 )
 from qgis.gui import (
     QgsMapToolEmitPoint,
     QgsRubberBand,
+    QgsMapToolIdentifyFeature,
+    QgsMapToolIdentify,
 )
-from qgis.utils import iface
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import (
@@ -108,7 +111,12 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QWidget,
 )
-from PyQt5.QtCore import QUrl
+from PyQt5.QtCore import (
+    QUrl,
+    pyqtSignal,
+    QObject,
+)
+
 
 # imports para la descarga de lasFiles
 # from qgis.core import QgsMessageLog
@@ -131,7 +139,8 @@ if plugin_dir not in sys.path:
 print(f'PYTHONPATH: {mi_PYTHONPATH}')
 print(f'sys.path: {sys.path}')
 
-from dasoutil import calcular_valor_medio
+from dasoutil import calcular_valor_medio_parcela
+from dasoutil import calcular_valor_medio_rodal
 # from dasoutil import identificar_usuario
 # usuario_actual = identificar_usuario()
 
@@ -233,10 +242,18 @@ class VentanaBienvenidaGuiaRapida(QDialog):
 
 
 class VentanaAsistente(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, botones_disponibles='consulta_diferida_sugerencia'):
         super().__init__(parent)
+        self.iface = iface
 
-        self.setWindowTitle('Aquí puedes escribir una consulta o pedir que se ejecute una acción')
+        if botones_disponibles == 'consulta_diferida':
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
+        elif botones_disponibles == 'consulta_ejecucion':
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
+        else:
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
         # self.setGeometry(100, 100, 700, 400)
         self.resize(600, 200)  #  Ancho y alto en píxeles
@@ -257,27 +274,84 @@ class VentanaAsistente(QDialog):
         self.texto_layout.addWidget(self.text_input)
 
         # ======================================================================
-        # botones_layout = QHBoxLayout()
-        # # Añadir botones
-        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        # self.consulta_button = QPushButton('Enviar consulta')
-        # self.accion_button = QPushButton('Ejecutar acción')
-        # self.cancel_button = QPushButton('Cancelar')
-        # ======================================================================
         # Botones de Consulta, Acción y Cancelar
         self.buttonBox = QDialogButtonBox()
         # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
-        self.consulta_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-        self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
+
+        # ======================================================================
+        if botones_disponibles == 'consulta_diferida':
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
+        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='sugerencia',
+                )
+            )
+            if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
+                self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+                self.consultaD_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='diferida',
+                    )
+                )
+                self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+                self.consultaI_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='inmediata',
+                    )
+                )
+            else:
+                self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+                self.consultaD_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='diferida',
+                    )
+                )
+        elif botones_disponibles == 'consulta_ejecucion':
+            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+            self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+            self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='sugerencia',
+                )
+            )
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
+            self.consultaI_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='inmediata',
+                )
+            )
+            self.accion_button.clicked.connect(self.lanzar_accion)
+        else:
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
         self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
-        # Conectar los botones a sus funciones
-        self.consulta_button.clicked.connect(self.lanzar_consulta)
-        self.accion_button.clicked.connect(self.lanzar_accion)
         self.cancel_button.clicked.connect(self.reject)
-        # # Añadir los botones al layout horizontal
-        # botones_layout.addWidget(self.consulta_button)
-        # botones_layout.addWidget(self.accion_button)
-        # botones_layout.addWidget(self.cancel_button)
         # ======================================================================
 
         # ======================================================================
@@ -294,6 +368,23 @@ class VentanaAsistente(QDialog):
         # Establecer el layout principal
         self.setLayout(self.texto_layout)
 
+    def mensaje(self, mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15, mi_level=Qgis.Info):
+        if mi_showMore is None or type(mi_showMore) != str:
+            self.iface.messageBar().pushMessage(
+                title=mi_title,
+                text=mi_text,
+                duration=mi_duration,
+                level=mi_level,
+            )
+        else:
+            self.iface.messageBar().pushMessage(
+                title=mi_title,
+                text=mi_text,
+                showMore=mi_showMore,
+                duration=mi_duration,
+                level=mi_level,
+            )
+
     def center(self):
         qr = self.frameGeometry()
         cp = self.screen().availableGeometry().center()
@@ -303,15 +394,20 @@ class VentanaAsistente(QDialog):
     def get_text(self):
         return self.text_input.toPlainText()
 
-    def lanzar_consulta(self):
-        print('---> lanzar_consulta')
-        self.button_pressed = 'consulta'
+    def lanzar_consulta_sugerencia(
+            self,
+            mi_evento=None,
+            mi_boton=None,
+            tipo_consulta='diferida'
+        ):
+        print(f'---> lanzar_consulta_sugerencia 00-> tipo_consulta {tipo_consulta}')
+        self.button_pressed = f'consulta_{tipo_consulta}'
         self.accept()
-        print(self.text_input.toPlainText(), 'consulta')
+        print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
         QMessageBox.information(
             iface.mainWindow(),
-            "Consulta dasolidar",
-            f"Gracias por la consulta.\nEsta utilidad estará disponible próximamente"
+            f'Consulta dasolidar <{tipo_consulta}>',
+            f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
         )
         # return (self.text_input.toPlainText(), 'consulta')
 
@@ -410,6 +506,22 @@ class Dasoraster:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('Dasoraster', message)
 
+    def mensaje(self, mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15, mi_level=Qgis.Info):
+        if mi_showMore is None or type(mi_showMore) != str:
+            self.iface.messageBar().pushMessage(
+                title=mi_title,
+                text=mi_text,
+                duration=mi_duration,
+                level=mi_level,
+            )
+        else:
+            self.iface.messageBar().pushMessage(
+                title=mi_title,
+                text=mi_text,
+                showMore=mi_showMore,
+                duration=mi_duration,
+                level=mi_level,
+            )
 
     def add_action(
         self,
@@ -502,7 +614,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon.png'
         self.action1 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-lasFile'),
+            text=self.tr(u'dasoraster\n    lasFile'),
             callback=self.cargar_lasfile,
             parent=self.iface.mainWindow(),
         )
@@ -510,7 +622,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_parcela.png'
         self.action2 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-parcela'),
+            text=self.tr(u'dasoraster\n   parcela'),
             callback=self.consultar_parcela,
             parent=self.iface.mainWindow(),
             checkable=True,
@@ -519,7 +631,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_rodal.png'
         self.action3 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-rodal'),
+            text=self.tr(u'dasoraster\n     rodal'),
             callback=self.consultar_rodal,
             parent=self.iface.mainWindow(),
         )
@@ -527,7 +639,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_explorer.png'
         self.action4 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-lidarData'),
+            text=self.tr(u'dasoraster\n lidarData'),
             callback=self.explorar_ldata,
             parent=self.iface.mainWindow(),
         )
@@ -535,7 +647,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_guiaRapida.png'
         self.action5 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-guia rápida'),
+            text=self.tr(u'dasoraster\nguia rápida'),
             callback=self.guia_rapida_dasolidar,
             parent=self.iface.mainWindow(),
         )
@@ -543,7 +655,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_book.png'
         self.action6 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-manual'),
+            text=self.tr(u'dasoraster\n   manual'),
             callback=self.manual_dasolidar,
             parent=self.iface.mainWindow(),
         )
@@ -551,7 +663,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_star.png'
         self.action7 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster-IA'),
+            text=self.tr(u'dasoraster\n       IA'),
             callback=self.dasolidar_IA,
             parent=self.iface.mainWindow(),
         )
@@ -559,7 +671,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/icon_config.png'
         self.action8 = self.add_action(
             icon_path,
-            text=self.tr(u'settings'),
+            text=self.tr(u'dasoraster\n  settings'),
             callback=self.dasoraster_settings,
             parent=self.iface.mainWindow(),
         )
@@ -593,72 +705,104 @@ class Dasoraster:
             # substitute with your code.
             pass
 
-    def cargar_lasfile(self):
-        print(f'Se ha pulsado el botón cargar_lasfile')
-        print(f'dasoraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
-        self.tool_lasfile = QgsMapToolEmitPoint(iface.mapCanvas())
-        # Conecto la señal de clic en el canvas a la función que maneja el clic
-        self.tool_lasfile.canvasClicked.connect(self.manejar_clic_canvas)
-        print(f'dasoraster-> self.action1.isChecked() 2: {self.action1.isChecked()}')
-        # Establezco la herramienta de mapa actual
-        iface.mapCanvas().setMapTool(self.tool_lasfile)
-        print(f'dasoraster-> self.action1.isChecked() 3: {self.action1.isChecked()}')
-
-    def manejar_clic_canvas(self, point, button):
+    def manejar_clic_canvas(
+            self,
+            point,
+            button,
+            tipo_consulta='',
+            raster_dataset=None,
+            raster_array=None,
+    ):
+        self.button = button
         # Podría usar el parametro button para diferenciar entre diferentes tipos de clics si fuera necesario
         # Obtener la capa de nube de puntos
-        layer = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
-        if not layer:
-            print("La capa 'cargar_nubeDePuntos_LidarPNOA2' no está cargada en el proyecto.")
-            iface.messageBar().pushMessage(
-                title='dasoraster',
-                text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto.',
-                showMore=f'Se intenta cargar desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\nSi se carga con éxito vuelve a intentar la carga del fichero lidar (nube de puntos)',
-                duration=30,
-                level=Qgis.Warning,
-            )
 
-            # Ruta al archivo de la capa
-            file_path = '//repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc'
-            # Creo la capa
-            layer = QgsVectorLayer(file_path, 'cargar_nubeDePuntos_LidarPNOA2', 'ogr')
-            # Verifico si la capa es válida y la agrego al proyecto
-            if layer.isValid():
-                QgsProject.instance().addMapLayer(layer)
-                print("La capa 'cargar_nubeDePuntos_LidarPNOA2' ha sido cargada.")
+        if tipo_consulta == 'lasfile':
+            layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
+            if not layer_selec:
+                print("La capa 'cargar_nubeDePuntos_LidarPNOA2' no está cargada en el proyecto.")
+                iface.messageBar().pushMessage(
+                    title='dasoraster',
+                    text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto.',
+                    showMore=f'Se intenta cargar desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\nSi se carga con éxito vuelve a intentar la carga del fichero lidar (nube de puntos)',
+                    duration=30,
+                    level=Qgis.Warning,
+                )
+
+                # Ruta al archivo de la capa
+                file_path = '//repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc'
+                # Creo la capa
+                layer_selec = QgsVectorLayer(file_path, 'cargar_nubeDePuntos_LidarPNOA2', 'ogr')
+                # Verifico si la capa es válida y la agrego al proyecto
+                if layer_selec.isValid():
+                    QgsProject.instance().addMapLayer(layer_selec)
+                    print("La capa 'cargar_nubeDePuntos_LidarPNOA2' ha sido cargada.")
+                else:
+                    print("No se pudo cargar la capa 'cargar_nubeDePuntos_LidarPNOA2'.")
+                return
             else:
-                print("No se pudo cargar la capa 'cargar_nubeDePuntos_LidarPNOA2'.")
-            return
-        else:
-            layer = layer[0]
-        print(f'layer identificado: {layer}')
+                layer_selec = layer_selec[0]
 
-        # Compruebo el CRS del layer
-        layer_crs = layer.crs()
-        print(f'CRS del layer: {layer_crs.authid()}')
+        elif tipo_consulta == 'rodal':
+            capa_activa_vector = False
+            layer_rodales = None
+            layer_activo = iface.activeLayer()  # Usar la capa activa si es vectorial
+            if layer_activo is None:
+                print("No hay ninguna capa activa.")
+                self.mensaje(
+                    f'No hay ninguna capa activa. Activa una capa vectorial para poder hacer la consulta.',
+                    mi_level=Qgis.Warning)
+            else:
+                if layer_activo.type() == QgsMapLayer.RasterLayer:
+                    nombre_capa_activa = layer_activo.name()
+                    print(f'La capa activa es una capa raster (no ok): {nombre_capa_activa}')
+                    self.mensaje(f'La capa activa ({nombre_capa_activa}) es ráster. Activa una capa vectorial para poder hacer la consulta.', mi_level=Qgis.Warning)
+                elif layer_activo.type() == QgsMapLayer.VectorLayer:
+                    nombre_capa_activa = layer_activo.name()
+                    print(f'La capa activa es una capa vectorial (ok): {nombre_capa_activa}.')
+                    if nombre_capa_activa == 'cargar_nubeDePuntos_LidarPNOA2':
+                        self.mensaje(f'Está seleccionada la malla de ficheros Lidar ({nombre_capa_activa}); elige una capa de rodales o similar.', mi_level=Qgis.Warning)
+                    else:
+                        self.mensaje('Se usa la capa activa: {nombre_capa_activa}.')
+                        capa_activa_vector = True
+                        layer_rodales = layer_activo
+                else:
+                    print("La capa activa no es ni raster ni vectorial.")
+                    self.mensaje(f'La capa activa no es vectorial. Activa una capa vectorial para poder hacer consultas.', mi_level = Qgis.Warning)
+            layer_rodales = layer_activo
+            layer_selec = layer_activo
+            if not capa_activa_vector:
+                return
+
+        print(f'layer identificado: {layer_selec}')
+
+        # Compruebo el CRS del layer_selec
+        self.layer_crs = layer_selec.crs()
+        print(f'CRS del layer_selec: {self.layer_crs.authid()}')
         # Defino el CRS del punto (EPSG:25830)
         point_crs = QgsCoordinateReferenceSystem('EPSG:25830')
-        # Transformar el punto al CRS del layer
-        if layer_crs.authid() in ['EPSG:25829', 'EPSG:25830']:
-            transform = QgsCoordinateTransform(point_crs, layer_crs, QgsProject.instance())
-            transformed_point = transform.transform(point)
-            print(f'Punto transformado: {transformed_point.x()}, {transformed_point.y()}')
+        if self.layer_crs != point_crs:
+            # Transformar el punto al CRS del layer_selec
+            if self.layer_crs.authid() in ['EPSG:25829', 'EPSG:25830']:
+                transform = QgsCoordinateTransform(point_crs, self.layer_crs, QgsProject.instance())
+                transformed_point = transform.transform(point)
+                print(f'Punto transformado: {transformed_point.x()}, {transformed_point.y()}')
+            else:
+                print('El layer_selec no está en EPSG:25829 ni EPSG:25830.')
+            # point = QgsPointXY(X, Y)
+            print('Se han convertido las coordenadas del punto (EPSG:25830) al crs del layer vectorial:')
+            print(f'point original {point_crs.authid()}-> {point}')
+            print(f'point transfor {self.layer_crs.authid()}-> {transformed_point}')
         else:
-            print('El layer no está en EPSG:25829 ni EPSG:25830.')
-
-        # Obtener el campo COPC del punto clicado
-
-        # point = QgsPointXY(X, Y)
-        print(f'point EPSG:25829-> {point}')
-        print(f'point {layer_crs.authid()}-> {transformed_point}')
+            transformed_point = point
 
         # Creo una geometría de punto (objeto de consulta)
         point_geometry = QgsGeometry.fromPointXY(transformed_point)
 
         # request1 = QgsFeatureRequest().setFilterGeometry(transformed_point_geometry)  # Filtrar por geometría del punto
-        # selected_features1 = layer.getFeatures(request1)
+        # selected_features1 = layer_selec.getFeatures(request1)
 
-        # Crear un objeto de consulta
+        # Creo un objeto de consulta
         buffer_size = 0.01
         request = QgsFeatureRequest().setFilterRect(
             QgsRectangle(transformed_point.x() - buffer_size,
@@ -666,17 +810,17 @@ class Dasoraster:
                          transformed_point.x() + buffer_size,
                          transformed_point.y() + buffer_size)
         )
-        selected_features = layer.getFeatures(request)
-        print(f'selected_features {type(selected_features)}: {selected_features}')
+        selected_features = layer_selec.getFeatures(request)
+        print(f'selected_features de tipo: {type(selected_features)}. isValid: {selected_features.isValid()}')
         # print(dir(selected_features))
         # ['close', 'compileFailed', 'compileStatus', 'isClosed', 'isValid', 'nextFeature', 'rewind']
 
-        # print(f'Número de features en el layer: {layer.featureCount()}')
+        # print(f'Número de features en el layer_selec: {layer_selec.featureCount()}')
         # print(f'Geometría del punto: {point_geometry.asWkt()}')
         # feature_id = 21622
         # request_id = QgsFeatureRequest().setFilterFid(feature_id)
         # # Obtener la característica correspondiente
-        # feature = layer.getFeatures(request_id)
+        # feature = layer_selec.getFeatures(request_id)
         # for f in feature:
         #     geometry = f.geometry()
         #     print(
@@ -689,32 +833,46 @@ class Dasoraster:
             num_features = len(features_list)
             print(f'Número de poligonos seleccionados-> {num_features}')
             for feature in features_list:
-                print(f'ID: {feature.id()}, COPC1: {feature["COPC1"]}')
-                # Obtener el valor del campo COPC1
-                copc_1_value = feature['COPC1']
-                copc_2_value = feature['COPC2']
-                copc_any_value = feature['COPC_ANY']
-                cuadrante_1_value = feature['Cuadrante']
-                cuadrante_2_value = feature['Cuadrante2']
-                copc_CE_value = feature['COPC_CE']
-                copc_NE_value = feature['COPC_NE']
-                copc_NW_value = feature['COPC_NW']
-                copc_SE_value = feature['COPC_SE']
-                copc_SW_value = feature['COPC_SW']
-                print(f'copc_value {type(copc_1_value)}: {copc_1_value}')
-                # Verifico si COPC no es NULL y el archivo existe
-                self.cargar_nube_de_puntos(
-                    copc_1_value,
-                    copc_2_value,
-                    copc_any_value,
-                    cuadrante_1_value,
-                    cuadrante_2_value,
-                    copc_CE_value,
-                    copc_NE_value,
-                    copc_NW_value,
-                    copc_SE_value,
-                    copc_SW_value,
-                )
+                if tipo_consulta == 'lasfile':
+                    print(f'ID: {feature.id()}, COPC1: {feature["COPC1"]}')
+                    # Obtener el valor del campo COPC1
+                    copc_1_value = feature['COPC1']
+                    copc_2_value = feature['COPC2']
+                    copc_any_value = feature['COPC_ANY']
+                    cuadrante_1_value = feature['Cuadrante']
+                    cuadrante_2_value = feature['Cuadrante2']
+                    copc_CE_value = feature['COPC_CE']
+                    copc_NE_value = feature['COPC_NE']
+                    copc_NW_value = feature['COPC_NW']
+                    copc_SE_value = feature['COPC_SE']
+                    copc_SW_value = feature['COPC_SW']
+                    print(f'copc_value {type(copc_1_value)}: {copc_1_value}')
+                    # Verifico si COPC no es NULL y el archivo existe
+                    self.cargar_nube_de_puntos(
+                        copc_1_value,
+                        copc_2_value,
+                        copc_any_value,
+                        cuadrante_1_value,
+                        cuadrante_2_value,
+                        copc_CE_value,
+                        copc_NE_value,
+                        copc_NW_value,
+                        copc_SE_value,
+                        copc_SW_value,
+                    )
+                elif tipo_consulta == 'rodal':
+                    print(f'Feature id: {feature.id()}')
+                    self.rodal_feat = feature
+                    self.obtener_volumen(
+                        point,
+                        self.button,
+                        tipo_consulta='rodal',
+                        layer_rodales=layer_rodales,
+                        rodal_feat=self.rodal_feat,
+                        raster_dataset=raster_dataset,
+                        raster_array=raster_array,
+                    )
+
                 break  # Salir después de encontrar el primer polígono que contiene el punto
         else:
             print("No se encontró ningún polígono que contenga el punto.")
@@ -940,6 +1098,20 @@ class Dasoraster:
                 duration=10
             )
 
+    def cargar_lasfile(self):
+        print(f'Se ha pulsado el botón cargar_lasfile')
+        print(f'dasoraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
+        self.tool_lasfile = QgsMapToolEmitPoint(iface.mapCanvas())
+        # Conecto la señal de clic en el canvas a la función que maneja el clic
+        # self.tool_lasfile.canvasClicked.connect(self.manejar_clic_canvas)
+        self.tool_lasfile.canvasClicked.connect(
+            lambda event, button: self.manejar_clic_canvas(event, button, tipo_consulta='lasfile')
+        )
+        print(f'dasoraster-> self.action1.isChecked() 2: {self.action1.isChecked()}')
+        # Establezco la herramienta de mapa actual
+        iface.mapCanvas().setMapTool(self.tool_lasfile)
+        print(f'dasoraster-> self.action1.isChecked() 3: {self.action1.isChecked()}')
+
     def consultar_parcela(self):
         print(f'dasoraster-> self.action2.isChecked() 1: {self.action2.isChecked()}')
         escala_actual = self.canvas.scale()
@@ -970,7 +1142,9 @@ class Dasoraster:
                 self.consultar_circulo,
                 self.consulta_multiple,
             )
-            self.tool_parcela.canvasClicked.connect(self.parcela_volumen)
+            # self.tool_parcela.canvasClicked.connect(self.obtener_volumen)
+            self.tool_parcela.canvasClicked.connect(lambda event, button: self.obtener_volumen(event, button, tipo_consulta='parcela'))
+
             self.canvas.setMapTool(self.tool_parcela)
             print(f'dasoraster-> self.action2.isChecked() 3: {self.action2.isChecked()}')
             if not self.consulta_multiple:
@@ -985,15 +1159,140 @@ class Dasoraster:
             self.action2.setChecked(False)
             print(f'dasoraster-> self.action2.isChecked() 4: {self.action2.isChecked()}')
 
-    def parcela_volumen(self, point, button):
+    def consultar_rodal(self):
+        print(f'Se ha pulsado el botón consultar_rodal')
+        #raster_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\PNOA2_2017 - 2021\variablesDasometricas\version_202410'
+        raster_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\cocina'
+        raster_filename = 'dasoLidar_VolumenMadera_m3_ha.tif'
+        raster_filepath = os.path.join(raster_path, raster_filename)
+        print(f'Fichero de volumen: {raster_filepath}')
+        print(f'Fichero disponible: {os.path.exists(raster_filepath)}')
+        raster_leido_ok = False
+        if os.path.exists(raster_filepath) and False:
+            # Abrir el ráster usando GDAL
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text=f'Estamos trabajando para agilizar esta consulta. Por elmomento tendrán que esperar entre medio y un minuto mientras se lee el raster de volúmenes de Castilla y León. No pulses ninguna tecla o botón del ratón.',
+                # showMore=f'',
+                duration=20,
+                level=Qgis.Warning,
+            )
+            raster_dataset = gdal.Open(raster_filepath)
+            print(f'raster_dataset: {raster_dataset}')
+            if raster_dataset:
+                raster_band = raster_dataset.GetRasterBand(1)
+                # Leer el ráster como un array de numpy
+                raster_array = raster_band.ReadAsArray()
+                print(f'raster_array.shape: {raster_array.shape}')
+                raster_leido_ok = True
+        if not raster_leido_ok:
+            raster_dataset = None
+            raster_array = None
+
+        # Create the dialog with elements (after translation) and keep reference
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        print(f'dasoraster-> self.action3.isChecked() 1: {self.action3.isChecked()}')
+        canvas = iface.mapCanvas()
+        # self.tool_rodal = ConsultarRodalTool(canvas)
+        self.tool_rodal = QgsMapToolEmitPoint(iface.mapCanvas())
+        # Conecto la señal de clic en el canvas a la función que maneja el clic
+        # self.tool_rodal.canvasClicked.connect(self.manejar_clic_canvas)
+        self.tool_rodal.canvasClicked.connect(
+            lambda event, button: self.manejar_clic_canvas(
+                event,
+                button,
+                tipo_consulta='rodal',
+                raster_dataset=raster_dataset,
+                raster_array=raster_array,
+            )
+        )
+        print(f'dasoraster-> self.action3.isChecked() 2: {self.action3.isChecked()}')
+        # Establezco la herramienta de mapa actual
+        iface.mapCanvas().setMapTool(self.tool_rodal)
+        print(f'dasoraster-> self.action3.isChecked() 3: {self.action3.isChecked()}')
+
+        # layer_rodales = canvas.currentLayer()
+        # if not isinstance(layer_rodales, QgsVectorLayer):
+        #     print("La capa activa no es vectorial.")
+        #     return
+        # print(f'dasoraster-> Vector layer: {layer_rodales.name()}')
+
+        '''
+        alternativa_usada = 2
+        def on_point_emitted(point):
+            print(f'dasoraster-> Se ha hecho click en (1) {point}')
+            if alternativa_usada == 2:
+                self.tool_rodal.canvasClicked.connect(
+                    lambda event, button: self.manejar_clic_canvas(event, button, tipo_consulta='rodal')
+                )
+            else:
+                transformed_point = point
+                # Crear un objeto de consulta
+                buffer_size = 0.01
+                request = QgsFeatureRequest().setFilterRect(
+                    QgsRectangle(transformed_point.x() - buffer_size,
+                                 transformed_point.y() - buffer_size,
+                                 transformed_point.x() + buffer_size,
+                                 transformed_point.y() + buffer_size)
+                )
+                selected_features = layer_rodales.getFeatures(request)
+                print(f'selected_features {type(selected_features)}: {selected_features}')
+
+                # selected_features = [f for f in layer_rodales.getFeatures(QgsFeatureRequest().setFilterRect(
+                #     canvas.mapSettings().mapToLayerCoordinates(layer_rodales, point.boundingBox())))]
+                if not selected_features:
+                    print("No se encontró ningún polígono en el punto clicado.")
+                    return
+
+                # Convertir el iterador a una lista para contar las características
+                features_list = list(selected_features)
+                # Contar el número de características
+                num_features = len(features_list)
+                print(f'Número de poligonos identificados-> {num_features}')
+
+                rodal_feat = features_list[0]
+                self.tool_rodal.rubberBand.setToGeometry(rodal_feat.geometry(), layer_rodales)
+
+                # Obtener la capa raster VCC
+                raster_layer = QgsProject.instance().mapLayersByName('VCC')[0]
+                if not isinstance(raster_layer, QgsRasterLayer):
+                    print("No se encontró la capa raster VCC.")
+                    return
+
+                # Calcular el valor medio de los píxeles del ráster en el polígono
+                stats = raster_layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Mean,
+                                                                   rodal_feat.geometry().boundingBox())
+                mean_value = stats.mean
+                print(f"El valor medio de los píxeles del ráster en el polígono es: {mean_value}")
+
+            self.tool_rodal.pointEmitted.connect(on_point_emitted)
+            # self.tool_rodal.pointEmitted.connect(lambda event, button: on_point_emitted(event, button, 'rodal'))
+
+        self.canvas.setMapTool(self.tool_rodal)
+        '''
+
+    def obtener_volumen(
+            self,
+            point,
+            button,
+            tipo_consulta='',
+            layer_rodales=None,
+            rodal_feat=None,
+            raster_dataset=None,
+            raster_array=None,
+    ):
+        print(f'dasoraster-> obtener_volumen-> point: {point}')
+        print(f'dasoraster-> obtener_volumen-> button: {button}')
+        print(f'dasoraster-> obtener_volumen-> tipo_consulta: {tipo_consulta}')
+
         if button == Qt.LeftButton:
-            print(f"Has hecho click en (b): {point}")
-            # Elimino el círculo después de hacer clic
-            self.tool_parcela.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+            print(f"Has hecho click con el botón izdo en (b): {point}")
+
+            if tipo_consulta == 'parcela':
+                # Elimino el círculo después de hacer clic
+                self.tool_parcela.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
 
             # Parámetros de entrada
-            x_consulta = point.x()
-            y_consulta = point.y()
             capa_VCC_1 = 'VolumenMadera_m3_ha'
             capa_VCC_2 = 'VCC____IFNxPNOA2'
             capas_VCC = [capa_VCC_1, capa_VCC_2]
@@ -1008,10 +1307,11 @@ class Dasoraster:
                     unidad_medida = 'm3/ha'
                     capa_VCC_encontrada = True
                     capa_activa_raster = True
+                    break
                 else:
                     print(f'Capa {capa_VCC} no encontrada')
 
-            if not capa_VCC_encontrada:
+            if not capa_VCC_encontrada and tipo_consulta == 'parcela':
                 capa_activa_raster = False
                 layer_activo = iface.activeLayer()  # Usar la capa activa si 'VCC' no está cargada en el proyecto
                 if layer_activo is None:
@@ -1059,27 +1359,57 @@ class Dasoraster:
             if not capa_VCC_encontrada and not capa_activa_raster:
                 return
 
-            valor_medio, num_pixeles = calcular_valor_medio(
-                capa_raster,
-                x_consulta,
-                y_consulta,
-                radio_parcela=self.radio_parcela,
-                consultar_circulo=self.consultar_circulo,
-            )
-            if variable_medida.upper().startswith('VOL'):
-                valor_medio = int(round(valor_medio))
-            elif variable_medida.upper().startswith('BA') or variable_medida.upper().startswith('BIO'):
-                valor_medio = int(round(valor_medio))
-            elif variable_medida.upper().startswith('ALT'):
-                valor_medio = round(valor_medio, 1)
-            elif variable_medida.upper().startswith('COB'):
-                valor_medio = int(round(valor_medio))
-            elif variable_medida.upper().startswith('AB'):
-                valor_medio = round(valor_medio, 1)
-            elif variable_medida.upper().startswith('IAVC') or variable_medida.upper().startswith('CRE'):
-                valor_medio = round(valor_medio, 2)
+            x_consulta = point.x()
+            y_consulta = point.y()
+            if tipo_consulta == 'parcela':
+                valor_medio, num_pixeles = calcular_valor_medio_parcela(
+                    capa_raster,
+                    x_consulta,
+                    y_consulta,
+                    radio_parcela=self.radio_parcela,
+                    consultar_circulo=self.consultar_circulo,
+                )
+            elif tipo_consulta == 'rodal':
+                ejecutar_consulta_beta = False
+                if ejecutar_consulta_beta:
+                    valor_medio, num_pixeles = calcular_valor_medio_rodal(
+                        capa_raster,
+                        layer_rodales,
+                        rodal_feat,
+                        raster_array=raster_array,
+                        raster_dataset=raster_dataset,
+                    )
+                else:
+                    valor_medio, num_pixeles = 0, 0
+                # Calculo la superficie del rodal
+                rodal_geom = rodal_feat.geometry()
+                dest_crs = QgsCoordinateReferenceSystem("EPSG:25830")
+                if dest_crs == self.layer_crs:
+                    rodal_superficie = rodal_geom.area()
+                else:
+                    transformer = QgsCoordinateTransform(self.layer_crs, dest_crs, QgsProject.instance())
+                    rodal_geom_reprojected = rodal_geom.clone()
+                    rodal_geom_reprojected.transform(transformer)
+                    rodal_superficie = rodal_geom_reprojected.area()
             else:
-                valor_medio = round(valor_medio, 2)
+                print('Dasoraster-> Revisar este error')
+            if isinstance(valor_medio, (int, float)):
+                if variable_medida.upper().startswith('VOL'):
+                    valor_medio = int(round(valor_medio))
+                elif variable_medida.upper().startswith('BA') or variable_medida.upper().startswith('BIO'):
+                    valor_medio = int(round(valor_medio))
+                elif variable_medida.upper().startswith('ALT'):
+                    valor_medio = round(valor_medio, 1)
+                elif variable_medida.upper().startswith('COB'):
+                    valor_medio = int(round(valor_medio))
+                elif variable_medida.upper().startswith('AB'):
+                    valor_medio = round(valor_medio, 1)
+                elif variable_medida.upper().startswith('IAVC') or variable_medida.upper().startswith('CRE'):
+                    valor_medio = round(valor_medio, 2)
+                else:
+                    valor_medio = round(valor_medio, 2)
+            else:
+                valor_medio = -1
 
             # if math.isnan(valor_medio):
             if np.isnan(valor_medio):
@@ -1093,36 +1423,74 @@ class Dasoraster:
             elif valor_medio == -1:
                 QMessageBox.information(
                     self.iface.mainWindow(),
-                    "Consulta dasolidar",
+                    "Consulta dasolidar: parcela",
                     f"Parcela de r={self.radio_parcela}m\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}\nValor en capa {variable_medida}: No hay pixeles con valores válidos"
                 )
             else:
+                if tipo_consulta == 'parcela':
+                    resultado_msg = f'Parcela de radio: {self.radio_parcela}m'
+                    resultado_msg += f'\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}'
+                    if variable_medida == 'Volumen':
+                        resultado_msg += f'\nVolumen medio: {valor_medio} {unidad_medida}'
+                    else:
+                        resultado_msg += f'\n{variable_medida}: {valor_medio} {unidad_medida}'
+                else:
+                    if ejecutar_consulta_beta:
+                        rodal_fid = rodal_feat.id()
+                        resultado_msg = f'ATENCION: esta herramienta está en desarrollo.'
+                        resultado_msg += f'\nEstá pendiente revisar si se consultan los píxeles que corresponden.'
+                        resultado_msg += f'\nCuando esté revisado se quitará este mensaje.'
+                        resultado_msg += f'\n\n'
+                        resultado_msg += f'Identificador del polígono en la capa (id): {rodal_fid}  '
+                        resultado_msg += f'\nInformación del rodal o polígono:'
+                        resultado_msg += f'\n    Superficie: {rodal_superficie / 10000:0.1f} ha'
+                        if variable_medida == 'Volumen':
+                            valor_total = int(round(valor_medio * rodal_superficie / 10000))
+                            resultado_msg += f'\n    Volumen medio: {valor_medio} {unidad_medida}'
+                            resultado_msg += f'\n    Volumen total: {valor_total} m3'
+                        else:
+                            resultado_msg += f'\n{variable_medida}: {valor_medio} {unidad_medida}'
+                        if usuario_actual.lower() == 'benmarjo':
+                            resultado_msg += f'\n\nNúmero de pixeles: {num_pixeles}'
+                    else:
+                        rodal_fid = rodal_feat.id()
+                        resultado_msg = f'Esta herramienta está en desarrollo.'
+                        resultado_msg += f'\nPróximamente incluirá el cálculo del volumen de madera'
+                        resultado_msg += f'\nestimado para el rodal en el que se ha hecho click.'
+                        resultado_msg += f'\nPor el momento se ofrece solo esta información:'
+                        resultado_msg += f'\n\n'
+                        resultado_msg += f'Identificador del polígono en la capa (id): {rodal_fid}  '
+                        resultado_msg += f'\nInformación del rodal o polígono:'
+                        resultado_msg += f'\n    Superficie: {rodal_superficie / 10000:0.1f} ha'
+                        if variable_medida == 'Volumen':
+                            valor_total = int(round(valor_medio * rodal_superficie / 10000))
+                            resultado_msg += f'\n    Volumen medio: XXX {unidad_medida}'
+                            resultado_msg += f'\n    Volumen total: XXX m3'
+                        else:
+                            resultado_msg += f'\n{variable_medida}: XXX {unidad_medida}'
                 QMessageBox.information(
                     self.iface.mainWindow(),
-                    "Consulta dasolidar",
-                    f"Parcela de r={self.radio_parcela}m\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}\nPixeles con valores válidos: {num_pixeles}\n{variable_medida}: {valor_medio} {unidad_medida}"
+                    f'Consulta dasolidar: {tipo_consulta}',
+                    resultado_msg,
                 )
+            if tipo_consulta == 'parcela':
+                if self.consulta_multiple:
+                    # self.action2.setChecked(True)
+                    if self.action2.isChecked():
+                        print(f"Se lanza de nuevo la herramienta (b)")
+                        self.consultar_parcela()
+                    print(f'dasoraster-> self.action2.isChecked() 5a: {self.action2.isChecked()}')
+                else:
+                    print(f"Elimino trazado de la parcela (b)")
+                    # Elimino el círculo después de hacer clic
+                    self.action2.setChecked(False)
+                    self.canvas.unsetMapTool(self.tool_parcela)
+                    print(f'dasoraster-> self.action2.isChecked() 5b: {self.action2.isChecked()}')
 
-            if self.consulta_multiple:
-                # self.action2.setChecked(True)
-                if self.action2.isChecked():
-                    print(f"Se lanza de nuevo la herramienta (b)")
-                    self.consultar_parcela()
-                print(f'dasoraster-> self.action2.isChecked() 5a: {self.action2.isChecked()}')
-            else:
-                print(f"Elimino trazado de la parcela (b)")
-                # Elimino el círculo después de hacer clic
-                self.action2.setChecked(False)
-                self.canvas.unsetMapTool(self.tool_parcela)
-                print(f'dasoraster-> self.action2.isChecked() 5b: {self.action2.isChecked()}')
-
-    def consultar_rodal(self):
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+    def mostrar_dialogo_compilado(self):
         if self.first_start_consulta_rodal == True:
             self.first_start_consulta_rodal = False
             self.dlg_consulta_rodal = DasorasterDialog_consulta_rodal()
-
         try:
             # show the dialog
             self.dlg_consulta_rodal.show()
@@ -1208,7 +1576,10 @@ class Dasoraster:
                 print(f'Fichero no disponible: {pdf_path}')
 
     def dasolidar_IA(self):
-        dialog = VentanaAsistente()
+        dialog = VentanaAsistente(
+            parent=None,
+            botones_disponibles='consulta_ejecucion',
+        )
         rpta_ok = dialog.exec_()
         print(f'Rpta de mostrar_asistente: {rpta_ok}')
         if rpta_ok == QDialog.Accepted:
@@ -1297,6 +1668,91 @@ class CustomMapTool(QgsMapToolEmitPoint):
             print(f"Elimino trazado de la parcela")
             # Elimino el círculo después de hacer clic
             self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
+
+# https://qgis.org/pyqgis/master/gui/QgsMapToolIdentifyFeature.html
+# Clase: QgsMapToolIdentifyFeature
+# Methods: setLayer
+#     change the layer used by the map tool to identify
+# Signals: featureIdentified
+#     Emitted when a feature has been identified by its id.
+
+# ==============================================================================
+# class ConsultarRodalTool(QgsMapToolIdentifyFeature):
+class ConsultarRodalTool(QgsMapToolEmitPoint):
+    pointEmitted = pyqtSignal(object)
+
+    def __init__(self, canvas):
+        super().__init__(canvas)
+        self.canvas = canvas
+        self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.rubberBand.setColor(Qt.red)
+        self.rubberBand.setWidth(2)
+        print(f'dasoraster-> Instanciando ConsultarRodalTool')
+        self.setCursor()
+
+    def activate(self):
+        self.canvas.setCursor(QCursor(Qt.CrossCursor))
+        super().activate()
+
+    def setCursor(self):
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setPen(QPen(Qt.black, 2))
+        painter.drawLine(16, 0, 16, 32)
+        painter.drawLine(0, 16, 32, 16)
+        painter.end()
+        self.cursor = QCursor(pixmap)
+        self.canvas.setCursor(self.cursor)
+
+    def canvasReleaseEvent(self, event):
+        point = self.toMapCoordinates(event.pos())
+        print(f'dasoraster-> Se ha hecho click en (2) {point}')
+        self.pointEmitted.emit(point)
+
+    def canvasReleaseEvent_sin_uso(self, event):
+        layer = self.canvas.currentLayer()
+        if not isinstance(layer, QgsVectorLayer):
+            print("La capa activa no es vectorial.")
+            return
+        print(f'dasoraster-> Vector layer: {layer.name()}')
+
+        point = self.toMapCoordinates(event.pos())
+        print(f'dasoraster-> Se ha hecho click en (0) {point}')
+
+        # self.setLayer(layer)
+        # features_identificadas = self.featureIdentified()
+        # features_identificadas = self.identify(point, [layer], QgsMapToolIdentify.TopDownStopAtFirst)
+        # features_identificadas = self.identify(point, [layer])
+        # features_identificadas = self.identifyVectorLayer(layer, point, QgsMapToolIdentifyFeature.LayerSelection)
+        features_identificadas = self.identify(point, [layer], QgsMapToolIdentifyFeature.LayerSelection)
+
+        if not features_identificadas:
+            print("No se encontró ningún polígono en el punto clicado.")
+            return
+
+        # Convertir el iterador a una lista para contar las características
+        features_list = list(features_identificadas)
+        # Contar el número de características
+        num_features = len(features_list)
+        print(f'Número de poligonos identificados-> {num_features}')
+
+        # for feature in features_list:
+        feature = features_list[0].mFeature
+        self.rubberBand.setToGeometry(feature.geometry(), layer)
+
+        # Obtener la capa raster VolumenMadera_m3_ha
+        raster_layer = QgsProject.instance().mapLayersByName('VolumenMadera_m3_ha')[0]
+        if not isinstance(raster_layer, QgsRasterLayer):
+            print("No se encontró la capa raster VolumenMadera_m3_ha.")
+            return
+
+        print(f'dasoraster-> Raster layer: {raster_layer.name()}')
+
+        # Calcular el valor medio de los píxeles del ráster en el polígono
+        stats = raster_layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Mean, feature.geometry().boundingBox())
+        mean_value = stats.mean
+        print(f"El valor medio de los píxeles del ráster en el polígono es: {mean_value}")
 
 
 

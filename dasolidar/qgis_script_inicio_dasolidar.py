@@ -50,16 +50,17 @@ from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
 # html_path = r'D:\_clid\pyqgis'
 html_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
 # ==============================================================================
-intro_dasolidar_html_filename = 'dasolidar_intro.html'
-intro_dasolidar_html_filepath = os.path.join(html_path, intro_dasolidar_html_filename) 
-intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
-intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
+dl_bienvenida_html_filename = 'dasolidar_bienvenida.html'
+dl_bienvenida_html_filepath = os.path.join(html_path, dl_bienvenida_html_filename) 
+dl_bienvenida_html_obj = open(dl_bienvenida_html_filepath)
+dl_bienvenida_html_read = dl_bienvenida_html_obj.read()
 # ==============================================================================
-intro_dasolidar_txt_filename = 'dasolidar_intro.txt'
-intro_dasolidar_txt_filepath = os.path.join(html_path, intro_dasolidar_txt_filename) 
-intro_dasolidar_txt_obj = open(intro_dasolidar_txt_filepath)
-intro_dasolidar_txt_read = intro_dasolidar_txt_obj.read()
+dl_primeros_pasos_html_filename = 'dasolidar_primeros_pasos.html'
+dl_primeros_pasos_html_filepath = os.path.join(html_path, dl_primeros_pasos_html_filename) 
+dl_primeros_pasos_html_obj = open(dl_primeros_pasos_html_filepath)
+dl_primeros_pasos_html_read = dl_primeros_pasos_html_obj.read()
 # ==============================================================================
+
 
 # from qgis.gui import QgsHtmlAnnotationItem
 # html_annotation = QgsHtmlAnnotationItem(QgsProject.instance().mapLayers().values())
@@ -72,220 +73,58 @@ intro_dasolidar_txt_read = intro_dasolidar_txt_obj.read()
 def str_to_bool(s):
     return s.lower() in ['true', '1', 't', 'y', 'yes']
 
-
 # ==============================================================================
 mi_config = QgsSettings()
 class Configuracion():
     def __init__(self):
         self.dl_usuario = mi_config.value('dasolidar/usuario', 'anonimo')
         self.dl_usos  = mi_config.value('dasolidar/usos', 123)
-        self.dl_mostrar_ventana_bienvenida = mi_config.value('dasolidar/mostrar_ventana_bienvenida', True)
-        self.dl_mostrar_message_bienvenida = mi_config.value('dasolidar/mostrar_message_bienvenida', True)
-
+        self.dl_ventana_bienvenida = mi_config.value('dasolidar/dl_ventana_bienvenida', True)
+        self.dl_message_bienvenida = mi_config.value('dasolidar/dl_message_bienvenida', True)
 
 # ==============================================================================
 config_class = Configuracion()
-print(f'dl_mostrar_ventana_bienvenida 1: ({type(config_class.dl_mostrar_ventana_bienvenida)}) {config_class.dl_mostrar_ventana_bienvenida}')
-if type(config_class.dl_mostrar_ventana_bienvenida) == str:
-    config_class.dl_mostrar_ventana_bienvenida = str_to_bool(config_class.dl_mostrar_ventana_bienvenida)
-print(f'dl_mostrar_ventana_bienvenida 2: ({type(config_class.dl_mostrar_ventana_bienvenida)}) {config_class.dl_mostrar_ventana_bienvenida}')
+print(f'dl_ventana_bienvenida 1: ({type(config_class.dl_ventana_bienvenida)}) {config_class.dl_ventana_bienvenida}')
+if type(config_class.dl_ventana_bienvenida) == str:
+    config_class.dl_ventana_bienvenida = str_to_bool(config_class.dl_ventana_bienvenida)
+print(f'dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bienvenida)}) {config_class.dl_ventana_bienvenida}')
 # ==============================================================================
 
 
-class VentanaAsistente(QDialog):
-    def __init__(self, parent=None):
+# ==============================================================================
+class VentanaBienvenidaPrimerosPasos(QDialog):
+    def __init__(self, parent=None, contenido_ventana='primeros_pasos'):
         super().__init__(parent)
-
-        self.setWindowTitle('Aquí puedes escribir una consulta o pedir que se ejecute una acción')
+        print(f'-> Instanciando VentanaBienvenidaPrimerosPasos con contenido_ventana = {contenido_ventana}')
+        
+        if contenido_ventana == 'bienvenida':
+            self.setWindowTitle('Bienvenido al proyecto dasolidar: productos y herramientas Lidar para la gestión del medio natural en Castilla y León')
+            self.resize(900, 830)  #  Ancho y alto en píxeles
+        elif contenido_ventana == 'primeros_pasos':
+            self.setWindowTitle('Primeros pasos con dasolidar y el proyecto lidarQgis: productos y herramientas Lidar para la gestión del medio natural en Castilla y León')
+            self.resize(950, 600)  #  Ancho y alto en píxeles
+        else:
+            self.setWindowTitle('Productos y herramientas Lidar para la gestión del medio natural en Castilla y León')
+            self.resize(950, 600)  #  Ancho y alto en píxeles
         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
         # self.setGeometry(100, 100, 700, 400)
-        self.resize(600, 200)  #  Ancho y alto en píxeles
-        self.center()
-
-        # ======================================================================
-        # Layout horizontal para el texto
-        self.texto_layout = QVBoxLayout()
-        # Mensaje de texto
-        self.mi_texto = QLabel('Escribe tu consulta o petición:')
-        self.mi_texto.setAlignment(Qt.AlignLeft)
-        self.texto_layout.addWidget(self.mi_texto)
-
-        # # Ventana de texto con tamaño fijo
-        # self.text_input = QLineEdit(self)
-        self.text_input = QTextEdit(self)
-        self.text_input.setFixedSize(550, 100)  # Establece el tamaño (ancho, alto) en píxeles
-        self.texto_layout.addWidget(self.text_input)
-
-        # ======================================================================
-        # botones_layout = QHBoxLayout()
-        # # Añadir botones
-        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        # self.consulta_button = QPushButton('Enviar consulta')
-        # self.accion_button = QPushButton('Ejecutar acción')
-        # self.cancel_button = QPushButton('Cancelar')
-        # ======================================================================
-        # Botones de Consulta, Acción y Cancelar
-        self.buttonBox = QDialogButtonBox()
-        # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
-        self.consulta_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-        self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
-        self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
-        # Conectar los botones a sus funciones
-        self.consulta_button.clicked.connect(self.lanzar_consulta)
-        self.accion_button.clicked.connect(self.lanzar_accion)
-        self.cancel_button.clicked.connect(self.reject)
-        # # Añadir los botones al layout horizontal
-        # botones_layout.addWidget(self.consulta_button)
-        # botones_layout.addWidget(self.accion_button)
-        # botones_layout.addWidget(self.cancel_button)
-        # ======================================================================
-
-        # ======================================================================
-        # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
-        self.checkbox = QCheckBox('Guardar consulta o petición.')
-        self.checkbox.setChecked(True)
-        self.texto_layout.addWidget(self.checkbox)
-        # ======================================================================
-
-        # Añadir el layout de botones al layout principal
-        # self.texto_layout.addLayout(botones_layout)
-        self.texto_layout.addWidget(self.buttonBox)
-
-        # Establecer el layout principal
-        self.setLayout(self.texto_layout)
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = self.screen().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def get_text(self):
-        return self.text_input.toPlainText()
-
-    def lanzar_consulta(self):
-        print('---> lanzar_consulta')
-        self.button_pressed = 'consulta'
-        self.accept()
-        print(self.text_input.toPlainText(), 'consulta')
-        QMessageBox.information(
-            iface.mainWindow(),
-            "Consulta dasolidar",
-            f"Gracias por la consulta.\nEsta utilidad estará disponible próximamente"
-        )
-        # return (self.text_input.toPlainText(), 'consulta')
-
-    def lanzar_accion(self):
-        print('---> lanzar_accion')
-        self.button_pressed = 'accion'
-        self.accept()
-        print(self.text_input.toPlainText(), 'accion')
-        QMessageBox.information(
-            iface.mainWindow(),
-            "Petición dasolidar",
-            f"Gracias por la petición.\nEsta utilidad estará disponible próximamente"
-        )
-        # return (self.text_input.toPlainText(), 'accion')
-
-
-# ==============================================================================
-class VentanaUsarRaster(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Herramientas raster dasolidar')
-        self.resize(300, 150)  # Ancho y alto en píxeles
-
-        # Layout vertical para el contenido
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
-        
-        # Texto de la ventana
-        label = QLabel('Esta utilidad estará disponible próximamente')
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-
-        spacer = QSpacerItem(20, 20, QSizePolicy.Minimum)
-        layout.addItem(spacer)
-
-        # Botón Ok
-        ok_button = QPushButton('Ok')
-        ok_button.setFixedSize(100, 20)
-        ok_button.clicked.connect(self.accept)
-        # layout.addWidget(ok_button)
-
-        # Alineación del botón Ok al centro
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addStretch()
-        button_layout.setAlignment(Qt.AlignCenter)
-        layout.addLayout(button_layout)
-
-        self.setLayout(layout)
-
-
-
-# ==============================================================================
-class VentanaCargarLasFile(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle('Cargar nube de puntos (lasFile)')
-        self.resize(300, 150)  # Ancho y alto en píxeles
-
-        # Layout vertical para el contenido
-        layout = QVBoxLayout()
-        layout.setAlignment(Qt.AlignCenter)
-
-        # Texto de la ventana
-        label = QLabel('Esta utilidad estará disponible próximamente')
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-
-        spacer = QSpacerItem(20, 20, QSizePolicy.Minimum)
-        layout.addItem(spacer)
-
-        # Botón Ok
-        ok_button = QPushButton('Ok')
-        ok_button.setFixedSize(100, 20)
-        ok_button.clicked.connect(self.accept)
-        # layout.addWidget(ok_button)
-
-        # Alineación del botón Ok al centro
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        button_layout.addWidget(ok_button)
-        button_layout.addStretch()
-        button_layout.setAlignment(Qt.AlignCenter)
-        layout.addLayout(button_layout)
-
-
-        self.setLayout(layout)
-
-
-# ==============================================================================
-class VentanaBienvenida(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        
-        self.setWindowTitle('Productos y herramientas Lidar para la gestión del medio natural')
-        # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
-        # self.setGeometry(100, 100, 700, 400)
-        self.resize(950, 600)  #  Ancho y alto en píxeles
         self.center()
 
         # ======================================================================
         # Layout horizontal para el texto
         texto_layout = QVBoxLayout()
-        usar_html = True
-        if usar_html:
-            self.mi_texto = QTextBrowser()
-            self.mi_texto.setHtml(intro_dasolidar_html_read)
-            # Ajusto el scroll para mostrar la parte superior
-            # self.mi_texto.verticalScrollBar().setValue(0)  #  Lo hago abajo
+        if contenido_ventana == 'bienvenida':
+            self.mi_html = QTextBrowser()
+            self.mi_html.setHtml(dl_bienvenida_html_read)
+        elif contenido_ventana == 'primeros_pasos':
+            self.mi_html = QTextBrowser()
+            self.mi_html.setHtml(dl_primeros_pasos_html_read)
         else:
-            self.mi_texto = QLabel(intro_dasolidar_txt_read)
-            self.mi_texto.setAlignment(Qt.AlignLeft)
-        texto_layout.addWidget(self.mi_texto)
+            self.mi_html = QTextBrowser()
+            self.mi_html.setHtml(dl_primeros_pasos_html_read)
+        # Ajusto el scroll para mostrar la parte superior
+        # self.mi_html.verticalScrollBar().setValue(0)  #  Lo hago abajo
+        texto_layout.addWidget(self.mi_html)
         # ======================================================================
 
         # ======================================================================
@@ -293,9 +132,14 @@ class VentanaBienvenida(QDialog):
         checkbox_layout = QHBoxLayout()
         checkbox_layout.setAlignment(Qt.AlignLeft)
         # Checkbox desmarcado por defecto
-        self.checkbox = QCheckBox('Volver a mostrar esta ventana al iniciar este proyecto.')
+        if contenido_ventana == 'bienvenida':
+            self.checkbox = QCheckBox('Volver a mostrar esta ventana al iniciar este proyecto.')
+        elif contenido_ventana == 'primeros_pasos':
+            self.checkbox = QCheckBox('Volver a mostrar la ventana de bienvenida al iniciar este proyecto.')
+        else:
+            self.checkbox = QCheckBox('Volver a mostrar la ventana de bienvenida al iniciar este proyecto.')
         try:
-            self.checkbox.setChecked(config_class.dl_mostrar_ventana_bienvenida)
+            self.checkbox.setChecked(config_class.dl_ventana_bienvenida)
         except (Exception) as mi_error:
             print(f'Error en setChecked {mi_error}')
             self.checkbox.setChecked(True)
@@ -309,7 +153,13 @@ class VentanaBienvenida(QDialog):
         texto_layout.addLayout(checkbox_layout)
         # ======================================================================
 
-        self.mi_label = QLabel('Si se desactiva esta casilla la ventana estará disponible en el botón [Bienvenido a dasolidar] de la barra de mensajes en la parte superior del panel del mapa')
+        self.mi_label = QLabel(
+            'Si se desactiva esta casilla, la documentación seguirá disponible'
+            ' en los botones [Primeros pasos con dasolidar] y [Manual de consulta],'
+            ' (barra de mensajes del canvas).\n'
+            # '\nAdemás, próximamente, se habilitará un asistente para facilitar las consultas'
+            'Además, el complemento dasoraster ofrece acceso a toda la documentación.'
+        )
         self.mi_label.setAlignment(Qt.AlignLeft)
         texto_layout.addWidget(self.mi_label)
 
@@ -336,50 +186,73 @@ class VentanaBienvenida(QDialog):
 
         # Añadir espacio encima de la línea horizontal
         # spacer = QSpacerItem(1, 3, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        spacer = QSpacerItem(20, 20, QSizePolicy.Minimum)
+        spacer = QSpacerItem(10, 10, QSizePolicy.Minimum)
         marco_layout.addItem(spacer)
 
-        # Línea horizontal
-        linea_horizontal = QFrame()
-        linea_horizontal.setFrameShape(QFrame.HLine)
-        linea_horizontal.setFrameShadow(QFrame.Sunken)
-        marco_layout.addWidget(linea_horizontal)
 
-        # Texto con marco
-        self.mi_label = QLabel('Si quieres iniciar el Asistente dasolidar o  cargar una nube de puntos o mostrar una capa ráster Pulsa el correspondiente botón')
-        # self.mi_label.setAlignment(Qt.AlignLeft)
-        self.mi_label.setAlignment(Qt.AlignCenter)
-        self.mi_label.setStyleSheet('font-size: 12px; font-weight: bold;')  # Letra más grande y en negrita
-        # self.mi_label.setStyleSheet('border: 1px solid black; padding: 10px;')
-        marco_layout.addWidget(self.mi_label)
-
+        if contenido_ventana == 'bienvenida':
+            # Texto con marco
+            # self.mi_label = QLabel('Si quieres consultar el manual dasolidar o iniciar el Asistente de consultas pulsa el correspondiente botón')
+            mensaje_inferior1 = 'Puedes cerrar esta ventana, estos dos botones también seguirán disponibles.'
+            self.mi_label_inf1 = QLabel(mensaje_inferior1)
+            # self.mi_label.setAlignment(Qt.AlignLeft)
+            self.mi_label_inf1.setAlignment(Qt.AlignCenter)
+            self.mi_label_inf1.setStyleSheet('font-size: 12px; font-weight: bold;')  # Letra más grande y en negrita
+            # self.mi_label.setStyleSheet('border: 1px solid black; padding: 10px;')
+            marco_layout.addWidget(self.mi_label_inf1)
+            if False:
+                mensaje_inferior2 = 'Además de los mencionados botones el complemento dasoraster ofrece acceso a toda la documentación'
+                self.mi_label_inf2 = QLabel(mensaje_inferior2)
+                self.mi_label_inf2.setAlignment(Qt.AlignCenter)
+                self.mi_label_inf2.setStyleSheet('font-size: 11px;')  # Letra normal
+                marco_layout.addWidget(self.mi_label_inf2)
+            if False:
+                # Línea horizontal
+                linea_horizontal2 = QFrame()
+                linea_horizontal2.setFrameShape(QFrame.HLine)
+                linea_horizontal2.setFrameShadow(QFrame.Sunken)
+                marco_layout.addWidget(linea_horizontal2)
         # ======================================================================
+
+        # Línea horizontal
+        linea_horizontal1 = QFrame()
+        linea_horizontal1.setFrameShape(QFrame.HLine)
+        linea_horizontal1.setFrameShadow(QFrame.Sunken)
+        marco_layout.addWidget(linea_horizontal1)
+
         # Layout horizontal para los botones
         botones_layout_2 = QHBoxLayout()
         # Añadir botones
         # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        self.manual_button = QPushButton('Manual dasolidar')
-        self.ldata_button = QPushButton('Explorar LidarData')
+        self.manual_button = QPushButton('Manual de consulta dasolidar')
+        # self.ldata_button = QPushButton('Explorar LidarData')
         self.asista_button = QPushButton('Asistente')
         # self.lasfile_button = QPushButton('cargar nube de puntos')
         # self.raster_button = QPushButton('Herramientas raster')
 
         self.manual_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+        # self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
         self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
         # self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
         # self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
 
         # Conectar los botones a sus funciones
         self.manual_button.clicked.connect(self.manual_dasolidar)
-        self.ldata_button.clicked.connect(self.explorar_ldata)
-        self.asista_button.clicked.connect(self.dasolidar_IA)
+        # self.ldata_button.clicked.connect(self.explorar_ldata)
+        self.asista_button.clicked.connect(
+            self.dasolidar_IA_consulta_solo
+            # lambda event: self.dasolidar_IA_consulta_solo(
+            #     mi_evento=event,
+            #     # botones_disponibles='consulta_diferida',
+            #     botones_disponibles='consulta_diferida_sugerencia',
+            # )
+        )
         # self.lasfile_button.clicked.connect(self.cargar_lasfile)
         # self.raster_button.clicked.connect(self.herramientas_raster)
 
         # Añadir los botones al layout horizontal
         botones_layout_2.addWidget(self.manual_button)
-        botones_layout_2.addWidget(self.ldata_button)
+        # botones_layout_2.addWidget(self.ldata_button)
         botones_layout_2.addWidget(self.asista_button)
         # botones_layout_2.addWidget(self.lasfile_button)
         # botones_layout_2.addWidget(self.raster_button)
@@ -389,14 +262,13 @@ class VentanaBienvenida(QDialog):
         # texto_layout.addLayout(botones_layout_2)
         # # ======================================================================
 
-
         texto_layout.addWidget(marco_widget)
 
         # Establecer el layout principal
         self.setLayout(texto_layout)
 
         # Ajusto el scroll para mostrar la parte superior
-        self.mi_texto.verticalScrollBar().setValue(0)
+        self.mi_html.verticalScrollBar().setValue(0)
 
     def manual_dasolidar(self):
         # ruta_manual = os.path.dirname(__file__)
@@ -429,56 +301,27 @@ class VentanaBienvenida(QDialog):
         print(f'Directorio explorado: {rpta_ok.args}')
         print(f'Respuesta: {rpta_ok.returncode}')
 
-    # def dasolidar_IA(self):
-    #     print('---> asistente')
-    #     mostrar_asistente()
-
-    def dasolidar_IA(self):
-        dialog = VentanaAsistente()
-        rpta_ok = dialog.exec_()
-        print(f'Rpta de mostrar_asistente: {rpta_ok}')
+    def dasolidar_IA_consulta_solo(
+            self,
+            mi_evento=None,
+            mi_boton=None,
+            # botones_disponibles='consulta_diferida',
+            botones_disponibles='consulta_diferida_sugerencia',
+        ):
+        print(f'dasolidar_IA_consulta_solo ok 2. botones_disponibles: {type(botones_disponibles)} {botones_disponibles}')
+        try:
+            dialog = VentanaAsistente(parent=None, botones_disponibles=botones_disponibles)
+            rpta_ok = dialog.exec_()
+        except Exception as e:
+            print(f'Ocurrió un error al mostrar la ventana 2: {e}')
+        print(f'Rpta de mostrar_asistente 2: {rpta_ok}')
         if rpta_ok == QDialog.Accepted:
             consulta_usuario = dialog.get_text()
             boton_pulsado = dialog.button_pressed
-            print('Texto de consulta o petición:', consulta_usuario)
+            print('Texto de consulta o petición (2):', consulta_usuario)
             print('Botón pulsado:', boton_pulsado)
         else:
             print('Consulta o petición canceladas')
-
-
-    def cargar_lasfile(self):
-        print('---> cargar_lasfile')
-        dialog = VentanaCargarLasFile()
-        rpta_ok = dialog.exec_()
-        print(f'Rpta de cargar_lasfile: {rpta_ok}')
-        # if rpta_ok == QDialog.Accepted:
-        #     consulta_usuario = dialog.get_text()
-        #     boton_pulsado = dialog.button_pressed
-        #     print('Texto de consulta o petición:', consulta_usuario)
-        #     print('Botón pulsado:', boton_pulsado)
-        # else:
-        #     print('Consulta o petición canceladas')
-
-    def herramientas_raster(self):
-        print('---> herramientas_raster')
-        dialog = VentanaUsarRaster()
-        rpta_ok = dialog.exec_()
-        print(f'Rpta de herramientas_raster: {rpta_ok}')
-
-        # Parámetros de entrada
-        capa_VCC = 'VCC____IFNxPNOA2'
-        capa_raster_vcc = QgsProject.instance().mapLayersByName(capa_VCC)
-        if capa_raster_vcc:
-            capa_raster = capa_raster_vcc[0]  # Usar la capa 'VCC' si está cargada
-        else:
-            capa_raster = iface.activeLayer()  # Usar la capa activa si 'VCC' no está cargada
-            print(f'Capa {capa_VCC} no encontrada; se consulta la capa activa: {capa_raster.name()}')
-        x_consulta = 333500  #  Coordenada X del punto de consulta
-        y_consulta = 4749700  #  Coordenada Y del punto de consulta
-        mi_radio = 15  #  Radio en unidades de la capa ráster
-        
-        # Llamar a la función
-        calcular_valor_medio(capa_raster, x_consulta, y_consulta, mi_radio)
 
     def center(self):
         qr = self.frameGeometry()
@@ -488,25 +331,206 @@ class VentanaBienvenida(QDialog):
 
 
 # ==============================================================================
-def mostrar_ventana_bienvenida():
+class VentanaAsistente(QDialog):
+    def __init__(self, parent=None, botones_disponibles='consulta_diferida_sugerencia'):
+        print(f'Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
+    # def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # botones_disponibles='consulta_diferida'
+        # botones_disponibles='consulta_diferida_sugerencia'
+        # botones_disponibles='consulta_diferida_sugerencia_inmediata'
+        # botones_disponibles='consulta_ejecucion'
+
+        if botones_disponibles == 'consulta_diferida':
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
+        elif botones_disponibles == 'consulta_ejecucion':
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
+        else:
+            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+        # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
+        # self.setGeometry(100, 100, 700, 400)
+        self.resize(600, 200)  #  Ancho y alto en píxeles
+        self.center()
+
+        # ======================================================================
+        # Layout horizontal para el texto
+        self.texto_layout = QVBoxLayout()
+        # Mensaje de texto
+        self.mi_texto = QLabel('Escribe tu consulta:')
+        self.mi_texto.setAlignment(Qt.AlignLeft)
+        self.texto_layout.addWidget(self.mi_texto)
+
+        # # Ventana de texto con tamaño fijo
+        # self.text_input = QLineEdit(self)
+        self.text_input = QTextEdit(self)
+        self.text_input.setFixedSize(550, 100)  # Establece el tamaño (ancho, alto) en píxeles
+        self.texto_layout.addWidget(self.text_input)
+
+        # ======================================================================
+        # botones_layout = QHBoxLayout()
+        # # Añadir botones
+        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
+        # ======================================================================
+        # Botones de Consulta, Acción y Cancelar
+        self.buttonBox = QDialogButtonBox()
+        # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
+
+        if botones_disponibles == 'consulta_diferida':
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
+        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='sugerencia',
+                )
+            )
+            if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
+                self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+                self.consultaD_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='diferida',
+                    )
+                )
+                self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+                self.consultaI_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='inmediata',
+                    )
+                )
+            else:
+                self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+                self.consultaD_button.clicked.connect(
+                    lambda event: self.lanzar_consulta_sugerencia(
+                        mi_evento=event,
+                        tipo_consulta='diferida',
+                    )
+                )
+        elif botones_disponibles == 'consulta_ejecucion':
+            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+            self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+            self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='sugerencia',
+                )
+            )
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
+            self.consultaI_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='inmediata',
+                )
+            )
+            self.accion_button.clicked.connect(self.lanzar_accion)
+        else:
+            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consultaD_button.clicked.connect(
+                lambda event: self.lanzar_consulta_sugerencia(
+                    mi_evento=event,
+                    tipo_consulta='diferida',
+                )
+            )
+        self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.cancel_button.clicked.connect(self.reject)
+         # ======================================================================
+
+        # ======================================================================
+        # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
+        self.checkbox = QCheckBox('Guardar consulta o petición.')
+        self.checkbox.setChecked(True)
+        self.texto_layout.addWidget(self.checkbox)
+        # ======================================================================
+
+        # Añadir el layout de botones al layout principal
+        # self.texto_layout.addLayout(botones_layout)
+        self.texto_layout.addWidget(self.buttonBox)
+
+        # Establecer el layout principal
+        self.setLayout(self.texto_layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = self.screen().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def get_text(self):
+        return self.text_input.toPlainText()
+
+    def lanzar_consulta_sugerencia(
+            self,
+            mi_evento=None,
+            mi_boton=None,
+            tipo_consulta='diferida'
+        ):
+        print(f'---> lanzar_consulta_sugerencia 00-> tipo_consulta {tipo_consulta}')
+        self.button_pressed = f'consulta_{tipo_consulta}'
+        self.accept()
+        print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
+        if tipo_consulta == 'sugerencia':
+            texto_consulta_sugerencia = 'sugerencia'
+        else:
+            texto_consulta_sugerencia = 'consulta'
+        QMessageBox.information(
+            iface.mainWindow(),
+            f'Consulta dasolidar <{tipo_consulta}>',
+            f'Esta utilidad estará disponible próximamente\n\nGracias por la {texto_consulta_sugerencia}.'
+        )
+        # return (self.text_input.toPlainText(), 'consulta')
+
+    def lanzar_accion(self):
+        print('---> lanzar_accion')
+        self.button_pressed = 'accion'
+        self.accept()
+        print(self.text_input.toPlainText(), 'accion')
+        QMessageBox.information(
+            iface.mainWindow(),
+            "Petición dasolidar",
+            f"Gracias por la petición.\nEsta utilidad estará disponible próximamente"
+        )
+        # return (self.text_input.toPlainText(), 'accion')
+
+
+# ==============================================================================
+def mostrar_ventana_bienvenida_primeros_pasos(
+        mi_evento=None,
+        mi_boton=None,
+        contenido_ventana='primeros_pasos'
+    ):
     global config_class
-    dialog = VentanaBienvenida()
+    print(f'Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
+    dialog = VentanaBienvenidaPrimerosPasos(contenido_ventana=contenido_ventana)
     rpta_ok = dialog.exec_()
     if rpta_ok == QDialog.Accepted:
-        print('OK presionado')
         if dialog.checkbox.isChecked():
-            print('Seguir mostrando la ventana de bienvenida')
-            config_class.dl_mostrar_ventana_bienvenida = True
-            config_class.dl_mostrar_message_bienvenida = True
+            # print('Seguir mostrando la ventana de bienvenida')
+            config_class.dl_ventana_bienvenida = True
+            config_class.dl_message_bienvenida = True
         else:
-            print('No mostrar la ventana de bienvenida')
-            config_class.dl_mostrar_ventana_bienvenida = False
-            config_class.dl_mostrar_message_bienvenida = True
-        mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
-        mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
-        # print(f'dl_mostrar_ventana_bienvenida 3: ({type(config_class.dl_mostrar_ventana_bienvenida)}) {config_class.dl_mostrar_ventana_bienvenida}')
-    else:
-        print('Cancelar presionado')
+            # print('No mostrar la ventana de bienvenida')
+            config_class.dl_ventana_bienvenida = False
+            config_class.dl_message_bienvenida = True
+        mi_config.setValue('dasolidar/dl_ventana_bienvenida', config_class.dl_ventana_bienvenida)
+        mi_config.setValue('dasolidar/dl_message_bienvenida', config_class.dl_message_bienvenida)
 
 # ==============================================================================
 def mostrar_manual_dasolidar():
@@ -519,6 +543,28 @@ def mostrar_manual_dasolidar():
             os.startfile(pdf_path)
     else:
         print(f'Fichero no disponible: {pdf_path}')
+
+
+
+# ==============================================================================
+def mostrar_explorar_materiales_curso():
+    ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\materialesCursoLidar'
+    if os.path.exists(ldata_path):
+        print(f'Directorio disponible ok: {ldata_path}')
+    else:
+        print(f'Directorio no accesible: {ldata_path}')
+        iface.messageBar().pushMessage(
+            title='dasoraster',
+            text=f'No hay acceso a la unidad de red {ldata_path}.',
+            showMore=f'Esto puede ser debido a:\n  1. El usuario {config_class.dl_usuario} no está dado de alta en la lista de usuarios del proyecto dasolidar\n  2. Se está trabajando fuera de la intranet de la Junta de Castilla y León.\n\nEste recurso solo está disponible para los usuarios del proyecto dasolidar con acceso a la intranet de la Junta de Castilla y León',
+            duration=30,
+            level=Qgis.Warning,
+        )
+        return
+    rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
+    print(f'Directorio explorado: {rpta_ok.args}')
+    print(f'Respuesta: {rpta_ok.returncode}')
 
 # ==============================================================================
 def mostrar_explorar_ldata():
@@ -542,21 +588,25 @@ def mostrar_explorar_ldata():
     print(f'Respuesta: {rpta_ok.returncode}')
 
 # ==============================================================================
-def mostrar_dasolidar_IA():
-    dialog = VentanaAsistente()
-    rpta_ok = dialog.exec_()
-    print(f'Rpta de mostrar_asistente: {rpta_ok}')
+def dasolidar_IA_consulta_ejecucion(
+        mi_evento=None,
+        mi_boton=None,
+        botones_disponibles='consulta_ejecucion'
+    ):
+    print(f'dasolidar_IA_consulta_ejecucion ok 1. botones_disponibles: {type(botones_disponibles)} {botones_disponibles}')
+    try:
+        dialog = VentanaAsistente(parent=None, botones_disponibles=botones_disponibles)
+        rpta_ok = dialog.exec_()
+    except Exception as e:
+        print(f'Ocurrió un error al mostrar la ventana 1: {e}')
+    print(f'Rpta de mostrar_asistente 1: {rpta_ok}')
     if rpta_ok == QDialog.Accepted:
         consulta_usuario = dialog.get_text()
         boton_pulsado = dialog.button_pressed
-        print('Texto de consulta o petición:', consulta_usuario)
+        print('Texto de consulta o petición (1):', consulta_usuario)
         print('Botón pulsado:', boton_pulsado)
     else:
         print('Consulta o petición canceladas')
-
-
-
-
 
 
 # ==============================================================================
@@ -565,35 +615,6 @@ if False:
     QgsApplication.setPrefixPath('C:/OSGeo4W/bin', True)
     qgs = QgsApplication([], False)
     qgs.initQgis()
-
-
-# ==============================================================================
-def mostrar_html_qt():
-    # dialog = QDialog(buttons=QDialogButtonBox.StandardButtons)
-    dialog = QDialog()
-
-    dialog.setWindowTitle('Bienvenido a dasolidar')
-    layout = QVBoxLayout()
-    text_browser = QTextBrowser()
-    text_browser.setHtml(intro_dasolidar_html_read)
-    layout.addWidget(text_browser)
-    dialog.setLayout(layout)
-    dialog.exec_()
-
-
-# ==============================================================================
-def mostrar_html_qgs():
-    # https://qgis.org/pyqgis/3.34/gui/QgsDialog.html
-    main_window = iface.mainWindow()
-    dialog = QgsDialog(main_window,
-                       fl=Qt.WindowFlags(),
-                       buttons=QDialogButtonBox.Ok | QDialogButtonBox.Close,
-                       orientation=Qt.Horizontal)
-    text_browser = QTextBrowser()
-    text_browser.setHtml(intro_dasolidar_html_read)
-    # dialog.addWidget(text_browser)
-    dialog.resize(600, 400)
-    dialog.show()
 
 
 # ==============================================================================
@@ -624,13 +645,14 @@ def checquear_message_bar(text):
 def mostrar_messagebar_bienvenida():
     # https://qgis.org/pyqgis/master/gui/QgsMessageBar.html
     # https://qgis.org/pyqgis/master/gui/QgsMessageBarItem.html#qgis.gui.QgsMessageBarItem
+    print(f'mostrar_messagebar_bienvenida-> se conecta el boton con mostrar_ventana_bienvenida_primeros_pasos')
 
     titulo_mensaje = '¿Por dónde empiezo? '
     texto_mensaje = f'\t\t\t\t\t\t\t\t\t\tPulsa alguno de los siguientes botones.'
     if not checquear_message_bar(texto_mensaje[-30:]):
         mi_widget = iface.messageBar().createMessage(
             title=titulo_mensaje,
-            # text=f'Pulsa el botón [Bienvenido a dasolidar] para mostrar la ayuda rápida.',
+            # text=f'Pulsa el botón [Primeros pasos con dasolidar] para mostrar la ayuda rápida.',
             text=texto_mensaje,
         )
         mi_widget.setLevel(Qgis.Info)
@@ -639,92 +661,49 @@ def mostrar_messagebar_bienvenida():
         mi_button2 = QPushButton(mi_widget)
         mi_button3 = QPushButton(mi_widget)
         mi_button4 = QPushButton(mi_widget)
-        mi_button1.setText('Bienvenido a dasolidar')
-        mi_button2.setText('Manual de usuario')
+        mi_button5 = QPushButton(mi_widget)
+        mi_button1.setText('Primeros pasos con dasolidar')
+        mi_button2.setText('Manual de consulta')
         mi_button3.setText('Explorar lidarData')
         mi_button4.setText('Asistente dasolidar')
+        mi_button5.setText('Curso Lidar ECLAP (6-7/11/2024)')
         # mi_button1.pressed.connect(mostrar_html_qt)
         # mi_button1.pressed.connect(mostrar_html_qgs)
-        mi_button1.pressed.connect(mostrar_ventana_bienvenida)
+        mi_button1.pressed.connect(
+            mostrar_ventana_bienvenida_primeros_pasos
+            # lambda event: mostrar_ventana_bienvenida_primeros_pasos(
+            #     mi_evento=event,
+            #     contenido_ventana='primeros_pasos'
+            # )
+        )
         mi_button2.pressed.connect(mostrar_manual_dasolidar)
         mi_button3.pressed.connect(mostrar_explorar_ldata)
-        mi_button4.pressed.connect(mostrar_dasolidar_IA)
+        mi_button4.pressed.connect(
+            dasolidar_IA_consulta_ejecucion
+            # lambda event: dasolidar_IA_consulta_ejecucion(
+            #     mi_evento=event,
+            #     botones_disponibles='consulta_ejecucion'
+            # )
+        )
+        mi_button5.pressed.connect(mostrar_explorar_materiales_curso)
         # ==============================================================================
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
         mi_widget.layout().addWidget(mi_button3)
         mi_widget.layout().addWidget(mi_button4)
+        mi_widget.layout().addWidget(mi_button5)
         iface.messageBar().pushWidget(mi_widget, Qgis.Info)
-
-if False:
-    iface.messageBar().pushMessage(
-        title='dasolidar',
-        text='Bienvenido al proyecto dasolidar',
-        showMore=f'Información sobre el proyecto dasolidar:{intro_dasolidar_txt_read}',
-        level=Qgis.Info,
-        duration=10,
-    )
-
-
-# ==============================================================================
-def calcular_valor_medio(capa_raster, x_consulta, y_consulta, mi_radio):
-    # Obtener la capa ráster
-    raster_layer = capa_raster
-
-    # Crear un rectángulo de consulta (buffer)
-    consulta_rect = QgsRectangle(x_consulta - mi_radio, y_consulta - mi_radio, x_consulta + mi_radio, y_consulta + mi_radio)
-
-    # Obtener los datos ráster dentro del rectángulo de consulta
-    provider = raster_layer.dataProvider()
-    extent = consulta_rect
-    rows = int(extent.height() / raster_layer.rasterUnitsPerPixelY())
-    cols = int(extent.width() / raster_layer.rasterUnitsPerPixelX())
-    block = provider.block(1, extent, cols, rows)
-
-
-    # Extraer los valores de los píxeles dentro del círculo
-    valores_circulo = []
-    for i in range(rows):
-        for j in range(cols):
-            x_pixel = extent.xMinimum() + j * raster_layer.rasterUnitsPerPixelX()
-            y_pixel = extent.yMaximum() - i * raster_layer.rasterUnitsPerPixelY()
-            distancia = np.sqrt((x_pixel - x_consulta)**2 + (y_pixel - y_consulta)**2)
-            if distancia <= mi_radio:
-                valor = block.value(i, j)
-                if valor != provider.sourceNoDataValue(1):  # Ignorar valores NoData
-                    valores_circulo.append(valor)
-
-    # Extraer los valores de los píxeles dentro del cuadrado
-    valores_cuadrado = []
-    for i in range(rows):
-        for j in range(cols):
-            valor = block.value(i, j)
-            if valor != provider.sourceNoDataValue(1):  # Ignorar valores NoData
-                valores_cuadrado.append(valor)
-
-    valores_selec = valores_circulo
-
-    # Calcular el valor medio
-    if valores_selec:
-        valor_medio = np.mean(valores_selec)
-        print(f'Valor medio: {valor_medio}')
-    else:
-        print('No se encontraron valores válidos en el área de consulta.')
-
 
 
 # ==============================================================================
 def arranque_dasolidar():
-    if config_class.dl_mostrar_ventana_bienvenida:
-        # Llama a la función para mostrar el diálogo
-        mostrar_ventana_bienvenida()
-    if config_class.dl_mostrar_message_bienvenida:
-        # Muestra el messageBar de la parte superior del canvas
+    if config_class.dl_ventana_bienvenida:
+        mostrar_ventana_bienvenida_primeros_pasos(
+            contenido_ventana='bienvenida'
+        )
+    if config_class.dl_message_bienvenida:
         mostrar_messagebar_bienvenida()
 
-arranque_dasolidar()
-
-QgsMessageLog.logMessage('Carga dasolidar ok', level=Qgis.Info)
-
 if __name__ == '__main__':
-    pass
+    arranque_dasolidar()
+    # QgsMessageLog.logMessage('Carga dasolidar ok', level=Qgis.Info)
