@@ -55,13 +55,19 @@ html_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\do
 # ==============================================================================
 dl_bienvenida_html_filename = 'dasolidar_bienvenida.html'
 dl_bienvenida_html_filepath = os.path.join(html_path, dl_bienvenida_html_filename) 
-dl_bienvenida_html_obj = open(dl_bienvenida_html_filepath)
-dl_bienvenida_html_read = dl_bienvenida_html_obj.read()
+if os.path.exists(dl_bienvenida_html_filepath):
+    dl_bienvenida_html_obj = open(dl_bienvenida_html_filepath)
+    dl_bienvenida_html_read = dl_bienvenida_html_obj.read()
+else:
+    dl_bienvenida_html_read = None
 # ==============================================================================
 dl_primeros_pasos_html_filename = 'dasolidar_primeros_pasos.html'
 dl_primeros_pasos_html_filepath = os.path.join(html_path, dl_primeros_pasos_html_filename) 
-dl_primeros_pasos_html_obj = open(dl_primeros_pasos_html_filepath)
-dl_primeros_pasos_html_read = dl_primeros_pasos_html_obj.read()
+if os.path.exists(dl_primeros_pasos_html_filepath):
+    dl_primeros_pasos_html_obj = open(dl_primeros_pasos_html_filepath)
+    dl_primeros_pasos_html_read = dl_primeros_pasos_html_obj.read()
+else:
+    dl_primeros_pasos_html_read = None
 # ==============================================================================
 
 
@@ -209,20 +215,25 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         # ======================================================================
         # Layout horizontal para el texto
         texto_layout = QVBoxLayout()
+        # ======================================================================
+        mostrar_ventana_inicio = False
+        self.mi_html = QTextBrowser()
         if contenido_ventana == 'bienvenida':
-            self.mi_html = QTextBrowser()
-            self.mi_html.setHtml(dl_bienvenida_html_read)
+            if dl_bienvenida_html_read:
+                self.mi_html.setHtml(dl_bienvenida_html_read)
+                mostrar_ventana_inicio = True
         elif contenido_ventana == 'primeros_pasos':
-            self.mi_html = QTextBrowser()
-            self.mi_html.setHtml(dl_primeros_pasos_html_read)
+            if dl_primeros_pasos_html_read:
+                self.mi_html.setHtml(dl_primeros_pasos_html_read)
+                mostrar_ventana_inicio = True
         else:
-            self.mi_html = QTextBrowser()
-            self.mi_html.setHtml(dl_primeros_pasos_html_read)
+            if dl_primeros_pasos_html_read:
+                self.mi_html.setHtml(dl_primeros_pasos_html_read)
+                mostrar_ventana_inicio = True
         # Ajusto el scroll para mostrar la parte superior
         # self.mi_html.verticalScrollBar().setValue(0)  #  Lo hago abajo
-        texto_layout.addWidget(self.mi_html)
-        # ======================================================================
-
+        if mostrar_ventana_inicio:
+            texto_layout.addWidget(self.mi_html)
         # ======================================================================
         # Layout horizontal para el checkbox y el botón 'Ok'
         checkbox_layout = QHBoxLayout()
@@ -239,8 +250,6 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         except (Exception) as mi_error:
             print(f'Error en setChecked {mi_error}')
             self.checkbox.setChecked(True)
-        # ======================================================================
-
         self.ok_button = QPushButton('Ok')
         self.ok_button.clicked.connect(self.accept)
         # texto_layout.addWidget(self.checkbox)
@@ -249,16 +258,25 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         texto_layout.addLayout(checkbox_layout)
         # ======================================================================
 
-        self.mi_label = QLabel(
-            'Si se desactiva esta casilla, la documentación seguirá disponible'
-            ' en los botones [Primeros pasos con dasolidar] y [Manual de consulta],'
-            ' (barra de mensajes del canvas).\n'
-            # '\nAdemás, próximamente, se habilitará un asistente para facilitar las consultas'
-            'Además, el complemento dasoraster ofrece acceso a toda la documentación.'
-        )
+        if mostrar_ventana_inicio:
+            self.mi_label = QLabel(
+                'Si se desactiva esta casilla, la documentación seguirá disponible'
+                ' en los botones [Primeros pasos con dasolidar] y [Manual de consulta],'
+                ' (barra de mensajes del canvas).\n'
+                # '\nAdemás, próximamente, se habilitará un asistente para facilitar las consultas'
+                'Además, el complemento dasoraster ofrece acceso a toda la documentación.'
+            )
+        else:
+            self.mi_label = QLabel(
+                'No se ha encontrado el documento de bienvenida o no está disponible.\n'
+                'Esto puede ser debido a que se está iniciando este proyecto\n'
+                'desde fuera de la intranet de la Junta de Castilla y León.\n'
+                'En este caso, no hay acceso a las unidades de red con las que trabaja este proyecto.\n'
+                'Para más información, consulte la documentación del proyecto dasolidar\n'
+                'o remita un correo a dasolidar@gmail.com.'
+            )
         self.mi_label.setAlignment(Qt.AlignLeft)
         texto_layout.addWidget(self.mi_label)
-
         # ======================================================================
 
         # ======================================================================
@@ -266,11 +284,9 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         # self.ok_button = QPushButton('Ok')
         # self.ok_button.clicked.connect(self.accept)
         # botones_layout_1.addWidget(self.ok_button)
-
         # self.cancel_button = QPushButton('Cancelar')
         # self.cancel_button.clicked.connect(self.reject)
         # botones_layout_1.addWidget(self.cancel_button)
-
         # texto_layout.addLayout(botones_layout_1)
         # ======================================================================
 
@@ -357,14 +373,14 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         # # Añadir el layout de botones al layout principal
         # texto_layout.addLayout(botones_layout_2)
         # # ======================================================================
-
         texto_layout.addWidget(marco_widget)
-
+        # # ======================================================================
         # Establecer el layout principal
         self.setLayout(texto_layout)
-
+        # # ======================================================================
         # Ajusto el scroll para mostrar la parte superior
         self.mi_html.verticalScrollBar().setValue(0)
+        # # ======================================================================
 
     def manual_dasolidar(self):
         # ruta_manual = os.path.dirname(__file__)
@@ -392,7 +408,10 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
                 level=Qgis.Warning,
             )
             return
-        rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+        try:
+            rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+        except Exception as mi_error:
+            print(f'Ocurrió un error al abrir el explorador de Windows: {mi_error}')
         # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
         print(f'Directorio explorado: {rpta_ok.args}')
         print(f'Respuesta: {rpta_ok.returncode}')
@@ -640,8 +659,6 @@ def mostrar_manual_dasolidar():
     else:
         print(f'Fichero no disponible: {pdf_path}')
 
-
-
 # ==============================================================================
 def mostrar_explorar_materiales_curso():
     ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\cursoLidar'
@@ -657,7 +674,10 @@ def mostrar_explorar_materiales_curso():
             level=Qgis.Warning,
         )
         return
-    rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    try:
+        rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    except Exception as mi_error:
+        print(f'Ocurrió un error al abrir el explorador de Windows: {mi_error}')
     # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
     print(f'Directorio explorado: {rpta_ok.args}')
     print(f'Respuesta: {rpta_ok.returncode}')
@@ -678,7 +698,11 @@ def mostrar_explorar_ldata():
             level=Qgis.Warning,
         )
         return
-    rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    try:
+        rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
+    except Exception as mi_error:
+        print(f'Ocurrió un error al abrir el explorador de Windows: {mi_error}')
+
     # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
     print(f'Directorio explorado: {rpta_ok.args}')
     print(f'Respuesta: {rpta_ok.returncode}')

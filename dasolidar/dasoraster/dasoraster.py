@@ -9,7 +9,7 @@
         begin                : 2024-10-27
         git sha              : $Format:%H$
         copyright            : (C) 2024 by Jose Bengoa
-        email                : dasonoma@gmail.com
+        email                : dasolidar@gmail.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -130,13 +130,14 @@ from PyQt5.QtCore import (
 
 # ==============================================================================
 __version__ = '0.1.0'
-plugin_dir = os.path.dirname(__file__)
+PLUGIN_DIR = os.path.dirname(__file__)
+# print(f'plugin_dir: {PLUGIN_DIR}')
 try:
     mi_PYTHONPATH = os.environ['PYTHONPATH']
 except:
     mi_PYTHONPATH = 'No disponible'
-if plugin_dir not in sys.path:
-    sys.path.append(plugin_dir)
+if PLUGIN_DIR not in sys.path:
+    sys.path.append(PLUGIN_DIR)
 print(f'dl_version: {__version__}')
 print(f'PYTHONPATH: {mi_PYTHONPATH}')
 print(f'sys.path:   {sys.path}')
@@ -621,7 +622,6 @@ class VentanaBienvenidaGuiaRapida(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.ok = True
-        self.plugin_dir = os.path.dirname(__file__)
 
         self.setWindowTitle('Productos y herramientas Lidar para la gestión del medio natural')
         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
@@ -634,8 +634,10 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         ruta_ayudas = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
         if os.path.exists(os.path.join(ruta_ayudas, 'GuiaDasoLidar.png')):
             intro_dasolidar_html_filename = 'dasolidar_intro.html'
-        # elif os.path.exists(os.path.join(self.plugin_dir, 'GuiaDasoLidar.png')):
-        #     intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
+            intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
+        elif os.path.exists(os.path.join(PLUGIN_DIR, 'resources/docs', 'dasolidar_intro_local.png')):
+            intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
+            intro_dasolidar_html_filepath = os.path.join(PLUGIN_DIR, 'resources/docs', 'dasolidar_intro_local.png')
         else:
             iface.messageBar().pushMessage(
                 title='dasoraster',
@@ -646,7 +648,6 @@ class VentanaBienvenidaGuiaRapida(QDialog):
             self.ok = False
             return
 
-        intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
         intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
         intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
         print(f'Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
@@ -1093,13 +1094,10 @@ class Dasoraster:
         self.autocarga_lasfiles = False
         self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA, type=int)
 
-        # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
-        print(f'plugin_dir: {self.plugin_dir}')
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
-            self.plugin_dir,
+            PLUGIN_DIR,
             'i18n',
             'Dasoraster_{}.qm'.format(locale))
 
@@ -1244,7 +1242,7 @@ class Dasoraster:
         # La ruta :/plugins se establece dentro de Qgis en: Configuración -> Opciones -> Sistema
         # QGIS_PLUGINPATH = D:/_clid/dasolidar/dasolidar
 
-        icon_path = ':/plugins/dasoraster/icon.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon.png'
         self.action1 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n    lasFile'),
@@ -1253,7 +1251,7 @@ class Dasoraster:
             checkable=True,
         )
 
-        icon_path = ':/plugins/dasoraster/icon_parcela.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_parcela.png'
         self.action2 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n   parcela'),
@@ -1262,7 +1260,7 @@ class Dasoraster:
             checkable=True,
         )
 
-        icon_path = ':/plugins/dasoraster/icon_rodal.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_rodal.png'
         self.action3 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n     rodal'),
@@ -1271,7 +1269,7 @@ class Dasoraster:
             checkable=True,
         )
 
-        icon_path = ':/plugins/dasoraster/icon_explorer.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_explorer.png'
         self.action4 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n lidarData'),
@@ -1279,7 +1277,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/icon_guiaRapida.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_guiaRapida.png'
         self.action5 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\nguia rápida'),
@@ -1287,7 +1285,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/icon_book.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_book.png'
         self.action6 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n   manual'),
@@ -1295,7 +1293,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/icon_star.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_star.png'
         self.action7 = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n       IA'),
@@ -1303,7 +1301,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/icon_config.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_config.png'
         self.action_settings = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n  settings'),
@@ -1311,7 +1309,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/icon_arbol.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_arbol.png'
         self.action_extra = self.add_action(
             icon_path,
             # text=self.tr(u'dasoraster\n carga Lidar automática'),
@@ -1968,8 +1966,8 @@ class Dasoraster:
         #     mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
 
     def manual_dasolidar(self):
-        ruta_manual_local = os.path.dirname(__file__)
         ruta_manual_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        ruta_manual_local = os.path.join(PLUGIN_DIR, 'resources/docs')
         rutas_manual = [ruta_manual_red, ruta_manual_local]
         for ruta_manual in rutas_manual:
             pdf_path = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
