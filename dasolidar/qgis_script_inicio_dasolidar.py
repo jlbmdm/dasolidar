@@ -1,6 +1,9 @@
 # -*- coding: UTF-8 -*-
 import os
 import sys
+import time
+from datetime import datetime
+import pathlib
 import subprocess
 import platform
 
@@ -90,6 +93,99 @@ if type(config_class.dl_ventana_bienvenida) == str:
 print(f'dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bienvenida)}) {config_class.dl_ventana_bienvenida}')
 # ==============================================================================
 
+HOME_DIR = str(pathlib.Path.home())
+hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+
+# ==============================================================================
+# usuario_psutil = psutil.users()[0].name
+usuario_env = ''
+usuario_profile = ''
+try:
+    usuario_login = os.getlogin()
+    print(f'Usuario_login: {usuario_login}')
+except:
+    usuario_login = None
+    try:
+        usuario_env = os.environ.get('USERNAME')
+        print(f'Usuario_env: {usuario_env}')
+    except:
+        usuario_env = None
+        usuario_profile = os.path.expandvars("%userprofile%")[-8:].lower()
+        print(f'Usuario_profile: {usuario_profile}')
+if isinstance(usuario_login, str) and len(usuario_login) == 8:
+    usuario_actual = usuario_login.lower()
+elif isinstance(usuario_env, str) and len(usuario_env) == 8:
+    usuario_actual = usuario_env.lower()
+elif isinstance(usuario_profile, str) and len(usuario_profile) == 8:
+    usuario_actual = usuario_profile.lower()
+else:
+    usuario_actual = 'anonimo'
+
+hacer_log_de_uso = True
+if hacer_log_de_uso:
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+    log_path_1 = 'V:/MA_SCAYLE_VueloLidar/dasolidar'
+    log_path_2 = 'O:/sigmena/utilidad/programa/QGIS/dasolidar'
+    unidad_V_disponible = False
+    log_path_ok = ''
+    if os.path.isdir(unidad_v_path):
+        unidad_V_disponible = True
+        if not os.path.isdir(log_path_1):
+            try:
+                os.mkdir(log_path_1)
+            except FileExistsError:
+                print(f'El directorio "{log_path_1}" ya existe.')
+            except Exception as e:
+                unidad_V_disponible = False
+                print(f'Error al crear el directorio: {log_path_1}')
+                print(f'Error: {e}')
+        log_path_ok = log_path_1
+    # if not os.path.isdir(unidad_v_path) or not unidad_V_disponible:
+    #     if not os.path.isdir(log_path_2):
+    #         try:
+    #             os.mkdir(log_path_2)
+    #         except FileExistsError:
+    #             print(f'El directorio "{log_path_2}" ya existe.')
+    #         except Exception as e:
+    #             print(f'Error al crear el directorio: {log_path_2}')
+    #             print(f'Error: {e}')
+    #     log_path_ok = log_path_2
+    if log_path_ok:
+        use_log = 'lidarQgis.log'
+        log_filename = os.path.join(log_path_ok, use_log)
+        try:
+            dasolidar_log = open(log_filename, mode='a+')
+            dasolidar_log.seek(0)
+            dasolidar_list = dasolidar_log.readlines()
+        except:
+            dasolidar_list = []
+            dasolidar_log = None
+    else:
+        dasolidar_log = None
+else:
+    dasolidar_log = None
+# ==============================================================================
+
+separador_dasolistas = '\t'
+lista_usuarios_activos = []
+for dasolidar_line in dasolidar_list:
+    dasolidar_line = dasolidar_line.rstrip('\n')
+    line_id = dasolidar_line.split(separador_dasolistas)[0]
+    if line_id.startswith('newUser332') or line_id.startswith('oldUser332'):
+        usuario_activo = dasolidar_line.split(separador_dasolistas)[1]
+        # usuario_fecha = dasolidar_line.split(separador_dasolistas)[3]  #  Ej.: 20241106
+        if not usuario_activo in lista_usuarios_activos:
+            lista_usuarios_activos.append(usuario_activo)
+if hacer_log_de_uso and dasolidar_log:
+    try:
+        if not usuario_actual in lista_usuarios_activos:
+            dasolidar_log.write(f'newUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}\n')
+        else:
+            dasolidar_log.write(f'oldUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}\n')
+        dasolidar_log.close()
+    except:
+        pass
 
 # ==============================================================================
 class VentanaBienvenidaPrimerosPasos(QDialog):
@@ -548,7 +644,7 @@ def mostrar_manual_dasolidar():
 
 # ==============================================================================
 def mostrar_explorar_materiales_curso():
-    ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\materialesCursoLidar'
+    ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\cursoLidar'
     if os.path.exists(ldata_path):
         print(f'Directorio disponible ok: {ldata_path}')
     else:
@@ -666,7 +762,7 @@ def mostrar_messagebar_bienvenida():
         mi_button2.setText('Manual de consulta')
         mi_button3.setText('Explorar lidarData')
         mi_button4.setText('Asistente dasolidar')
-        mi_button5.setText('Curso Lidar ECLAP (6-7/11/2024)')
+        mi_button5.setText('Curso Lidar')
         # mi_button1.pressed.connect(mostrar_html_qt)
         # mi_button1.pressed.connect(mostrar_html_qgs)
         mi_button1.pressed.connect(
