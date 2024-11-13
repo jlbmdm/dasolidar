@@ -34,8 +34,15 @@ basura/
 # C extensions
 *.so
 
-# Iconos (version de trabajo)
+# Autenticación de mail
+.env
+config.json
+credentials.json
+*pickle
+
+# Iconos y logos (version de trabajo)
 iconos/
+logos/
 
 
 # Distribution / packaging

@@ -1,12 +1,13 @@
 <RCC>
     <qresource prefix="/plugins/dasoraster" >
-        <file>icon.png</file>
-        <file>icon_parcela.png</file>
-        <file>icon_rodal.png</file>
-        <file>icon_explorer.png</file>
-        <file>icon_guiaRapida.png</file>
-        <file>icon_book.png</file>
-        <file>icon_star.png</file>
-        <file>icon_config.png</file>
+        <file>resources/images/icon_dasolidar.png</file>
+        <file>resources/images/icon_parcela.png</file>
+        <file>resources/images/icon_rodal.png</file>
+        <file>resources/images/icon_explorer.png</file>
+        <file>resources/images/icon_guiaRapida.png</file>
+        <file>resources/images/icon_book.png</file>
+        <file>resources/images/icon_star.png</file>
+        <file>resources/images/icon_config.png</file>
+        <file>resources/images/icon_arbol.png</file>
     </qresource>
 </RCC>
