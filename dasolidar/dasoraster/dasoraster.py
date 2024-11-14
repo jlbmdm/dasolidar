@@ -25,6 +25,8 @@
 import os
 import sys
 import math
+import time
+from datetime import datetime
 import platform
 import subprocess
 import numpy as np
@@ -160,8 +162,19 @@ print(f'dl_version: {__version__}')
 print(f'PYTHONPATH: {mi_PYTHONPATH}')
 print(f'sys.path:   {sys.path}')
 
-from dasoutil import calcular_valor_medio_parcela_rodal
-# from dasoutil import identificar_usuario
+try:
+    from dasoutil import calcular_valor_medio_parcela_rodal
+    # from dasoutil import identificar_usuario
+except:
+    print('No se ha podido instalar el complemento.')
+    iface.messageBar().pushMessage(
+        title='dasoraster',
+        text='Parece que este PC no tiene acceso a la ubicación de red del proyecto dasolidar. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta en el proyecto.',
+        showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
+        duration=30,
+        level=Qgis.Warning,
+    )
+    sys.exit(0)
 # usuario_actual = identificar_usuario()
 
 aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
@@ -306,7 +319,7 @@ def capa_malla_lasfiles():
             print('No se pudo cargar la capa "cargar_nubeDePuntos_LidarPNOA2".')
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Parece que este PC no tiene acceso a la ubicación de red con la infromación de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
+                text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
                 showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
                 duration=30,
                 level=Qgis.Warning,
@@ -482,7 +495,7 @@ def cargar_nube_de_puntos(
                 copcLazFile_path_name_ok = copcLazFile_path_name0
             else:
                 copcLazFile_path_name_ok = None
-
+# ççç
     bloque_ya_descargado = False
     if copcLazFile_path_name_ok:
         if os.path.exists(copcLazFile_path_name_ok):
@@ -740,6 +753,7 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='diferida',
                 )
             )
+            self.consultaD_button.setEnabled(True)
         elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.sugerencia_button.clicked.connect(
@@ -748,6 +762,7 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='sugerencia',
                 )
             )
+            self.sugerencia_button.setEnabled(True)
             if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
                 self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
                 self.consultaD_button.clicked.connect(
@@ -756,6 +771,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='diferida',
                     )
                 )
+                self.consultaD_button.setEnabled(True)
                 self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
                 self.consultaI_button.clicked.connect(
                     lambda event: self.lanzar_consulta_sugerencia(
@@ -763,6 +779,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='inmediata',
                     )
                 )
+                self.consultaI_button.setEnabled(False)
             else:
                 self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
                 self.consultaD_button.clicked.connect(
@@ -771,6 +788,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='diferida',
                     )
                 )
+            self.consultaD_button.setEnabled(True)
         elif botones_disponibles == 'consulta_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
@@ -795,6 +813,10 @@ class VentanaAsistente(QDialog):
                 )
             )
             self.accion_button.clicked.connect(self.lanzar_accion)
+            self.sugerencia_button.setEnabled(True)
+            self.consultaD_button.setEnabled(True)
+            self.consultaI_button.setEnabled(False)
+            self.accion_button.setEnabled(False)
         else:
             self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
             self.consultaD_button.clicked.connect(
@@ -803,6 +825,7 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='diferida',
                 )
             )
+            self.consultaD_button.setEnabled(True)
         self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
         self.cancel_button.clicked.connect(self.reject)
         # ======================================================================
@@ -857,11 +880,65 @@ class VentanaAsistente(QDialog):
         self.button_pressed = f'consulta_{tipo_consulta}'
         self.accept()
         print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
-        QMessageBox.information(
-            iface.mainWindow(),
-            f'Consulta dasolidar <{tipo_consulta}>',
-            f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
-        )
+        if tipo_consulta == 'sugerencia' or tipo_consulta == 'diferida':
+            unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+            mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
+            if os.path.isdir(unidad_v_path):
+                if os.path.isdir(mensajes_path):
+                    unidad_V_disponible = True
+                else:
+                    try:
+                        os.mkdir(mensajes_path)
+                        unidad_V_disponible = True
+                    except FileExistsError:
+                        # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
+                        unidad_V_disponible = False
+                        print(f'El directorio "{mensajes_path}" ya existe.')
+                    except Exception as e:
+                        unidad_V_disponible = False
+                        print(f'Error al crear el directorio: {mensajes_path}')
+                        print(f'Error: {e}')
+            else:
+                unidad_V_disponible = False
+            if unidad_V_disponible:
+                hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+                ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+                if tipo_consulta == 'diferida':
+                    tipo_consulta = 'consulta'
+                msg_filename = os.path.join(mensajes_path, f'{tipo_consulta}s.dsl')
+                try:
+                    msg_obj = open(msg_filename, mode='a+')
+                    msg_obj.seek(0)
+                    msg_previo = msg_obj.readlines()
+                except Exception as e:
+                    print(f'Error al crear o abrir el fichero de mensajes: {msg_filename}')
+                    print(f'Error: {e}')
+                    msg_obj = None
+                    msg_previo = []
+            else:
+                msg_obj = None
+                msg_previo = []
+            if msg_obj:
+                try:
+                    msg_obj.write(f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n')
+                    msg_obj.close()
+                except Exception as e:
+                    print(f'Error al guardar el mensaje en {msg_filename}')
+                    print(f'Error: {e}')
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'{tipo_consulta} dasolidar',
+                f'Muchas gracias por tu {tipo_consulta}.'
+                f'\nIntentaremos responder lo antes posible.'
+                f'\nLo haremos preferentemente por correo electrónico'
+                f'\nTu e-mail: {usuario_actual}@jcyl.es'
+            )
+        else:
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'Consulta dasolidar <{tipo_consulta}>',
+                f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
+            )
         # return (self.text_input.toPlainText(), 'consulta')
 
     def lanzar_accion(self):
@@ -914,6 +991,7 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
 
         # Carga los lasfiles del canvas actual
         self.actualizar_lasfiles()
+        self.active_extra = False
 
     def on_canvas_changed(self):
         print(f'\ndasoraster-> on_canvas_changed-> self.active_auto_lasfile: {self.active_auto_lasfile}')
@@ -1351,6 +1429,7 @@ class Dasoraster:
                 parent=self.iface.mainWindow(),
             )
             self.action_extra.setEnabled(True)
+            self.active_extra = False
 
         # Pasan a False la primera vez que se invoca cada herramienta
         self.first_start_run = True

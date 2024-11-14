@@ -5,6 +5,10 @@
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/cartolidar/cartolidar/main)
 [![Code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
+Nota: He traido aquí este readme del proyecto cartolidar. Tengo pendiente adaptarlo a este proyecto (dasolidar)
+----------
+
+
 ![cartolidar Logo](https://secure.gravatar.com/avatar/ea09c6d439dc57633702164f23b264e5 "clid image")
 
 

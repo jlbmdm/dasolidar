@@ -493,6 +493,7 @@ class VentanaAsistente(QDialog):
         self.buttonBox = QDialogButtonBox()
         # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
 
+        # ======================================================================
         if botones_disponibles == 'consulta_diferida':
             self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
             self.consultaD_button.clicked.connect(
@@ -501,6 +502,7 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='diferida',
                 )
             )
+            self.consultaD_button.setEnabled(True)
         elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.sugerencia_button.clicked.connect(
@@ -509,6 +511,7 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='sugerencia',
                 )
             )
+            self.sugerencia_button.setEnabled(True)
             if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
                 self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
                 self.consultaD_button.clicked.connect(
@@ -517,6 +520,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='diferida',
                     )
                 )
+                self.consultaD_button.setEnabled(True)
                 self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
                 self.consultaI_button.clicked.connect(
                     lambda event: self.lanzar_consulta_sugerencia(
@@ -524,6 +528,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='inmediata',
                     )
                 )
+                self.consultaI_button.setEnabled(False)
             else:
                 self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
                 self.consultaD_button.clicked.connect(
@@ -532,6 +537,7 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='diferida',
                     )
                 )
+            self.consultaD_button.setEnabled(True)
         elif botones_disponibles == 'consulta_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
@@ -556,6 +562,10 @@ class VentanaAsistente(QDialog):
                 )
             )
             self.accion_button.clicked.connect(self.lanzar_accion)
+            self.sugerencia_button.setEnabled(True)
+            self.consultaD_button.setEnabled(True)
+            self.consultaI_button.setEnabled(False)
+            self.accion_button.setEnabled(False)
         else:
             self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
             self.consultaD_button.clicked.connect(
@@ -564,9 +574,10 @@ class VentanaAsistente(QDialog):
                     tipo_consulta='diferida',
                 )
             )
+            self.consultaD_button.setEnabled(True)
         self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
         self.cancel_button.clicked.connect(self.reject)
-         # ======================================================================
+        # ======================================================================
 
         # ======================================================================
         # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
@@ -601,15 +612,65 @@ class VentanaAsistente(QDialog):
         self.button_pressed = f'consulta_{tipo_consulta}'
         self.accept()
         print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
-        if tipo_consulta == 'sugerencia':
-            texto_consulta_sugerencia = 'sugerencia'
+        if tipo_consulta == 'sugerencia' or tipo_consulta == 'diferida':
+            unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+            mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
+            if os.path.isdir(unidad_v_path):
+                if os.path.isdir(mensajes_path):
+                    unidad_V_disponible = True
+                else:
+                    try:
+                        os.mkdir(mensajes_path)
+                        unidad_V_disponible = True
+                    except FileExistsError:
+                        # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
+                        unidad_V_disponible = False
+                        print(f'El directorio "{mensajes_path}" ya existe.')
+                    except Exception as e:
+                        unidad_V_disponible = False
+                        print(f'Error al crear el directorio: {mensajes_path}')
+                        print(f'Error: {e}')
+            else:
+                unidad_V_disponible = False
+            if unidad_V_disponible:
+                hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+                ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+                if tipo_consulta == 'diferida':
+                    tipo_consulta = 'consulta'
+                msg_filename = os.path.join(mensajes_path, f'{tipo_consulta}s.dsl')
+                try:
+                    msg_obj = open(msg_filename, mode='a+')
+                    msg_obj.seek(0)
+                    msg_previo = msg_obj.readlines()
+                except Exception as e:
+                    print(f'Error al crear o abrir el fichero de mensajes: {msg_filename}')
+                    print(f'Error: {e}')
+                    msg_obj = None
+                    msg_previo = []
+            else:
+                msg_obj = None
+                msg_previo = []
+            if msg_obj:
+                try:
+                    msg_obj.write(f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n')
+                    msg_obj.close()
+                except Exception as e:
+                    print(f'Error al guardar el mensaje en {msg_filename}')
+                    print(f'Error: {e}')
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'{tipo_consulta} dasolidar',
+                f'Muchas gracias por tu {tipo_consulta}.'
+                f'\nIntentaremos responder lo antes posible.'
+                f'\nLo haremos preferentemente por correo electrónico'
+                f'\nTu e-mail: {usuario_actual}@jcyl.es'
+            )
         else:
-            texto_consulta_sugerencia = 'consulta'
-        QMessageBox.information(
-            iface.mainWindow(),
-            f'Consulta dasolidar <{tipo_consulta}>',
-            f'Esta utilidad estará disponible próximamente\n\nGracias por la {texto_consulta_sugerencia}.'
-        )
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'Consulta dasolidar <{tipo_consulta}>',
+                f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
+            )
         # return (self.text_input.toPlainText(), 'consulta')
 
     def lanzar_accion(self):
