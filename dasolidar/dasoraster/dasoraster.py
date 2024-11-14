@@ -29,8 +29,10 @@ import time
 from datetime import datetime
 import platform
 import subprocess
-import numpy as np
-from osgeo import gdal
+
+# from osgeo import gdal
+# import numpy as np
+# import psutil
 
 # imports de plugin builder
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
@@ -128,8 +130,9 @@ from PyQt5.QtCore import (
 # from qgis.PyQt.QtCore import QUrl
 # from qgis.core import QgsFeature
 # from PyQt5.QtWidgets import QInputDialog, QLineEdit
+
 # ==============================================================================
-# Aviso: Actualizar el fichero resources.qrc si cambio o muevo iconos
+# RECORDATORIO: Actualizar el fichero resources.qrc si cambio o muevo iconos
 # Si cambio el resources.qrc debe compilarse de nuevo en shell de OSGeo4w, desde la ubicación del complemento:
 #    D:\_clid\dasolidar\dasolidar\dasoraster>pyrcc5 -o resources.py resources.qrc
 # Contenido actual de resources.qrc:
@@ -149,7 +152,26 @@ from PyQt5.QtCore import (
 </RCC>
 '''
 # ==============================================================================
-__version__ = '0.1.0'
+# Si da error al descargar el complemento, estas pueden ser las causas:
+# El error que estás viendo al intentar desinstalar el complemento de QGIS indica que hay un problema al intentar acceder a la clave del complemento 'dasoraster'. Aquí hay algunas posibles causas y soluciones:
+# Posibles Causas
+# 1. Problemas en el archivo metadata.txt:
+# Asegúrate de que el archivo metadata.txt de tu complemento esté correctamente configurado. Verifica que el nombre del complemento y otros campos estén bien definidos.
+# Archivos faltantes o corruptos:
+# Puede que algunos archivos del complemento se hayan perdido o estén corruptos. Esto puede causar que QGIS no pueda encontrar el complemento al intentar desinstalarlo.
+# Problemas de caché:
+# A veces, QGIS puede tener problemas con la caché de los complementos. Esto puede causar que el complemento no se desinstale correctamente.
+# 4. Dependencias no resueltas:
+# Si tu complemento depende de otros complementos o bibliotecas que no están disponibles, esto puede causar problemas al intentar desinstalarlo.
+# -> Siempre puedo haceresto manualmente:
+# Eliminar manualmente el complemento:
+#   Si el complemento no se desinstala correctamente, puedes intentar eliminarlo manualmente. Ve a la carpeta de complementos de QGIS (normalmente en C:\Users\<tu_usuario>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\) y elimina la carpeta correspondiente a tu complemento (dasoraster).
+# Limpiar la caché de complementos:
+#   Puedes intentar limpiar la caché de complementos de QGIS. Esto se puede hacer cerrando QGIS, y luego eliminando el contenido de la carpeta de caché de complementos (normalmente en C:\Users\<tu_usuario>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\__pycache__).
+# ==============================================================================
+                                                                                                                                                                     
+
+__version__ = '0.1.1'  #  La versión oficial de cara a Qgis va en metadata.txt
 PLUGIN_DIR = os.path.dirname(__file__)
 # print(f'plugin_dir: {PLUGIN_DIR}')
 try:
@@ -968,7 +990,8 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         self.lista_lasfiles_cargados = []
 
         # Conectar señales
-        # mapCanvasRefreshed se lanza con cualquier cambio de canvas pero va después de scaleChanged y el trabajo lo hace siempre on_canvas_changed
+        # mapCanvasRefreshed se lanza con cualquier cambio de canvas
+        # pero va después de scaleChanged y el trabajo lo hace siempre on_canvas_changed
         self.canvas.mapCanvasRefreshed.connect(self.on_canvas_changed)
         # scaleChanged se lanza antes de mapCanvasRefreshed y con cualquier cambio de canvas aunque no cambie la escala
         self.canvas.scaleChanged.connect(self.on_scale_changed)
@@ -1437,11 +1460,28 @@ class Dasoraster:
 
     def unload(self):
         '''Removes the plugin menu item and icon from QGIS GUI.'''
+
+        # Primero elimino los las entradas de menu y los iconos
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&Dasoraster'),
-                action)
+            self.iface.removePluginMenu(self.tr(u'&Dasoraster'), action)
             self.iface.removeToolBarIcon(action)
+
+        # A continuaión elimino la barra de herramientas
+        if self.toolbar is not None:
+            self.iface.removeToolBar(self.toolbar)
+
+        # Esto es por si se desinstala el plugin teniendo todavía activado el autoCargaLasFile
+        # No estoy seguro de que se pueda desconectar estasdos señales con este código, así que uso el try - except
+        try:
+            if self.autoCargaLasFileObj:
+                if self.canvas:
+                    self.canvas.mapCanvasRefreshed.disconnect(self.autoCargaLasFileObj.on_canvas_changed)
+                    self.canvas.scaleChanged.disconnect(self.autoCargaLasFileObj.on_scale_changed)
+        except:
+            print('dasoraster-> No se pueden desconectar las señales asociadas a mapCanvasRefreshed y a scaleChanged')
+
+        self.toolbar = None
+        self.actions = []
 
     def run(self):
         # Create the dialog with elements (after translation) and keep reference
@@ -2159,6 +2199,8 @@ class Dasoraster:
             self.lector_pdf_windows = settings.value('dasoraster/lector_pdf_windows', type=bool)  #  Se inicia siempre en True
             self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)  #  Se inicia siempre en False
             self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', type=int)
+        # La autocarga de lasfiles podría pasarlo a un botón en vez usar de una opción de settings,
+        # pero por el momento prefiero dejarlo aquí más oculto. Si la autocarga es operativa, seguramente lo cambie.
         self.auto_lasfile()
 
     def auto_lasfile(self):
@@ -2181,13 +2223,16 @@ class Dasoraster:
                     f'Autocarga de lasFiles re-activado', duration=3, level=Qgis.Info
                 )
         else:
-            if not self.autoCargaLasFileObj is None:
-                # self.autoCargaLasFileObj = None
-                self.autoCargaLasFileObj.active_auto_lasfile = False
-                self.autoCargaLasFileObj.autocarga_escala_maxima = self.autocarga_escala_maxima
-                self.iface.messageBar().pushMessage(
-                    f'Autocarga de lasFiles desactivado', duration=3, level=Qgis.Info
-                )
+            if self.autoCargaLasFileObj:
+                try:
+                    # self.autoCargaLasFileObj.active_auto_lasfile = False
+                    self.iface.messageBar().pushMessage(
+                        f'Autocarga de lasFiles desactivado', duration=5, level=Qgis.Info
+                    )
+                    self.autoCargaLasFileObj.unload()
+                    self.autoCargaLasFileObj = None
+                except:
+                    pass
 
     def dasoraster_extra(self):
         self.iface.messageBar().pushMessage(f'Botón disponible para nuevas utilidades', level=Qgis.Info)

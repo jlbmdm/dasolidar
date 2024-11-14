@@ -1,3 +1,5 @@
+# Traido de mi proyecto cartolidar, pendiente adaptar
+
 include cartolidar/_version.py
 include cartolidar/*.py
 include cartolidar/__init__.py
