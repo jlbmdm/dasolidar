@@ -6,6 +6,9 @@ from datetime import datetime
 import pathlib
 import subprocess
 import platform
+import zipfile
+# import shutil
+# from shutil import copyfile
 
 import numpy as np
 
@@ -25,7 +28,20 @@ from qgis.gui import (
     QgsDialog,
     QgsMapToolEmitPoint,
 )
-from qgis.utils import iface
+from qgis.utils import (
+    iface,
+    loadPlugin,
+    startPlugin,
+    plugins,
+    unloadPlugin,
+    findPlugins,
+)
+try:
+    from qgis.utils import home_plugin_path
+    # home_plugin_ok = True
+except:
+    home_plugin_path = os.path.join(os.environ['APPDATA'], 'QGIS/QGIS3/profiles/default/python/plugins')
+    # home_plugin_ok = False
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QTextBrowser,
@@ -48,12 +64,20 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtCore import Qt
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
+from PyQt5.QtCore import QSettings
 
 # ==============================================================================
 # html_path = r'D:\_clid\pyqgis'
-html_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+lidarData_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$'
+html_path = os.path.join(lidarData_path, r'dasoLidar\doc\ayudaDasolidar')
 # ==============================================================================
-dl_bienvenida_html_filename = 'dasolidar_bienvenida.html'
+if os.path.isdir(lidarData_path):
+    dl_bienvenida_html_filename = 'dasolidar_bienvenida.html'
+    acceso_lidardata = True
+else:
+    dl_bienvenida_html_filename = 'dasolidar_sin_acceso.html'
+    acceso_lidardata = False
+
 dl_bienvenida_html_filepath = os.path.join(html_path, dl_bienvenida_html_filename) 
 if os.path.exists(dl_bienvenida_html_filepath):
     dl_bienvenida_html_obj = open(dl_bienvenida_html_filepath)
@@ -99,10 +123,58 @@ if type(config_class.dl_ventana_bienvenida) == str:
 print(f'dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bienvenida)}) {config_class.dl_ventana_bienvenida}')
 # ==============================================================================
 
-HOME_DIR = str(pathlib.Path.home())
-hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
 
 # ==============================================================================
+# Lo siguiente es código replicado en SIGMENA.py con tres diferencias:
+#  No incluyo Los imports porque van arriba
+#  No incluyo la función revisar_enlaces_directos
+#  El chequeo se hace siempre en vez de un día a la semana o al mes
+#  No existe listaId332_check
+# ==============================================================================
+## Inicio dasolidar
+# ==============================================================================
+# Se revisan los enlaces directos del proyecto dasoLidar (se eliminan los que sobran y/o se actualizan si procede)
+# Si Javi cambia algo en SIGMENA.py, aprovechar para:
+#   Llevar los imports a su sitio (arriba)
+#   Que no de error si no se encuentra un complemento chequeando
+#     os.path.exists('O:/sigmena/utilidad/PROGRAMA/QGIS/Complementos/'+complementos_con_version[i][0]+'.zip')
+
+# Este código es lento porque accede a diversos ficheros:
+#  1. Escritorio del usuario para actualizar los enlaces directos si procede
+#  2. Ficheros en \\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$:
+#     versionDasolidar.txt -> Para ver si hay nueva versión de dasoraster
+#     comlemento dasoraster.zip
+#     Iconos y enlaces directos
+#     En el caso del proyecto dasoLidar tb se ejecuta el bath de inicio
+#  3. Ficheros en V:/MA_SCAYLE_VueloLidar/dasolidar:
+#     dasolidar_install.log y lidarQgis.log para tener log de instalación y seguimiento de uso
+#  4. Complemento O:/sigmena/utilidad/PROGRAMA/QGIS/Complementos/dasoraster.zip
+
+
+# home_env = os.path.expanduser(os.environ['HOME'])
+
+# HOME_DIR = str(pathlib.Path.home())
+hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+# current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+separador_dasolistas = '\t'
+
+#aux_path_old = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/'
+aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
+scripts_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\scripts'
+versionDasolidar_filename = 'versionDasolidar.txt'
+versionDasolidar_filepath = os.path.join(aux_path_new, versionDasolidar_filename)
+fechasDasolidar_dict = {}
+if os.path.exists(versionDasolidar_filepath):
+    try:
+        with open(versionDasolidar_filepath, 'r') as versionesDasolidar:
+            fechasDasolidar_list = versionesDasolidar.readlines()
+        for fechaDasolidar_line in fechasDasolidar_list:
+            file_type = fechaDasolidar_line.split('\t')[0]
+            file_date = fechaDasolidar_line.split('\t')[1]
+            fechasDasolidar_dict[file_type] = file_date.rstrip('\n')
+    except:
+        pass
+
 # usuario_psutil = psutil.users()[0].name
 usuario_env = ''
 usuario_profile = ''
@@ -127,39 +199,68 @@ elif isinstance(usuario_profile, str) and len(usuario_profile) == 8:
 else:
     usuario_actual = 'anonimo'
 
-hacer_log_de_uso = True
-if hacer_log_de_uso:
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+# Se consulta la fecha se compara con las almacenadas en Qgis y se decide los procesos a lanzar
+dia_de_la_semana = datetime.now().weekday()
+dia_del_mes = datetime.now().day
+settings = QSettings()
+last_log = settings.value('dasoraster/last_log', '20241101', type=str)
+if dia_del_mes == 1 or (last_log.isdigit and (int(hoy_AAAAMMDD) - int(last_log)) > 31):
+    # Solo una vez al mes (a principios)
+    actualizar_enlaces_directos = True
+else:
+    actualizar_enlaces_directos = False
+
+if dia_de_la_semana == 1 or (last_log.isdigit and (int(hoy_AAAAMMDD) - int(last_log)) > 7) or actualizar_enlaces_directos:
+    # Solo los lunes (implica acceso a V:\)
+    leer_lista_usuarios_dasolidar = True
+    hacer_log_de_instalacion = True
+    QSettings().setValue('/dasoraster/last_log', hoy_AAAAMMDD)
+else:
+    hacer_log_de_instalacion = False
+    leer_lista_usuarios_dasolidar = False
+
+
+def log_de_instalacion():
+    dasolidar_list = []
+    dasolidar_log = None
+    lista_usuarios_activos = []
+    lista_usuarios_grupo_activos = []
     unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-    log_path_1 = 'V:/MA_SCAYLE_VueloLidar/dasolidar'
+    log_path_1 = os.path.join(unidad_v_path, 'dasolidar')
     log_path_2 = 'O:/sigmena/utilidad/programa/QGIS/dasolidar'
     unidad_V_disponible = False
     log_path_ok = ''
     if os.path.isdir(unidad_v_path):
-        unidad_V_disponible = True
         if not os.path.isdir(log_path_1):
             try:
                 os.mkdir(log_path_1)
+                unidad_V_disponible = True
+                log_path_ok = log_path_1
             except FileExistsError:
+                # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
                 print(f'El directorio "{log_path_1}" ya existe.')
             except Exception as e:
                 unidad_V_disponible = False
                 print(f'Error al crear el directorio: {log_path_1}')
                 print(f'Error: {e}')
-        log_path_ok = log_path_1
-    # if not os.path.isdir(unidad_v_path) or not unidad_V_disponible:
-    #     if not os.path.isdir(log_path_2):
-    #         try:
-    #             os.mkdir(log_path_2)
-    #         except FileExistsError:
-    #             print(f'El directorio "{log_path_2}" ya existe.')
-    #         except Exception as e:
-    #             print(f'Error al crear el directorio: {log_path_2}')
-    #             print(f'Error: {e}')
-    #     log_path_ok = log_path_2
+        else:
+            unidad_V_disponible = True
+            log_path_ok = log_path_1
+    if not unidad_V_disponible:
+        if not os.path.isdir(log_path_2):
+            try:
+                os.mkdir(log_path_2)
+                log_path_ok = log_path_2
+            except FileExistsError:
+                print(f'El directorio "{log_path_2}" ya existe.')
+            except Exception as e:
+                print(f'Error al crear el directorio: {log_path_2}')
+                print(f'Error: {e}')
+        else:
+            log_path_ok = log_path_2
     if log_path_ok:
-        use_log = 'lidarQgis.log'
-        log_filename = os.path.join(log_path_ok, use_log)
+        intall_log = 'dasolidar_install.log'
+        log_filename = os.path.join(log_path_ok, intall_log)
         try:
             dasolidar_log = open(log_filename, mode='a+')
             dasolidar_log.seek(0)
@@ -169,29 +270,252 @@ if hacer_log_de_uso:
             dasolidar_log = None
     else:
         dasolidar_log = None
-else:
-    dasolidar_log = None
-# ==============================================================================
+    for dasolidar_line in dasolidar_list:
+        dasolidar_line = dasolidar_line.rstrip('\n')
+        line_id = dasolidar_line.split(separador_dasolistas)[0]
+        if line_id.startswith('nuevoUser332') or line_id.startswith('modifUser332'):
+            usuario_activo = dasolidar_line.split(separador_dasolistas)[1]
+            usuario_grupo = dasolidar_line.split(separador_dasolistas)[2]  #  actual, beta, pteDarDeAlta
+            # usuario_fecha = dasolidar_line.split(separador_dasolistas)[3]  #  Ej.: 20241106
+            if not usuario_activo in lista_usuarios_activos:
+                lista_usuarios_activos.append(usuario_activo)
+            if not [usuario_activo, usuario_grupo] in lista_usuarios_grupo_activos:
+                lista_usuarios_grupo_activos.append([usuario_activo, usuario_grupo])
 
-separador_dasolistas = '\t'
-lista_usuarios_activos = []
-for dasolidar_line in dasolidar_list:
-    dasolidar_line = dasolidar_line.rstrip('\n')
-    line_id = dasolidar_line.split(separador_dasolistas)[0]
-    if line_id.startswith('newUser332') or line_id.startswith('oldUser332'):
-        usuario_activo = dasolidar_line.split(separador_dasolistas)[1]
-        # usuario_fecha = dasolidar_line.split(separador_dasolistas)[3]  #  Ej.: 20241106
-        if not usuario_activo in lista_usuarios_activos:
-            lista_usuarios_activos.append(usuario_activo)
-if hacer_log_de_uso and dasolidar_log:
-    try:
+    return dasolidar_log, lista_usuarios_activos, lista_usuarios_grupo_activos
+
+def lista_usuarios_dasolidar(
+        dasolidar_log,
+    ):
+    # lista_usuarios_old_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidarOld.csv')
+    lista_usuarios_actual_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidar_versionActual.csv')
+    lista_usuarios_beta_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidar_versionBeta.csv')
+    if os.path.exists(lista_usuarios_actual_filename):
+        # my_list = open(lista_usuarios_actual_filename, mode='r')
+        try:
+            with open(lista_usuarios_actual_filename, mode='r', encoding='utf-8') as my_list:
+                listaUsers_versionActual = my_list.readlines()
+                listaId332_versionActual = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionActual]
+            # print('Encoding UTF8 ok')
+        except:
+            try:
+                with open(lista_usuarios_actual_filename, mode='r', encoding='cp1252') as my_list:
+                    listaUsers_versionActual = my_list.readlines()
+                    listaId332_versionActual = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionActual]
+                # print('Encoding cp1252 ok')
+            except:
+                print(f'Atencion: revisar caracteres no admitidos en {lista_usuarios_actual_filename}')
+                listaId332_versionActual = []
+    else:
+        try:
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'\nAviso{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}No se encuentra {lista_usuarios_actual_filename}')
+        except:
+            pass
+        listaId332_versionActual = []
+
+    if os.path.exists(lista_usuarios_beta_filename):
+        # my_list = open(lista_usuarios_beta_filename, mode='r')
+        try:
+            with open(lista_usuarios_beta_filename, mode='r', encoding='utf-8') as my_list:
+                listaUsers_versionBeta = my_list.readlines()
+                listaId332_versionBeta = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionBeta]
+            # print('Encoding UTF8 ok')
+        except:
+            try:
+                with open(lista_usuarios_beta_filename, mode='r', encoding='cp1252') as my_list:
+                    listaUsers_versionBeta = my_list.readlines()
+                    listaId332_versionBeta = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionBeta]
+                # print('Encoding cp1252 ok')
+            except:
+                print(f'Atencion: revisar caracteres no admitidos en {lista_usuarios_beta_filename}')
+                listaId332_versionBeta = []
+    else:
+        try:
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'\nAviso{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}No se encuentra {lista_usuarios_beta_filename}')
+        except:
+            pass
+        listaId332_versionBeta = []
+    return (listaId332_versionActual, listaId332_versionBeta)
+
+def log_usuario_nuevo_modif(
+        dasolidar_log,
+        lista_usuarios_activos,
+        lista_usuarios_grupo_activos,
+        listaId332_versionBeta,
+        listaId332_versionActual,
+        dasoraster_sigmena_disponible,
+    ):
+    # usuario_nuevo = False
+    # dasolidar_log.write(f'lista_usuarios_activos:\n{lista_usuarios_activos}\n')
+    if usuario_actual in listaId332_versionBeta:
         if not usuario_actual in lista_usuarios_activos:
-            dasolidar_log.write(f'newUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}\n')
+            # usuario_nuevo = True
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'nuevoUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}beta{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
+        elif not [usuario_actual, 'beta'] in lista_usuarios_grupo_activos:
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'modifUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}beta{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
         else:
-            dasolidar_log.write(f'oldUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}all{separador_dasolistas}{hoy_AAAAMMDD}\n')
+            pass
+    elif usuario_actual in listaId332_versionActual:
+        if not usuario_actual in lista_usuarios_activos:
+            # usuario_nuevo = True
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'nuevoUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}actual{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
+        elif not [usuario_actual, 'actual'] in lista_usuarios_grupo_activos:
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'modifUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}actual{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
+        else:
+            pass
+    else:
+        if not usuario_actual in lista_usuarios_activos:
+            # usuario_nuevo = True
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'nuevoUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}pteDarDeAltal{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
+        elif (
+            not [usuario_actual, 'pteDarDeAlta'] in lista_usuarios_grupo_activos
+            and not [usuario_actual, 'dadoDeBaja'] in lista_usuarios_grupo_activos
+        ):
+            if hacer_log_de_instalacion and dasolidar_log:
+                dasolidar_log.write(f'modifUser332{separador_dasolistas}{usuario_actual}{separador_dasolistas}dadoDeBaja{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}{dasoraster_sigmena_disponible}\n')
+        else:
+            pass
+
+def instalacion_dasoraster(
+        dasolidar_log,
+        lista_usuarios_activos,
+        lista_usuarios_grupo_activos,
+        listaId332_versionBeta,
+        listaId332_versionActual,
+        dasoraster_filepath_sigmena
+    ):
+    global complementos_con_version
+    if usuario_actual in listaId332_versionBeta and 'pluginBeta' in fechasDasolidar_dict.keys():
+        dasoraster_version = fechasDasolidar_dict['pluginBeta']
+    elif usuario_actual in listaId332_versionActual and 'pluginActual' in fechasDasolidar_dict.keys():
+        dasoraster_version = fechasDasolidar_dict['pluginActual']
+    else:
+        dasoraster_version = 'v.0.0.0'
+
+    dasoraster_filepath_dasolidar = os.path.join(scripts_path, 'dasoraster.zip')
+    if os.path.isdir(scripts_path):
+        dasoraster_filepath = dasoraster_filepath_dasolidar
+    if not os.path.exists(dasoraster_filepath):
+        dasoraster_filepath = dasoraster_filepath_sigmena
+
+    if os.path.exists(dasoraster_filepath):
+        instalar_dasoraster_con_el_resto = False
+        if instalar_dasoraster_con_el_resto:
+            complementos_con_version.extend([['dasoraster', dasoraster_version]])
+        else:
+            if os.path.isdir(home_plugin_path):
+                # os.stat(home_plugin_path)
+                versioninstalada = 'v.0.0.0'
+                for x in findPlugins(home_plugin_path):
+                    if x[0] == 'dasoraster':
+                        versioninstalada=str(x[1].get('general',"version"))
+                    if versioninstalada != dasoraster_version and dasoraster_version != 'v.0.0.0':
+                        zip_ref_dasoraster = zipfile.ZipFile(dasoraster_filepath, 'r')
+                        zip_ref_dasoraster.extractall(home_plugin_path)
+                        zip_ref_dasoraster.close()
+                        loadPlugin('dasoraster')
+                        startPlugin('dasoraster')
+                        try:  
+                            QSettings().setValue('/PythonPlugins/dasoraster','true')
+                        except:
+                            pass
+                            #pow
+
+dasolidar_log = None
+lista_usuarios_activos = []
+lista_usuarios_grupo_activos = []
+listaId332_check = ['benmarjo', 'dierabfr', 'monrodan']
+if usuario_actual in listaId332_check or True:
+   hacer_log_de_instalacion = True
+   leer_lista_usuarios_dasolidar = True
+
+if hacer_log_de_instalacion:
+    (
+        dasolidar_log,
+        lista_usuarios_activos,
+        lista_usuarios_grupo_activos
+    ) = log_de_instalacion()
+
+if leer_lista_usuarios_dasolidar:
+    (
+        listaId332_versionActual,
+        listaId332_versionBeta
+    ) = lista_usuarios_dasolidar(
+        dasolidar_log,
+    )
+else:
+    listaId332_versionActual = []
+    listaId332_versionBeta = ['benmarjo', 'dierabfr', 'monrodan']
+
+listaId332_versionAll = listaId332_versionActual.copy()
+for mi_id332 in listaId332_versionBeta:
+    if not mi_id332 in listaId332_versionAll:
+        listaId332_versionAll.append(mi_id332)
+for mi_id332 in listaId332_check:
+    if not mi_id332 in listaId332_versionAll:
+        listaId332_versionAll.append(mi_id332)
+
+dasoraster_filepath_sigmena = 'O:/sigmena/utilidad/PROGRAMA/QGIS/Complementos/dasoraster.zip'
+dasoraster_sigmena_disponible = os.path.exists(dasoraster_filepath_sigmena)
+if not dasoraster_sigmena_disponible:
+    try:
+        if hacer_log_de_instalacion and dasolidar_log:
+            dasolidar_log.write(f'Aviso:{separador_dasolistas}{usuario_actual}{separador_dasolistas}----{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}dasoraster no disponible en sigmena\n')
+            dasolidar_log.write(f'Info:{separador_dasolistas}{usuario_actual}{separador_dasolistas}----{separador_dasolistas}{hoy_AAAAMMDD}{separador_dasolistas}dasoraster se lee (en todo caso) de la ubicacion de red\n')
+    except:
+        pass
+
+if leer_lista_usuarios_dasolidar and hacer_log_de_instalacion:
+    try:
+        log_usuario_nuevo_modif(
+            dasolidar_log,
+            lista_usuarios_activos,
+            lista_usuarios_grupo_activos,
+            listaId332_versionBeta,
+            listaId332_versionActual,
+            dasoraster_sigmena_disponible,
+        )
+    except:
+        pass
+if leer_lista_usuarios_dasolidar and usuario_actual in listaId332_versionAll:
+    try:
+        instalacion_dasoraster(
+            dasolidar_log,
+            lista_usuarios_activos,
+            lista_usuarios_grupo_activos,
+            listaId332_versionBeta,
+            listaId332_versionActual,
+            dasoraster_filepath_sigmena,
+        )
+        if actualizar_enlaces_directos:
+                pass
+                # revisar_enlaces_directos(
+                #     dasolidar_log,
+                #     lista_usuarios_activos,
+                #     lista_usuarios_grupo_activos,
+                #     listaId332_versionBeta,
+                #     listaId332_versionActual,
+                # )
+    except:
+        pass
+
+if hacer_log_de_instalacion and dasolidar_log:
+    try:
         dasolidar_log.close()
     except:
         pass
+# ==============================================================================
+## Fin dasolidar
+
+
+
 
 # ==============================================================================
 class VentanaBienvenidaPrimerosPasos(QDialog):
@@ -218,7 +542,7 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         # ======================================================================
         mostrar_ventana_inicio = False
         self.mi_html = QTextBrowser()
-        if contenido_ventana == 'bienvenida':
+        if contenido_ventana == 'bienvenida' or not acceso_lidardata:
             if dl_bienvenida_html_read:
                 self.mi_html.setHtml(dl_bienvenida_html_read)
                 mostrar_ventana_inicio = True
@@ -239,7 +563,7 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
         checkbox_layout = QHBoxLayout()
         checkbox_layout.setAlignment(Qt.AlignLeft)
         # Checkbox desmarcado por defecto
-        if contenido_ventana == 'bienvenida':
+        if contenido_ventana == 'bienvenida' or not acceso_lidardata:
             self.checkbox = QCheckBox('Volver a mostrar esta ventana al iniciar este proyecto.')
         elif contenido_ventana == 'primeros_pasos':
             self.checkbox = QCheckBox('Volver a mostrar la ventana de bienvenida al iniciar este proyecto.')
@@ -326,52 +650,53 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
                 marco_layout.addWidget(linea_horizontal2)
         # ======================================================================
 
-        # Línea horizontal
-        linea_horizontal1 = QFrame()
-        linea_horizontal1.setFrameShape(QFrame.HLine)
-        linea_horizontal1.setFrameShadow(QFrame.Sunken)
-        marco_layout.addWidget(linea_horizontal1)
+        if acceso_lidardata:
+            # Línea horizontal
+            linea_horizontal1 = QFrame()
+            linea_horizontal1.setFrameShape(QFrame.HLine)
+            linea_horizontal1.setFrameShadow(QFrame.Sunken)
+            marco_layout.addWidget(linea_horizontal1)
 
-        # Layout horizontal para los botones
-        botones_layout_2 = QHBoxLayout()
-        # Añadir botones
-        # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        self.manual_button = QPushButton('Manual de consulta dasolidar')
-        # self.ldata_button = QPushButton('Explorar LidarData')
-        self.asista_button = QPushButton('Asistente')
-        # self.lasfile_button = QPushButton('cargar nube de puntos')
-        # self.raster_button = QPushButton('Herramientas raster')
+            # Layout horizontal para los botones
+            botones_layout_2 = QHBoxLayout()
+            # Añadir botones
+            # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
+            self.manual_button = QPushButton('Manual de consulta dasolidar')
+            # self.ldata_button = QPushButton('Explorar LidarData')
+            self.asista_button = QPushButton('Asistente')
+            # self.lasfile_button = QPushButton('cargar nube de puntos')
+            # self.raster_button = QPushButton('Herramientas raster')
 
-        self.manual_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        # self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        # self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-        # self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.manual_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            # self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            # self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            # self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
 
-        # Conectar los botones a sus funciones
-        self.manual_button.clicked.connect(self.manual_dasolidar)
-        # self.ldata_button.clicked.connect(self.explorar_ldata)
-        self.asista_button.clicked.connect(
-            self.dasolidar_IA_consulta_solo
-            # lambda event: self.dasolidar_IA_consulta_solo(
-            #     mi_evento=event,
-            #     # botones_disponibles='consulta_diferida',
-            #     botones_disponibles='consulta_diferida_sugerencia',
-            # )
-        )
-        # self.lasfile_button.clicked.connect(self.cargar_lasfile)
-        # self.raster_button.clicked.connect(self.herramientas_raster)
+            # Conectar los botones a sus funciones
+            self.manual_button.clicked.connect(self.manual_dasolidar)
+            # self.ldata_button.clicked.connect(self.explorar_ldata)
+            self.asista_button.clicked.connect(
+                self.dasolidar_IA_consulta_solo
+                # lambda event: self.dasolidar_IA_consulta_solo(
+                #     mi_evento=event,
+                #     # botones_disponibles='consulta_diferida',
+                #     botones_disponibles='consulta_diferida_sugerencia',
+                # )
+            )
+            # self.lasfile_button.clicked.connect(self.cargar_lasfile)
+            # self.raster_button.clicked.connect(self.herramientas_raster)
 
-        # Añadir los botones al layout horizontal
-        botones_layout_2.addWidget(self.manual_button)
-        # botones_layout_2.addWidget(self.ldata_button)
-        botones_layout_2.addWidget(self.asista_button)
-        # botones_layout_2.addWidget(self.lasfile_button)
-        # botones_layout_2.addWidget(self.raster_button)
-        # ======================================================================
-        marco_layout.addLayout(botones_layout_2)
-        # # Añadir el layout de botones al layout principal
-        # texto_layout.addLayout(botones_layout_2)
+            # Añadir los botones al layout horizontal
+            botones_layout_2.addWidget(self.manual_button)
+            # botones_layout_2.addWidget(self.ldata_button)
+            botones_layout_2.addWidget(self.asista_button)
+            # botones_layout_2.addWidget(self.lasfile_button)
+            # botones_layout_2.addWidget(self.raster_button)
+            # ======================================================================
+            marco_layout.addLayout(botones_layout_2)
+            # # Añadir el layout de botones al layout principal
+            # texto_layout.addLayout(botones_layout_2)
         # # ======================================================================
         texto_layout.addWidget(marco_widget)
         # # ======================================================================
@@ -878,7 +1203,7 @@ def mostrar_messagebar_bienvenida():
 
 # ==============================================================================
 def arranque_dasolidar():
-    if config_class.dl_ventana_bienvenida:
+    if config_class.dl_ventana_bienvenida or not acceso_lidardata:
         mostrar_ventana_bienvenida_primeros_pasos(
             contenido_ventana='bienvenida'
         )

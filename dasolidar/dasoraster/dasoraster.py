@@ -689,23 +689,29 @@ class VentanaBienvenidaGuiaRapida(QDialog):
 
         # ======================================================================
         print('dasoraster-> Se va a mostrar la guia rápida')
-        ruta_ayudas = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
-        if os.path.exists(os.path.join(ruta_ayudas, 'GuiaDasoLidar.png')):
-            intro_dasolidar_html_filename = 'dasolidar_intro.html'
-            intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
-        elif os.path.exists(os.path.join(PLUGIN_DIR, 'resources/docs', 'dasolidar_intro_local.png')):
-            intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
-            intro_dasolidar_html_filepath = os.path.join(PLUGIN_DIR, 'resources/docs', 'dasolidar_intro_local.png')
-        else:
+        ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        ruta_ayudas_local = os.path.join(PLUGIN_DIR, 'resources/docs')
+        rutas_ayudas = [ruta_ayudas_red, ruta_ayudas_local]
+        for ruta_ayudas in rutas_ayudas:
+            intro_dasolidar_png_filepath = os.path.join(ruta_ayudas, 'GuiaDasoLidar.png')
+            if os.path.exists(intro_dasolidar_png_filepath):
+                if intro_dasolidar_png_filepath.startswith(r'\\'):
+                    intro_dasolidar_html_filename = 'dasolidar_intro.html'
+                else:
+                    intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
+                intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
+                if os.path.exists(intro_dasolidar_html_filepath):
+                    break
+        if not os.path.exists(intro_dasolidar_png_filepath) or not os.path.exists(intro_dasolidar_html_filepath):
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Guia rápida no disponible.',
+                text='Guia rápida no disponible. Puede que no estés trabajando dentro de la intranet de la JCyL o no estés dado de alta en el proyecto dasolidar',
                 duration=20,
                 level=Qgis.Warning,
             )
             self.ok = False
             return
-
+çç
         intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
         intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
         print(f'Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
@@ -947,14 +953,23 @@ class VentanaAsistente(QDialog):
                 except Exception as e:
                     print(f'Error al guardar el mensaje en {msg_filename}')
                     print(f'Error: {e}')
-            QMessageBox.information(
-                iface.mainWindow(),
-                f'{tipo_consulta} dasolidar',
-                f'Muchas gracias por tu {tipo_consulta}.'
-                f'\nIntentaremos responder lo antes posible.'
-                f'\nLo haremos preferentemente por correo electrónico'
-                f'\nTu e-mail: {usuario_actual}@jcyl.es'
-            )
+                QMessageBox.information(
+                    iface.mainWindow(),
+                    f'{tipo_consulta} dasolidar',
+                    f'Muchas gracias por tu {tipo_consulta}.'
+                    f'\nIntentaremos responder lo antes posible.'
+                    f'\nLo haremos preferentemente por correo electrónico'
+                    f'\nTu e-mail: {usuario_actual}@jcyl.es'
+                )
+            else:
+                QMessageBox.information(
+                    iface.mainWindow(),
+                    f'{tipo_consulta} dasolidar',
+                    f'No ha sido posible registrar tu {tipo_consulta}.'
+                    f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+                    f'\nSi quieres hacer una {tipo_consulta} puedes enviar'
+                    f'\nun correo electrónico a dasolidar@gmail.com'
+                )
         else:
             QMessageBox.information(
                 iface.mainWindow(),
@@ -1467,8 +1482,11 @@ class Dasoraster:
             self.iface.removeToolBarIcon(action)
 
         # A continuaión elimino la barra de herramientas
-        if self.toolbar is not None:
-            self.iface.removeToolBar(self.toolbar)
+        try:
+            if self.toolbar is not None:
+                self.iface.mainWindow().removeToolBar(self.toolbar)
+        except:
+            pass
 
         # Esto es por si se desinstala el plugin teniendo todavía activado el autoCargaLasFile
         # No estoy seguro de que se pueda desconectar estasdos señales con este código, así que uso el try - except
@@ -2135,12 +2153,12 @@ class Dasoraster:
         ruta_manual_local = os.path.join(PLUGIN_DIR, 'resources/docs')
         rutas_manual = [ruta_manual_red, ruta_manual_local]
         for ruta_manual in rutas_manual:
-            pdf_path = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
-            if os.path.exists(pdf_path):
-                print(f'pdf_path_ok: {pdf_path}')
+            manual_dasolidar_pdf_filepath = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
+            if os.path.exists(manual_dasolidar_pdf_filepath):
+                print(f'manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
                 if self.lector_pdf_windows:
                     if platform.system() == 'Windows':
-                        os.startfile(pdf_path)
+                        os.startfile(manual_dasolidar_pdf_filepath)
                 else:
                     try:
                         from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -2159,12 +2177,21 @@ class Dasoraster:
                         # !pip install PyQtWebEngine
                         return
                     app = QApplication(sys.argv)
-                    viewer = PDFViewer(pdf_path)
+                    viewer = PDFViewer(manual_dasolidar_pdf_filepath)
                     viewer.show()
                     sys.exit(app.exec_())
                 break
             else:
-                print(f'Fichero no disponible: {pdf_path}')
+                print(f'Fichero no disponible: {manual_dasolidar_pdf_filepath}')
+        if not os.path.exists(manual_dasolidar_pdf_filepath):
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text='Manual de consulta dasolidar no disponible. Puede que no estés trabajando dentro de la intranet de la JCyL o no estés dado de alta en el proyecto dasolidar',
+                duration=20,
+                level=Qgis.Warning,
+            )
+            self.ok = False
+            return
 
     def dasolidar_IA(self):
         dialog = VentanaAsistente(
