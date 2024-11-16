@@ -30,8 +30,9 @@ from datetime import datetime
 import platform
 import subprocess
 
+import numpy as np
+import win32com.client
 # from osgeo import gdal
-# import numpy as np
 # import psutil
 
 # imports de plugin builder
@@ -48,7 +49,7 @@ from .dasoraster_dialog import DasorasterDialog, DasorasterDialog_consulta_rodal
 from qgis.utils import iface
 from qgis.core import (
     Qgis,
-    QgsApplication,
+    # QgsApplication,
     # QgsMessageLog,
     QgsGeometry,
     QgsProject,
@@ -61,7 +62,7 @@ from qgis.core import (
     QgsPointCloudLayer,
     QgsLayerTreeGroup,
     QgsLayerTreeLayer,
-    QgsSpatialIndex,
+    # QgsSpatialIndex,
     QgsFeatureRequest,
     QgsCoordinateTransform,
     QgsCoordinateReferenceSystem,
@@ -72,7 +73,7 @@ from qgis.gui import (
     QgsMapToolEmitPoint,
     QgsRubberBand,
     QgsMapToolIdentifyFeature,
-    QgsMapToolIdentify,
+    # QgsMapToolIdentify,
 )
 
 from qgis.PyQt.QtCore import Qt
@@ -113,13 +114,13 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QPushButton,
     QMainWindow,
-    QWidget,
+    # QWidget,
 )
 from PyQt5.QtCore import (
     QUrl,
     pyqtSignal,
     QTimer,
-    QObject,
+    # QObject,
 )
 
 # imports para la descarga de lasFiles
@@ -240,7 +241,8 @@ GRUPO_LIDAR_DESCARGADO = 'lidarDescargado'
 DIMENSION_BLOQUE = 2000
 AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA = 10000
 AUTOCARGA_ESCALA_MAXIMA_PERMITIDA = 30000
-
+EMAIL_DASOLIDAR1 = 'benmarjo@jcyl.es'
+EMAIL_DASOLIDAR2 = 'dasolidar@gmail.com'
 separador_dasolistas = '\t'
 
 lista_usuarios_actual_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidar_versionActual.csv')
@@ -270,15 +272,19 @@ else:
 
 clave_uso_version = f'dasolidar/uso_dasoraster_v.{__version__}'
 mi_config = QgsSettings()
+
 class Configuracion():
     def __init__(self):
-        self.dl_usuario = mi_config.value('dasolidar/usuario', usuario_actual)
         self.dl_usos = mi_config.value(clave_uso_version, 0)
         try:
             num_usos = int(self.dl_usos)
         except:
             num_usos = 0
         mi_config.setValue(clave_uso_version, num_usos + 1)
+
+        # Esto no lo uso. El usuario lo obtengo de os.getlogin() o de os.environ.get('USERNAME') y no de QgsSettings
+        self.dl_usuario = mi_config.value('dasolidar/usuario', usuario_actual)
+        # Esto no lo uso. La opción de mostrar ventana de bienvenida la dejo para el script de arranque
         self.dl_mostrar_ventana_bienvenida = mi_config.value('dasolidar/mostrar_ventana_bienvenida', True)
         self.dl_mostrar_message_bienvenida = mi_config.value('dasolidar/mostrar_message_bienvenida', True)
 
@@ -431,6 +437,7 @@ def cargar_nube_de_puntos(
         copc_NW_value,
         copc_SE_value,
         copc_SW_value,
+        autocarga_mostrar_lasfiles_en_leyenda=True,
         verboseLocal=True,
 ):
     # Cargar la capa de nube de puntos
@@ -517,32 +524,33 @@ def cargar_nube_de_puntos(
                 copcLazFile_path_name_ok = copcLazFile_path_name0
             else:
                 copcLazFile_path_name_ok = None
-# ççç
+
     bloque_ya_descargado = False
     if copcLazFile_path_name_ok:
         if os.path.exists(copcLazFile_path_name_ok):
-            root = QgsProject.instance().layerTreeRoot()
-            lidar_group = root.findGroup(GRUPO_LIDAR_DESCARGADO)
-            if lidar_group is None:
-                grupo_previo = False
+            mi_proyecto = QgsProject.instance()
+            project_root = mi_proyecto.layerTreeRoot()
+            grupo_lidar = project_root.findGroup(GRUPO_LIDAR_DESCARGADO)
+            if grupo_lidar:
+                # grupo_previo = True
+                if verboseLocal and verbosePlus:
+                    iface.messageBar().pushMessage(
+                        f'Grupo TOC existe previamente: {str(grupo_lidar)}',
+                        level=Qgis.Info,
+                        duration=5
+                    )
+            else:
+                # grupo_previo = False
                 if verboseLocal and verbosePlus:
                     iface.messageBar().pushMessage(
                         f'Se crea el grupo {GRUPO_LIDAR_DESCARGADO} para contener las nubes de puntos.',
                         level=Qgis.Info,
                         duration=5
                     )
-                # lidar_group = root.addGroup(GRUPO_LIDAR_DESCARGADO)
-                lidar_group = root.insertGroup(1, GRUPO_LIDAR_DESCARGADO)
-            else:
-                grupo_previo = True
-                if verboseLocal and verbosePlus:
-                    iface.messageBar().pushMessage(
-                        f'Grupo TOC existe previamente: {str(lidar_group)}',
-                        level=Qgis.Info,
-                        duration=5
-                    )
+                # grupo_lidar = project_root.addGroup(GRUPO_LIDAR_DESCARGADO)
+                grupo_lidar = project_root.insertGroup(1, GRUPO_LIDAR_DESCARGADO)
             lazFile_name = os.path.basename(copcLazFile_path_name_ok)
-            for num, child in enumerate(root.children()):
+            for num, child in enumerate(project_root.children()):
                 if isinstance(child, QgsLayerTreeGroup) and child.name() == GRUPO_LIDAR_DESCARGADO:
                     bloques_descargados = child.children()
                     for num_bl, bloque in enumerate(bloques_descargados):
@@ -565,9 +573,9 @@ def cargar_nube_de_puntos(
                     # ['NodeGroup', 'NodeLayer', 'NodeType', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'addChildNode', 'addGroup', 'addLayer', 'addedChildren', 'blockSignals', 'checkedLayers', 'childEvent', 'children', 'clone', 'connectNotify', 'convertToGroupLayer', 'customEvent', 'customProperties', 'customProperty', 'customPropertyChanged', 'deleteLater', 'depth', 'destroyed', 'disconnect', 'disconnectNotify', 'dump', 'dumpObjectInfo', 'dumpObjectTree', 'dynamicPropertyNames', 'event', 'eventFilter', 'expandedChanged', 'findChild', 'findChildren', 'findGroup', 'findGroups', 'findLayer', 'findLayerIds', 'findLayers', 'groupLayer', 'inherits', 'insertChildNode', 'insertChildNodes', 'insertChildrenPrivate', 'insertGroup', 'insertLayer', 'installEventFilter', 'isExpanded', 'isItemVisibilityCheckedRecursive', 'isItemVisibilityUncheckedRecursive', 'isMutuallyExclusive', 'isSignalConnected', 'isVisible', 'isWidgetType', 'isWindowType', 'itemVisibilityChecked', 'killTimer', 'metaObject', 'moveToThread', 'name', 'nameChanged', 'nodeType', 'nodeVisibilityChanged', 'objectName', 'objectNameChanged', 'parent', 'property', 'pyqtConfigure', 'readChildrenFromXml', 'readCommonXml', 'readXml', 'receivers', 'removeAllChildren', 'removeChildNode', 'removeChildren', 'removeChildrenGroupWithoutLayers', 'removeChildrenPrivate', 'removeCustomProperty', 'removeEventFilter', 'removeLayer', 'removedChildren', 'resolveReferences', 'sender', 'senderSignalIndex', 'setCustomProperty', 'setExpanded', 'setGroupLayer', 'setIsMutuallyExclusive', 'setItemVisibilityChecked', 'setItemVisibilityCheckedParentRecursive', 'setItemVisibilityCheckedRecursive', 'setName', 'setObjectName', 'setParent', 'setProperty', 'signalsBlocked', 'startTimer', 'staticMetaObject', 'takeChild', 'thread', 'timerEvent', 'tr', 'updateChildVisibilityMutuallyExclusive', 'visibilityChanged', 'willAddChildren', 'willRemoveChildren', 'writeCommonXml', 'writeXml']
 
             if verboseLocal and verboseDebug:
-                print(f'root: {root}')
-                print(f'children: {root.children()}')
-                for num, child in enumerate(root.children()):
+                print(f'project_root: {project_root}')
+                print(f'children: {project_root.children()}')
+                for num, child in enumerate(project_root.children()):
                     if isinstance(child, QgsLayerTreeGroup):
                         print(f'{num}-> group: {child.name()}')
                     elif isinstance(child, QgsLayerTreeLayer):
@@ -576,11 +584,11 @@ def cargar_nube_de_puntos(
                         # print(f'Metodos del child de type layer: {dir(child)}')
                         # ['AllowSplittingLegendNodesOverMultipleColumns', 'LegendNodesSplitBehavior', 'NodeGroup', 'NodeLayer', 'NodeType', 'PreventSplittingLegendNodesOverMultipleColumns', 'UseDefaultLegendSetting', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'addedChildren', 'attachToLayer', 'blockSignals', 'checkedLayers', 'childEvent', 'children', 'clone', 'connectNotify', 'customEvent', 'customProperties', 'customProperty', 'customPropertyChanged', 'deleteLater', 'depth', 'destroyed', 'disconnect', 'disconnectNotify', 'dump', 'dumpObjectInfo', 'dumpObjectTree', 'dynamicPropertyNames', 'event', 'eventFilter', 'expandedChanged', 'findChild', 'findChildren', 'inherits', 'insertChildrenPrivate', 'installEventFilter', 'isExpanded', 'isItemVisibilityCheckedRecursive', 'isItemVisibilityUncheckedRecursive', 'isSignalConnected', 'isVisible', 'isWidgetType', 'isWindowType', 'itemVisibilityChecked', 'killTimer', 'labelExpression', 'layer', 'layerId', 'layerLoaded', 'layerWillBeUnloaded', 'legendSplitBehavior', 'metaObject', 'moveToThread', 'name', 'nameChanged', 'nodeType', 'objectName', 'objectNameChanged', 'parent', 'patchShape', 'patchSize', 'property', 'pyqtConfigure', 'readCommonXml', 'readXml', 'receivers', 'removeChildrenPrivate', 'removeCustomProperty', 'removeEventFilter', 'removedChildren', 'resolveReferences', 'sender', 'senderSignalIndex', 'setCustomProperty', 'setExpanded', 'setItemVisibilityChecked', 'setItemVisibilityCheckedParentRecursive', 'setItemVisibilityCheckedRecursive', 'setLabelExpression', 'setLegendSplitBehavior', 'setName', 'setObjectName', 'setParent', 'setPatchShape', 'setPatchSize', 'setProperty', 'setUseLayerName', 'signalsBlocked', 'startTimer', 'staticMetaObject', 'takeChild', 'thread', 'timerEvent', 'tr', 'useLayerName', 'visibilityChanged', 'willAddChildren', 'willRemoveChildren', 'writeCommonXml', 'writeXml']
 
-                # child0 = root.children()[0]
+                # child0 = project_root.children()[0]
                 # print(f'child0: {child0}' -> type: {type(child0)}')
                 # print(f'child0 es un QgsLayerTreeLayer: {isinstance(child0, QgsLayerTreeLayer)}')
                 ## print(f'parent: {child0.parent()}') #  qgis._core.QgsLayerTreeLayer
-                # child0 = root.children()[1]
+                # child0 = project_root.children()[1]
                 # print(f'child1: {child1}' -> type: {type(child1)}')
                 # print(f'child1 es un QgsLayerTreeLayer: {isinstance(child1, QgsLayerTreeLayer)}')
 
@@ -596,11 +604,18 @@ def cargar_nube_de_puntos(
                 pcl_LayerOptions.skipIndexGeneration = False
                 pcl_LayerOptions.loadDefaultStyle = True
                 pcl_ = 'copc'  # 'pdal' fuerza la generacion de otro copc
-                my_pcl = QgsPointCloudLayer(copcLazFile_path_name_ok, lazFile_name, 'copc', pcl_LayerOptions)
+                my_pcl = QgsPointCloudLayer(copcLazFile_path_name_ok, lazFile_name, pcl_, pcl_LayerOptions)
                 # my_QgsMapLayer = QgsProject.instance().addMapLayer(my_pcl)
 
-                QgsProject.instance().addMapLayer(my_pcl, False)
-                my_QgsMapLayer = lidar_group.addLayer(my_pcl)
+                if grupo_lidar is not None:
+                    # Si el grupo existe, agregar la capa al grupo
+                    grupo_lidar.addLayer(my_pcl)
+                else:
+                    # Si el grupo no existe, agregar la capa directamente al proyecto
+                    QgsProject.instance().addMapLayer(my_pcl, autocarga_mostrar_lasfiles_en_leyenda)
+
+                if grupo_lidar:
+                    my_QgsMapLayer = grupo_lidar.addLayer(my_pcl)
                 carga_ok = 1
         else:
             carga_ok = -1
@@ -647,7 +662,7 @@ def cargar_nube_de_puntos(
     return (carga_ok, copcLazFile_path_name_ok)
 
 def capa_vector_activa():
-    capa_activa_vector = False
+    # capa_activa_vector = False
     layer_rodales = None
     layer_activo = iface.activeLayer()  # Usar la capa activa si es vectorial
     if layer_activo is None:
@@ -667,7 +682,7 @@ def capa_vector_activa():
                 mensaje(f'Está seleccionada la malla de ficheros Lidar ({nombre_capa_activa}); elige una capa de rodales o similar.', mi_level=Qgis.Warning)
             else:
                 mensaje(f'Se consulta el polígono en el que se ha hecho click en la capa activa: {nombre_capa_activa}.')
-                capa_activa_vector = True
+                # capa_activa_vector = True
                 layer_rodales = layer_activo
         else:
             print('La capa activa no es ni raster ni vectorial.')
@@ -711,22 +726,28 @@ class VentanaBienvenidaGuiaRapida(QDialog):
             )
             self.ok = False
             return
-çç
+
         intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
         intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
         print(f'Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
 
         # Layout horizontal para el texto
         texto_layout = QVBoxLayout()
-        usar_html = True
+        # usar_html = True
         self.mi_texto = QTextBrowser()
         self.mi_texto.setHtml(intro_dasolidar_html_read)
-        texto_layout.addWidget(self.mi_texto)
-        # intro_dasolidar_html_obj.close()
-        # Establezco el layout principal
-        self.setLayout(texto_layout)
         # Ajusto el scroll para mostrar la parte superior
         self.mi_texto.verticalScrollBar().setValue(0)
+        texto_layout.addWidget(self.mi_texto)
+        # intro_dasolidar_html_obj.close()
+
+        self.ok_button = QPushButton('Ok')
+        self.ok_button.clicked.connect(self.accept)
+        texto_layout.addWidget(self.mi_texto)
+        texto_layout.setAlignment(self.ok_button, Qt.AlignCenter)
+
+        # Establezco el layout principal
+        self.setLayout(texto_layout)
 
     def center(self):
         qr = self.frameGeometry()
@@ -735,10 +756,16 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         self.move(qr.topLeft())
 
 
+# ==============================================================================
 class VentanaAsistente(QDialog):
     def __init__(self, parent=None, botones_disponibles='consulta_diferida_sugerencia'):
+        print(f'Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
         super().__init__(parent)
-        self.iface = iface
+
+        # botones_disponibles='consulta_diferida'
+        # botones_disponibles='consulta_diferida_sugerencia'
+        # botones_disponibles='consulta_diferida_sugerencia_inmediata'
+        # botones_disponibles='consulta_ejecucion'
 
         if botones_disponibles == 'consulta_diferida':
             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
@@ -768,20 +795,25 @@ class VentanaAsistente(QDialog):
         self.texto_layout.addWidget(self.text_input)
 
         # ======================================================================
+        # botones_layout = QHBoxLayout()
+        # # Añadir botones
+        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
+        # ======================================================================
         # Botones de Consulta, Acción y Cancelar
         self.buttonBox = QDialogButtonBox()
         # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
+        # ======================================================================
 
         # ======================================================================
         if botones_disponibles == 'consulta_diferida':
-            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-            self.consultaD_button.clicked.connect(
+            self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consulta_bengi_button.clicked.connect(
                 lambda event: self.lanzar_consulta_sugerencia(
                     mi_evento=event,
                     tipo_consulta='diferida',
                 )
             )
-            self.consultaD_button.setEnabled(True)
+            self.consulta_bengi_button.setEnabled(True)
         elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.sugerencia_button.clicked.connect(
@@ -792,49 +824,53 @@ class VentanaAsistente(QDialog):
             )
             self.sugerencia_button.setEnabled(True)
             if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
-                self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
-                self.consultaD_button.clicked.connect(
+                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+                self.consulta_bengi_button.clicked.connect(
                     lambda event: self.lanzar_consulta_sugerencia(
                         mi_evento=event,
                         tipo_consulta='diferida',
                     )
                 )
-                self.consultaD_button.setEnabled(True)
-                self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
-                self.consultaI_button.clicked.connect(
+                self.consulta_bengi_button.setEnabled(True)
+                self.consulta_vega_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+                self.consulta_vega_button.clicked.connect(
                     lambda event: self.lanzar_consulta_sugerencia(
                         mi_evento=event,
                         tipo_consulta='inmediata',
                     )
                 )
-                self.consultaI_button.setEnabled(False)
+                self.consulta_vega_button.setEnabled(False)
             else:
-                self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-                self.consultaD_button.clicked.connect(
+                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+                self.consulta_bengi_button.clicked.connect(
                     lambda event: self.lanzar_consulta_sugerencia(
                         mi_evento=event,
                         tipo_consulta='diferida',
                     )
                 )
-            self.consultaD_button.setEnabled(True)
+            self.consulta_bengi_button.setEnabled(True)
         elif botones_disponibles == 'consulta_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
-            self.consultaD_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
-            self.consultaI_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
+            self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
+            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+            self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
+            self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
             self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
+            self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
             self.sugerencia_button.clicked.connect(
                 lambda event: self.lanzar_consulta_sugerencia(
                     mi_evento=event,
                     tipo_consulta='sugerencia',
                 )
             )
-            self.consultaD_button.clicked.connect(
+            self.consulta_bengi_button.clicked.connect(
                 lambda event: self.lanzar_consulta_sugerencia(
                     mi_evento=event,
                     tipo_consulta='diferida',
                 )
             )
-            self.consultaI_button.clicked.connect(
+            self.consulta_vega_button.clicked.connect(
                 lambda event: self.lanzar_consulta_sugerencia(
                     mi_evento=event,
                     tipo_consulta='inmediata',
@@ -842,27 +878,27 @@ class VentanaAsistente(QDialog):
             )
             self.accion_button.clicked.connect(self.lanzar_accion)
             self.sugerencia_button.setEnabled(True)
-            self.consultaD_button.setEnabled(True)
-            self.consultaI_button.setEnabled(False)
+            self.consulta_bengi_button.setEnabled(True)
+            self.consulta_vega_button.setEnabled(False)
             self.accion_button.setEnabled(False)
         else:
-            self.consultaD_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-            self.consultaD_button.clicked.connect(
+            self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consulta_bengi_button.clicked.connect(
                 lambda event: self.lanzar_consulta_sugerencia(
                     mi_evento=event,
                     tipo_consulta='diferida',
                 )
             )
-            self.consultaD_button.setEnabled(True)
+            self.consulta_bengi_button.setEnabled(True)
         self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
         self.cancel_button.clicked.connect(self.reject)
         # ======================================================================
 
         # ======================================================================
         # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
-        self.checkbox = QCheckBox('Guardar consulta o petición.')
-        self.checkbox.setChecked(True)
-        self.texto_layout.addWidget(self.checkbox)
+        self.guardar_consulta_checkbox = QCheckBox('Guardar sugerencia, petición, consulta o ejecución.')
+        self.guardar_consulta_checkbox.setChecked(True)
+        self.texto_layout.addWidget(self.guardar_consulta_checkbox)
         # ======================================================================
 
         # Añadir el layout de botones al layout principal
@@ -872,23 +908,6 @@ class VentanaAsistente(QDialog):
         # Establecer el layout principal
         self.setLayout(self.texto_layout)
 
-    def mensaje(self, mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15, mi_level=Qgis.Info):
-        if mi_showMore is None or type(mi_showMore) != str:
-            self.iface.messageBar().pushMessage(
-                title=mi_title,
-                text=mi_text,
-                duration=mi_duration,
-                level=mi_level,
-            )
-        else:
-            self.iface.messageBar().pushMessage(
-                title=mi_title,
-                text=mi_text,
-                showMore=mi_showMore,
-                duration=mi_duration,
-                level=mi_level,
-            )
-
     def center(self):
         qr = self.frameGeometry()
         cp = self.screen().availableGeometry().center()
@@ -897,6 +916,108 @@ class VentanaAsistente(QDialog):
 
     def get_text(self):
         return self.text_input.toPlainText()
+
+    def guardar_consulta(
+            self,
+            tipo_consulta,
+        ):
+        unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+        mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
+        if os.path.isdir(unidad_v_path):
+            if os.path.isdir(mensajes_path):
+                unidad_V_disponible = True
+            else:
+                try:
+                    os.mkdir(mensajes_path)
+                    unidad_V_disponible = True
+                except FileExistsError:
+                    # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
+                    unidad_V_disponible = False
+                    print(f'El directorio "{mensajes_path}" ya existe.')
+                except Exception as e:
+                    unidad_V_disponible = False
+                    print(f'Error al crear el directorio: {mensajes_path}')
+                    print(f'Error: {e}')
+        else:
+            unidad_V_disponible = False
+        if unidad_V_disponible:
+            hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+            ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+            if tipo_consulta == 'diferida':
+                clase_consulta = 'consulta'
+            msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
+            try:
+                msg_obj = open(msg_filename, mode='a+')
+                msg_obj.seek(0)
+                msg_previo = msg_obj.readlines()
+            except Exception as e:
+                print(f'Error al crear o abrir el fichero de mensajes: {msg_filename}')
+                print(f'Error: {e}')
+                msg_obj = None
+                msg_previo = []
+        else:
+            msg_obj = None
+            msg_previo = []
+        msg_guardado_ok = False
+        if msg_obj:
+            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n'
+            try:
+                msg_obj.write(texto_codificado_consulta)
+                msg_obj.close()
+                msg_guardado_ok = True
+                QMessageBox.information(
+                    iface.mainWindow(),
+                    f'{clase_consulta} dasolidar',
+                    f'Muchas gracias por tu {clase_consulta}.'
+                    f'\nIntentaremos responder lo antes posible.'
+                    f'\nLo haremos preferentemente por correo electrónico.'
+                    f'\nTu e-mail: {usuario_actual}@jcyl.es'
+                )
+            except Exception as e:
+                print(f'Error al guardar el mensaje en {msg_filename}')
+                print(f'Error: {e}')
+        if not msg_guardado_ok:
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'{clase_consulta} dasolidar',
+                f'No ha sido posible registrar tu {clase_consulta}.'
+                f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+                f'\nSi quieres hacer una {clase_consulta} puedes enviar'
+                f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
+            )
+
+    def enviar_consulta(
+            self,
+            tipo_consulta,
+        ):
+        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+        try:
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            mail = outlook.CreateItem(0)
+            mail.To = EMAIL_DASOLIDAR1
+            mail.Subject = f'dsld_{tipo_consulta}_{usuario_actual}'
+            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+            mail.Body = texto_codificado_consulta
+            mail.Send()
+            mail.To = EMAIL_DASOLIDAR2
+            mail.Send()
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text=f'Se ha enviado un correo electrónico tu {tipo_consulta} a {EMAIL_DASOLIDAR1}',
+                # showMore=f'',
+                duration=15,
+                level=Qgis.Warning,
+            )
+        except:
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'{tipo_consulta} dasolidar',
+                f'No ha sido posible registrar tu {tipo_consulta}.'
+                f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+                f'\nSi quieres hacer una {tipo_consulta} puedes enviar'
+                f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
+            )
 
     def lanzar_consulta_sugerencia(
             self,
@@ -908,68 +1029,14 @@ class VentanaAsistente(QDialog):
         self.button_pressed = f'consulta_{tipo_consulta}'
         self.accept()
         print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
+        print(f'guardar_consulta_checkbox: {self.guardar_consulta_checkbox.isChecked()}')
         if tipo_consulta == 'sugerencia' or tipo_consulta == 'diferida':
-            unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-            mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-            if os.path.isdir(unidad_v_path):
-                if os.path.isdir(mensajes_path):
-                    unidad_V_disponible = True
-                else:
-                    try:
-                        os.mkdir(mensajes_path)
-                        unidad_V_disponible = True
-                    except FileExistsError:
-                        # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
-                        unidad_V_disponible = False
-                        print(f'El directorio "{mensajes_path}" ya existe.')
-                    except Exception as e:
-                        unidad_V_disponible = False
-                        print(f'Error al crear el directorio: {mensajes_path}')
-                        print(f'Error: {e}')
-            else:
-                unidad_V_disponible = False
-            if unidad_V_disponible:
-                hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-                ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-                if tipo_consulta == 'diferida':
-                    tipo_consulta = 'consulta'
-                msg_filename = os.path.join(mensajes_path, f'{tipo_consulta}s.dsl')
-                try:
-                    msg_obj = open(msg_filename, mode='a+')
-                    msg_obj.seek(0)
-                    msg_previo = msg_obj.readlines()
-                except Exception as e:
-                    print(f'Error al crear o abrir el fichero de mensajes: {msg_filename}')
-                    print(f'Error: {e}')
-                    msg_obj = None
-                    msg_previo = []
-            else:
-                msg_obj = None
-                msg_previo = []
-            if msg_obj:
-                try:
-                    msg_obj.write(f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n')
-                    msg_obj.close()
-                except Exception as e:
-                    print(f'Error al guardar el mensaje en {msg_filename}')
-                    print(f'Error: {e}')
-                QMessageBox.information(
-                    iface.mainWindow(),
-                    f'{tipo_consulta} dasolidar',
-                    f'Muchas gracias por tu {tipo_consulta}.'
-                    f'\nIntentaremos responder lo antes posible.'
-                    f'\nLo haremos preferentemente por correo electrónico'
-                    f'\nTu e-mail: {usuario_actual}@jcyl.es'
-                )
-            else:
-                QMessageBox.information(
-                    iface.mainWindow(),
-                    f'{tipo_consulta} dasolidar',
-                    f'No ha sido posible registrar tu {tipo_consulta}.'
-                    f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
-                    f'\nSi quieres hacer una {tipo_consulta} puedes enviar'
-                    f'\nun correo electrónico a dasolidar@gmail.com'
-                )
+            guardar_consultas_en_txt = True
+            enviar_consultas_por_mail = True
+            if self.guardar_consulta_checkbox.isChecked() and guardar_consultas_en_txt:
+                self.guardar_consulta(tipo_consulta)
+            if enviar_consultas_por_mail:
+                self.enviar_consulta(tipo_consulta)
         else:
             QMessageBox.information(
                 iface.mainWindow(),
@@ -992,14 +1059,22 @@ class VentanaAsistente(QDialog):
 
 
 class AutoCargaLasFile(QgsMapToolEmitPoint):
-    def __init__(self, canvas, autocarga_escala_maxima):
+    def __init__(
+            self,
+            canvas,
+            autocarga_escala_maxima=AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA,
+            autocarga_mostrar_lasfiles_en_leyenda=False,
+            verboseLocal=False,
+    ):
         super(AutoCargaLasFile, self).__init__(canvas)
         print(f'dasoraster-> Iniciando AutoCargaLasFile')
 
         self.canvas = canvas
         self.autocarga_escala_maxima = autocarga_escala_maxima
+        self.autocarga_mostrar_lasfiles_en_leyenda = autocarga_mostrar_lasfiles_en_leyenda
         self.previous_extent = self.canvas.extent()
         self.iface = iface
+        self.verboseLocal = verboseLocal
         # self.mapCanvas = iface.mapCanvas()
         self.active_auto_lasfile = True
         self.lista_lasfiles_cargados = []
@@ -1114,7 +1189,8 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                                     copc_NW_value,
                                     copc_SE_value,
                                     copc_SW_value,
-                                    verboseLocal=False,
+                                    autocarga_mostrar_lasfiles_en_leyenda=self.autocarga_mostrar_lasfiles_en_leyenda,
+                                    verboseLocal=self.verboseLocal,
                                 )
                                 if carga_ok > 0:
                                     if not copcLazFile_path_name_ok in self.lista_lasfiles_cargando:
@@ -1134,7 +1210,19 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
             print(f'dasoraster-> num bloques previos+cargados: {len(self.lista_lasfiles_cargados)}')
 
             mi_proyecto = QgsProject.instance()
-            grupo_lidar = mi_proyecto.layerTreeRoot().findGroup(GRUPO_LIDAR_DESCARGADO)
+            project_root = mi_proyecto.layerTreeRoot()
+            grupo_lidar = project_root.findGroup(GRUPO_LIDAR_DESCARGADO)
+            if not grupo_lidar:
+                print(f'No hay grupo {GRUPO_LIDAR_DESCARGADO} -> Se crea para contener los lasfiles')
+                # grupo_previo = False
+                if self.verboseLocal:
+                    iface.messageBar().pushMessage(
+                        f'Se crea el grupo {GRUPO_LIDAR_DESCARGADO} para contener las nubes de puntos.',
+                        level=Qgis.Info,
+                        duration=5
+                    )
+                # grupo_lidar = project_root.addGroup(GRUPO_LIDAR_DESCARGADO)
+                grupo_lidar = project_root.insertGroup(1, GRUPO_LIDAR_DESCARGADO)
             if grupo_lidar:
                 for layer in grupo_lidar.children():
                     if layer.layer() is not None:
@@ -1153,8 +1241,7 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                             print(f'Se mantiene la capa {layer.layer().name()}')
                     else:
                         print(f'Algo falla porque la capa es None {layer.layer()}')
-            else:
-                print(f'No se encontró el grupo {GRUPO_LIDAR_DESCARGADO}')
+
 
     def esquinas_extent(self, verbose=False):
         # Obtener las esquinas del canvas
@@ -1241,6 +1328,7 @@ class Dasoraster:
         # self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)
         self.autocarga_lasfiles = False
         self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA, type=int)
+        self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', False, type=bool)
 
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
@@ -1632,6 +1720,7 @@ class Dasoraster:
                             copc_NW_value,
                             copc_SE_value,
                             copc_SW_value,
+                            autocarga_mostrar_lasfiles_en_leyenda=True,
                             verboseLocal=True,
                         )
 
@@ -2133,20 +2222,23 @@ class Dasoraster:
         print(f'Respuesta: {rpta_ok.returncode}')
 
     def guia_rapida_dasolidar(self):
+        global config_class
+        print(f'Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
         dialog = VentanaBienvenidaGuiaRapida()
         if dialog.ok:
             rpta_ok = dialog.exec_()
-        # if rpta_ok == QDialog.Accepted:
-        #     if dialog.checkbox.isChecked():
-        #         print('Seguir mostrando la ventana de bienvenida')
-        #         config_class.dl_mostrar_ventana_bienvenida = True
-        #         config_class.dl_mostrar_message_bienvenida = True
-        #     else:
-        #         print('No mostrar la ventana de bienvenida')
-        #         config_class.dl_mostrar_ventana_bienvenida = False
-        #         config_class.dl_mostrar_message_bienvenida = True
-        #     mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
-        #     mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
+        # Esto no lo uso. La opción de mostrar ventana de bienvenida la dejo para el script de arranque
+        if rpta_ok == QDialog.Accepted and False:
+            if dialog.mostrar_checkbox.isChecked():
+                print('Seguir mostrando la ventana de bienvenida')
+                config_class.dl_mostrar_ventana_bienvenida = True
+                config_class.dl_mostrar_message_bienvenida = True
+            else:
+                print('No mostrar la ventana de bienvenida')
+                config_class.dl_mostrar_ventana_bienvenida = False
+                config_class.dl_mostrar_message_bienvenida = True
+            mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
+            mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
 
     def manual_dasolidar(self):
         ruta_manual_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
@@ -2194,11 +2286,15 @@ class Dasoraster:
             return
 
     def dasolidar_IA(self):
-        dialog = VentanaAsistente(
-            parent=None,
-            botones_disponibles='consulta_ejecucion',
-        )
-        rpta_ok = dialog.exec_()
+        try:
+            dialog = VentanaAsistente(
+                parent=None,
+                botones_disponibles='consulta_ejecucion',
+            )
+            rpta_ok = dialog.exec_()
+        except Exception as e:
+            print(f'Ocurrió un error al mostrar la ventana 1: {e}')
+        # Esto siguiente sobra; lo dejo just in case
         print(f'Rpta de mostrar_asistente: {rpta_ok}')
         if rpta_ok == QDialog.Accepted:
             consulta_usuario = dialog.get_text()
@@ -2216,6 +2312,8 @@ class Dasoraster:
         dict_settings['lector_pdf_windows'] = self.lector_pdf_windows
         dict_settings['autocarga_lasfiles'] = self.autocarga_lasfiles
         dict_settings['autocarga_escala_maxima'] = self.autocarga_escala_maxima
+        dict_settings['autocarga_mostrar_lasfiles_en_leyenda'] = self.autocarga_mostrar_lasfiles_en_leyenda
+
         dialog = SettingsDialog(dict_settings)
         if dialog.exec_():
             # Actualizo los valores de la clase con los nuevos valores
@@ -2226,6 +2324,8 @@ class Dasoraster:
             self.lector_pdf_windows = settings.value('dasoraster/lector_pdf_windows', type=bool)  #  Se inicia siempre en True
             self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)  #  Se inicia siempre en False
             self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', type=int)
+            self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('autocarga_mostrar_lasfiles_en_leyenda/consulta_multiple', type=bool)
+
         # La autocarga de lasfiles podría pasarlo a un botón en vez usar de una opción de settings,
         # pero por el momento prefiero dejarlo aquí más oculto. Si la autocarga es operativa, seguramente lo cambie.
         self.auto_lasfile()
@@ -2235,7 +2335,11 @@ class Dasoraster:
             if self.autoCargaLasFileObj is None:
                 # Instancio la clase AutoCargaLasFile para que cargue lasfiles cuando se mueva el canvas
                 # Se instancia con la propiedad active_auto_lasfile = True
-                self.autoCargaLasFileObj = AutoCargaLasFile(self.canvas, self.autocarga_escala_maxima)
+                self.autoCargaLasFileObj = AutoCargaLasFile(
+                    self.canvas,
+                    autocarga_escala_maxima=self.autocarga_escala_maxima,
+                    autocarga_mostrar_lasfiles_en_leyenda=self.autocarga_mostrar_lasfiles_en_leyenda,
+                )
                 if not self.autoCargaLasFileObj.malla_disponible:
                     return
                 # Al instanciarse AutoCargaLasFile se ejecuta self.actualizar_lasfiles()
@@ -2246,6 +2350,7 @@ class Dasoraster:
                 self.autoCargaLasFileObj.actualizar_lasfiles()
                 self.autoCargaLasFileObj.active_auto_lasfile = True
                 self.autoCargaLasFileObj.autocarga_escala_maxima = self.autocarga_escala_maxima
+                self.autoCargaLasFileObj.autocarga_mostrar_lasfiles_en_leyenda = self.autocarga_mostrar_lasfiles_en_leyenda
                 self.iface.messageBar().pushMessage(
                     f'Autocarga de lasFiles re-activado', duration=3, level=Qgis.Info
                 )
@@ -2441,7 +2546,7 @@ class SettingsDialog(QDialog):
         lector_pdf_windows = dict_settings['lector_pdf_windows']
         autocarga_lasfiles = dict_settings['autocarga_lasfiles']
         autocarga_escala_maxima = dict_settings['autocarga_escala_maxima']
-
+        autocarga_mostrar_lasfiles_en_leyenda = dict_settings['autocarga_mostrar_lasfiles_en_leyenda']
         self.setWindowTitle('Configuración')
 
         # Creo el layout
@@ -2459,16 +2564,20 @@ class SettingsDialog(QDialog):
         self.lector_pdf_windows_input.setChecked(lector_pdf_windows)
         self.autocarga_lasfiles_input = QCheckBox()
         self.autocarga_escala_maxima_input = QLineEdit()
+        self.autocarga_mostrar_lasfiles_en_leyenda_input = QCheckBox()
         if usuario_beta:
             self.autocarga_lasfiles_input.setChecked(autocarga_lasfiles)
             self.autocarga_escala_maxima_input.setText(str(autocarga_escala_maxima))
+            self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(autocarga_mostrar_lasfiles_en_leyenda)
         else:
             self.autocarga_lasfiles_input.setChecked(False)
             self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA))
+            self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(False)
         if not usuario_beta:
             self.lector_pdf_windows_input.setEnabled(False)
             self.autocarga_lasfiles_input.setEnabled(False)
             self.autocarga_escala_maxima_input.setEnabled(False)
+            self.autocarga_mostrar_lasfiles_en_leyenda_input.setEnabled(False)
 
         # Añado widgets al form layout
         form_layout.addRow('Radio parcela (m):', self.radio_parcela_input)
@@ -2477,8 +2586,9 @@ class SettingsDialog(QDialog):
         form_layout.addRow('Usar lector pdf Windows:', self.lector_pdf_windows_input)
         form_layout.addRow('Carga automatica de lasfiles:', self.autocarga_lasfiles_input)
         form_layout.addRow('Escala max. carga automatica:', self.autocarga_escala_maxima_input)
+        form_layout.addRow('Mostrar lasfiles en leyenda:', self.autocarga_mostrar_lasfiles_en_leyenda_input)
         if not usuario_beta:
-            label = QLabel('Carga automática de lasfiles en pruebas:\nSolo está disponible para usuarios alfa')
+            label = QLabel('Carga automática de lasfiles en pruebas:\nSolo está disponible para alfa testers')
             form_layout.addRow(label)
 
         # Añado form layout al layout principal
@@ -2515,7 +2625,7 @@ class SettingsDialog(QDialog):
                 level=Qgis.Info,
             )
         settings.setValue('dasoraster/autocarga_escala_maxima', int(self.autocarga_escala_maxima_input.text()))
-
+        settings.setValue('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', self.autocarga_mostrar_lasfiles_en_leyenda_input.isChecked())
         # Llamo al método accept del QDialog
         super(SettingsDialog, self).accept()
 

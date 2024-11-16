@@ -1,15 +1,15 @@
 # -*- coding: UTF-8 -*-
 import os
-import sys
-import subprocess
 import math
+# import sys
+# import subprocess
 
 import numpy as np
-from osgeo import gdal
+# from osgeo import gdal
 
-from qgis.utils import iface
+# from qgis.utils import iface
 from qgis.core import (
-    Qgis,
+    # Qgis,
     # QgsApplication,
     # QgsMessageLog,
     QgsGeometry,
@@ -19,12 +19,12 @@ from qgis.core import (
     # QgsRasterLayer,
     QgsRectangle,
     QgsPointXY,
-    QgsRasterBandStats,
-    QgsRaster,
-    QgsRasterDataProvider,
-    QgsRasterBlock,
+    # QgsRasterBandStats,
+    # QgsRaster,
+    # QgsRasterDataProvider,
+    # QgsRasterBlock,
 )
-from qgis.analysis import QgsZonalStatistics
+# from qgis.analysis import QgsZonalStatistics
 
 
 def identificar_usuario():
