@@ -114,6 +114,7 @@ from PyQt5.QtWidgets import (
     QCheckBox,
     QPushButton,
     QMainWindow,
+    QComboBox,
     # QWidget,
 )
 from PyQt5.QtCore import (
@@ -122,6 +123,7 @@ from PyQt5.QtCore import (
     QTimer,
     # QObject,
 )
+from PyQt5.QtGui import QDoubleValidator
 
 # imports para la descarga de lasFiles
 # from qgis.core import QgsMessageLog
@@ -174,22 +176,22 @@ from PyQt5.QtCore import (
 
 __version__ = '0.1.1'  #  La versión oficial de cara a Qgis va en metadata.txt
 PLUGIN_DIR = os.path.dirname(__file__)
-# print(f'plugin_dir: {PLUGIN_DIR}')
+# print(f'betaraster-> plugin_dir: {PLUGIN_DIR}')
 try:
     mi_PYTHONPATH = os.environ['PYTHONPATH']
 except:
     mi_PYTHONPATH = 'No disponible'
 if PLUGIN_DIR not in sys.path:
     sys.path.append(PLUGIN_DIR)
-print(f'dl_version: {__version__}')
-print(f'PYTHONPATH: {mi_PYTHONPATH}')
-print(f'sys.path:   {sys.path}')
+print(f'betaraster-> dl_version: {__version__}')
+print(f'betaraster-> PYTHONPATH: {mi_PYTHONPATH}')
+print(f'betaraster-> sys.path:   {sys.path}')
 
 try:
     from dasoutil import calcular_valor_medio_parcela_rodal
     # from dasoutil import identificar_usuario
 except:
-    print('No se ha podido instalar el complemento.')
+    print(f'betaraster-> No se ha podido instalar el complemento.')
     iface.messageBar().pushMessage(
         title='dasoraster',
         text='Parece que este PC no tiene acceso a la ubicación de red del proyecto dasolidar. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta en el proyecto.',
@@ -200,8 +202,6 @@ except:
     sys.exit(0)
 # usuario_actual = identificar_usuario()
 
-aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
-scripts_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\scripts'
 try:
     # usuario_psutil = psutil.users()[0].name
     # usuario_psutil = psutil.users()
@@ -209,16 +209,16 @@ try:
     usuario_profile = ''
     try:
         usuario_login = os.getlogin()
-        print(f'Usuario_login ({type(usuario_login)}): {usuario_login}')
+        print(f'betaraster-> Usuario_login ({type(usuario_login)}): {usuario_login}')
     except:
         usuario_login = None
         try:
             usuario_env = os.environ.get('USERNAME')
-            print(f'Usuario_env ({type(usuario_env)}): {usuario_env}')
+            print(f'betaraster-> Usuario_env ({type(usuario_env)}): {usuario_env}')
         except:
             usuario_env = None
             usuario_profile = os.path.expandvars('%userprofile%')[-8:].lower()
-            print(f'Usuario_profile: {usuario_profile}')
+            print(f'betaraster-> Usuario_profile: {usuario_profile}')
     if isinstance(usuario_login, str) and len(usuario_login) == 8:
         usuario_actual = usuario_login.lower()
     elif isinstance(usuario_env, str) and len(usuario_env) == 8:
@@ -235,7 +235,7 @@ try:
         usuario_actual = 'anonimo'
 except:
     usuario_actual = 'anonimo'
-print(f'usuario_actual: {usuario_actual}')
+print(f'betaraster-> usuario_actual: {usuario_actual}')
 
 GRUPO_LIDAR_DESCARGADO = 'lidarDescargado'
 DIMENSION_BLOQUE = 2000
@@ -245,6 +245,8 @@ EMAIL_DASOLIDAR1 = 'benmarjo@jcyl.es'
 EMAIL_DASOLIDAR2 = 'dasolidar@gmail.com'
 separador_dasolistas = '\t'
 
+aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
+scripts_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\scripts'
 lista_usuarios_actual_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidar_versionActual.csv')
 lista_usuarios_beta_filename = os.path.join(aux_path_new, 'usuarios/usuariosLidar_versionBeta.csv')
 if os.path.exists(lista_usuarios_beta_filename):
@@ -252,15 +254,15 @@ if os.path.exists(lista_usuarios_beta_filename):
         with open(lista_usuarios_beta_filename, mode='r', encoding='utf-8') as my_list:
             listaUsers_versionBeta = my_list.readlines()
             listaId332_versionBeta = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionBeta]
-        # print('Encoding UTF8 ok')
+        # print(f'betaraster-> Encoding UTF8 ok')
     except:
         try:
             with open(lista_usuarios_beta_filename, mode='r', encoding='cp1252') as my_list:
                 listaUsers_versionBeta = my_list.readlines()
                 listaId332_versionBeta = [usuario.split(separador_dasolistas)[0].lower() for usuario in listaUsers_versionBeta]
-            # print('Encoding cp1252 ok')
+            # print(f'betaraster-> Encoding cp1252 ok')
         except:
-            print(f'Atencion: revisar caracteres no admitidos en {lista_usuarios_beta_filename}')
+            print(f'betaraster-> Atencion: revisar caracteres no admitidos en {lista_usuarios_beta_filename}')
             listaId332_versionBeta = []
 else:
     listaId332_versionBeta = []
@@ -289,7 +291,7 @@ class Configuracion():
         self.dl_mostrar_message_bienvenida = mi_config.value('dasolidar/mostrar_message_bienvenida', True)
 
 config_class = Configuracion()
-print(f'dasoraster-> Uso de la version {__version__}: {config_class.dl_usos}')
+print(f'betaraster-> Uso de la version {__version__}: {config_class.dl_usos}')
 
 def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15, mi_level=Qgis.Info):
     if mi_showMore is None or type(mi_showMore) != str:
@@ -311,7 +313,7 @@ def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15,
 def capa_malla_lasfiles():
     layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
     if not layer_selec:
-        print('La capa "cargar_nubeDePuntos_LidarPNOA2" no está cargada en el proyecto.')
+        print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" no está cargada en el proyecto.')
         iface.messageBar().pushMessage(
             title='dasoraster',
             text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto. Pulsa el botón [mostrar más] y vuelve a intentarlo.',
@@ -337,14 +339,14 @@ def capa_malla_lasfiles():
         # Verifico si la capa es válida y la agrego al proyecto
         if layer_selec.isValid():
             QgsProject.instance().addMapLayer(layer_selec)
-            print('La capa "cargar_nubeDePuntos_LidarPNOA2" ha sido cargada.')
+            print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" ha sido cargada.')
             iface.messageBar().pushMessage(
                 'Capa cargar_nubeDePuntos_LidarPNOA2 cargada ok en el proyecto. Ahora debería funcionar la carga de ficheros Lidar.',
                 duration=10,
                 level=Qgis.Info,
             )
         else:
-            print('No se pudo cargar la capa "cargar_nubeDePuntos_LidarPNOA2".')
+            print(f'betaraster-> No se pudo cargar la capa "cargar_nubeDePuntos_LidarPNOA2".')
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
@@ -361,7 +363,7 @@ def capa_malla_lasfiles():
 def ajustar_escala_lasfile(punto_elegido):
     canvas = iface.mapCanvas()
     escala_actual = canvas.scale()
-    print(f'La escala actual del canvas es: 1:{round(escala_actual)}')
+    print(f'betaraster-> La escala actual del canvas es: 1:{round(escala_actual)}')
 
     if escala_actual > 50000:
         iface.messageBar().pushMessage(
@@ -410,12 +412,12 @@ def seleccionar_bloques(
         )
     )
     selected_features = layer_selecionado.getFeatures(request)
-    # print(f'selected_features de tipo: {type(selected_features)}. isValid: {selected_features.isValid()}')
+    # print(f'betaraster-> selected_features de tipo: {type(selected_features)}. isValid: {selected_features.isValid()}')
     # print(dir(selected_features))
     # ['close', 'compileFailed', 'compileStatus', 'isClosed', 'isValid', 'nextFeature', 'rewind']
 
-    # print(f'Número de features en el layer_selecionado: {layer_selecionado.featureCount()}')
-    # print(f'Geometría del punto: {punto_click_geometry.asWkt()}')
+    # print(f'betaraster-> Número de features en el layer_selecionado: {layer_selecionado.featureCount()}')
+    # print(f'betaraster-> Geometría del punto: {punto_click_geometry.asWkt()}')
     # feature_id = 21622
     # request_id = QgsFeatureRequest().setFilterFid(feature_id)
     # # Obtener la característica correspondiente
@@ -441,18 +443,18 @@ def cargar_nube_de_puntos(
         verboseLocal=True,
 ):
     # Cargar la capa de nube de puntos
-    # print(f'Ruta del lasFile 0: {copc_1_value}')
+    # print(f'betaraster-> Ruta del lasFile 0: {copc_1_value}')
     # copc_1_value1 = f'\\\\{copc_1_value}'
-    # print(f'Ruta del lasFile 1: {copc_1_value1}')
+    # print(f'betaraster-> Ruta del lasFile 1: {copc_1_value1}')
     # print(os.path.exists(copc_1_value1))
     # copc_1_value2 = r'\\' + copc_1_value
-    # print(f'Ruta del lasFile 2: {copc_1_value2}')
+    # print(f'betaraster-> Ruta del lasFile 2: {copc_1_value2}')
     # print(os.path.exists(copc_1_value2))
     # copc_1_value3 = r'' + copc_1_value
-    # print(f'Ruta del lasFile 3: {copc_1_value3}')
+    # print(f'betaraster-> Ruta del lasFile 3: {copc_1_value3}')
     # print(os.path.exists(copc_1_value3))
     # copc_1_value4 = r'{}'.format(copc_1_value)
-    # print(f'Ruta del lasFile 4: {copc_1_value4}')
+    # print(f'betaraster-> Ruta del lasFile 4: {copc_1_value4}')
     # print(os.path.exists(copc_1_value4))
     # point_cloud_layer = QgsPointCloudLayer(copc_1_value4, 'Nube de Puntos', 'las')
 
@@ -466,7 +468,7 @@ def cargar_nube_de_puntos(
     carga_ok = 0
 
     if verboseLocal and verboseDebug:
-        print(f'Cuadrante principal y secundario: {cuadrante_1_value} / {cuadrante_2_value}')
+        print(f'betaraster-> Cuadrante principal y secundario: {cuadrante_1_value} / {cuadrante_2_value}')
     if verboseLocal and verbosePlus:
         if cuadrante_1_value and cuadrante_2_value:
             iface.messageBar().pushMessage(
@@ -558,7 +560,7 @@ def cargar_nube_de_puntos(
                             bloque_ya_descargado = True
                             carga_ok = 2
                             if verboseLocal and verboseDebug:
-                                print(f'-> {lazFile_name} ya descargado ({num_bl})')
+                                print(f'betaraster-> -> {lazFile_name} ya descargado ({num_bl})')
                             if verboseLocal and verboseWarning:
                                 iface.messageBar().pushMessage(
                                     f'Bloque Lidar ya descargado previamente: {lazFile_name}',
@@ -568,29 +570,29 @@ def cargar_nube_de_puntos(
                             break
 
                 if verboseLocal and verboseDebug:
-                    print(f'{num}-> group: {child.name()}')
-                    # print(f'Metodos del child de type group: {dir(child)}')
+                    print(f'betaraster-> {num}-> group: {child.name()}')
+                    # print(f'betaraster-> Metodos del child de type group: {dir(child)}')
                     # ['NodeGroup', 'NodeLayer', 'NodeType', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'addChildNode', 'addGroup', 'addLayer', 'addedChildren', 'blockSignals', 'checkedLayers', 'childEvent', 'children', 'clone', 'connectNotify', 'convertToGroupLayer', 'customEvent', 'customProperties', 'customProperty', 'customPropertyChanged', 'deleteLater', 'depth', 'destroyed', 'disconnect', 'disconnectNotify', 'dump', 'dumpObjectInfo', 'dumpObjectTree', 'dynamicPropertyNames', 'event', 'eventFilter', 'expandedChanged', 'findChild', 'findChildren', 'findGroup', 'findGroups', 'findLayer', 'findLayerIds', 'findLayers', 'groupLayer', 'inherits', 'insertChildNode', 'insertChildNodes', 'insertChildrenPrivate', 'insertGroup', 'insertLayer', 'installEventFilter', 'isExpanded', 'isItemVisibilityCheckedRecursive', 'isItemVisibilityUncheckedRecursive', 'isMutuallyExclusive', 'isSignalConnected', 'isVisible', 'isWidgetType', 'isWindowType', 'itemVisibilityChecked', 'killTimer', 'metaObject', 'moveToThread', 'name', 'nameChanged', 'nodeType', 'nodeVisibilityChanged', 'objectName', 'objectNameChanged', 'parent', 'property', 'pyqtConfigure', 'readChildrenFromXml', 'readCommonXml', 'readXml', 'receivers', 'removeAllChildren', 'removeChildNode', 'removeChildren', 'removeChildrenGroupWithoutLayers', 'removeChildrenPrivate', 'removeCustomProperty', 'removeEventFilter', 'removeLayer', 'removedChildren', 'resolveReferences', 'sender', 'senderSignalIndex', 'setCustomProperty', 'setExpanded', 'setGroupLayer', 'setIsMutuallyExclusive', 'setItemVisibilityChecked', 'setItemVisibilityCheckedParentRecursive', 'setItemVisibilityCheckedRecursive', 'setName', 'setObjectName', 'setParent', 'setProperty', 'signalsBlocked', 'startTimer', 'staticMetaObject', 'takeChild', 'thread', 'timerEvent', 'tr', 'updateChildVisibilityMutuallyExclusive', 'visibilityChanged', 'willAddChildren', 'willRemoveChildren', 'writeCommonXml', 'writeXml']
 
             if verboseLocal and verboseDebug:
-                print(f'project_root: {project_root}')
-                print(f'children: {project_root.children()}')
+                print(f'betaraster-> project_root: {project_root}')
+                print(f'betaraster-> children: {project_root.children()}')
                 for num, child in enumerate(project_root.children()):
                     if isinstance(child, QgsLayerTreeGroup):
-                        print(f'{num}-> group: {child.name()}')
+                        print(f'betaraster-> {num}-> group: {child.name()}')
                     elif isinstance(child, QgsLayerTreeLayer):
-                        print(f'{num}-> layer: {child}-> ID: {child.layerId()}')
-                        print(f'{num}-> layer: {child.name()}-> ID: {child.layerId()}')
-                        # print(f'Metodos del child de type layer: {dir(child)}')
+                        print(f'betaraster-> {num}-> layer: {child}-> ID: {child.layerId()}')
+                        print(f'betaraster-> {num}-> layer: {child.name()}-> ID: {child.layerId()}')
+                        # print(f'betaraster-> Metodos del child de type layer: {dir(child)}')
                         # ['AllowSplittingLegendNodesOverMultipleColumns', 'LegendNodesSplitBehavior', 'NodeGroup', 'NodeLayer', 'NodeType', 'PreventSplittingLegendNodesOverMultipleColumns', 'UseDefaultLegendSetting', '__class__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__getattr__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'addedChildren', 'attachToLayer', 'blockSignals', 'checkedLayers', 'childEvent', 'children', 'clone', 'connectNotify', 'customEvent', 'customProperties', 'customProperty', 'customPropertyChanged', 'deleteLater', 'depth', 'destroyed', 'disconnect', 'disconnectNotify', 'dump', 'dumpObjectInfo', 'dumpObjectTree', 'dynamicPropertyNames', 'event', 'eventFilter', 'expandedChanged', 'findChild', 'findChildren', 'inherits', 'insertChildrenPrivate', 'installEventFilter', 'isExpanded', 'isItemVisibilityCheckedRecursive', 'isItemVisibilityUncheckedRecursive', 'isSignalConnected', 'isVisible', 'isWidgetType', 'isWindowType', 'itemVisibilityChecked', 'killTimer', 'labelExpression', 'layer', 'layerId', 'layerLoaded', 'layerWillBeUnloaded', 'legendSplitBehavior', 'metaObject', 'moveToThread', 'name', 'nameChanged', 'nodeType', 'objectName', 'objectNameChanged', 'parent', 'patchShape', 'patchSize', 'property', 'pyqtConfigure', 'readCommonXml', 'readXml', 'receivers', 'removeChildrenPrivate', 'removeCustomProperty', 'removeEventFilter', 'removedChildren', 'resolveReferences', 'sender', 'senderSignalIndex', 'setCustomProperty', 'setExpanded', 'setItemVisibilityChecked', 'setItemVisibilityCheckedParentRecursive', 'setItemVisibilityCheckedRecursive', 'setLabelExpression', 'setLegendSplitBehavior', 'setName', 'setObjectName', 'setParent', 'setPatchShape', 'setPatchSize', 'setProperty', 'setUseLayerName', 'signalsBlocked', 'startTimer', 'staticMetaObject', 'takeChild', 'thread', 'timerEvent', 'tr', 'useLayerName', 'visibilityChanged', 'willAddChildren', 'willRemoveChildren', 'writeCommonXml', 'writeXml']
 
                 # child0 = project_root.children()[0]
-                # print(f'child0: {child0}' -> type: {type(child0)}')
-                # print(f'child0 es un QgsLayerTreeLayer: {isinstance(child0, QgsLayerTreeLayer)}')
-                ## print(f'parent: {child0.parent()}') #  qgis._core.QgsLayerTreeLayer
+                # print(f'betaraster-> child0: {child0}' -> type: {type(child0)}')
+                # print(f'betaraster-> child0 es un QgsLayerTreeLayer: {isinstance(child0, QgsLayerTreeLayer)}')
+                ## print(f'betaraster-> parent: {child0.parent()}') #  qgis._core.QgsLayerTreeLayer
                 # child0 = project_root.children()[1]
-                # print(f'child1: {child1}' -> type: {type(child1)}')
-                # print(f'child1 es un QgsLayerTreeLayer: {isinstance(child1, QgsLayerTreeLayer)}')
+                # print(f'betaraster-> child1: {child1}' -> type: {type(child1)}')
+                # print(f'betaraster-> child1 es un QgsLayerTreeLayer: {isinstance(child1, QgsLayerTreeLayer)}')
 
             if not bloque_ya_descargado:
                 if verboseLocal and verboseBase:
@@ -606,16 +608,16 @@ def cargar_nube_de_puntos(
                 pcl_ = 'copc'  # 'pdal' fuerza la generacion de otro copc
                 my_pcl = QgsPointCloudLayer(copcLazFile_path_name_ok, lazFile_name, pcl_, pcl_LayerOptions)
                 # my_QgsMapLayer = QgsProject.instance().addMapLayer(my_pcl)
-
                 if grupo_lidar is not None:
+                    QgsProject.instance().addMapLayer(my_pcl, autocarga_mostrar_lasfiles_en_leyenda)
                     # Si el grupo existe, agregar la capa al grupo
-                    grupo_lidar.addLayer(my_pcl)
+                    # grupo_lidar.addLayer(my_pcl)
+                    my_QgsMapLayer = grupo_lidar.addLayer(my_pcl)
+                    print(f'betaraster-> Se ha agregado la capa al grupo lidarDescargado')
                 else:
                     # Si el grupo no existe, agregar la capa directamente al proyecto
                     QgsProject.instance().addMapLayer(my_pcl, autocarga_mostrar_lasfiles_en_leyenda)
-
-                if grupo_lidar:
-                    my_QgsMapLayer = grupo_lidar.addLayer(my_pcl)
+                    print(f'betaraster-> Se ha agregado la capa a la leyenda (sin grupo lidarDescargado)')
                 carga_ok = 1
         else:
             carga_ok = -1
@@ -666,18 +668,18 @@ def capa_vector_activa():
     layer_rodales = None
     layer_activo = iface.activeLayer()  # Usar la capa activa si es vectorial
     if layer_activo is None:
-        print('No hay ninguna capa activa.')
+        print(f'betaraster-> No hay ninguna capa activa.')
         mensaje(
             f'No hay ninguna capa activa. Activa una capa vectorial para poder hacer la consulta.',
             mi_level=Qgis.Warning)
     else:
         if layer_activo.type() == QgsMapLayer.RasterLayer:
             nombre_capa_activa = layer_activo.name()
-            print(f'La capa activa es una capa raster (no ok): {nombre_capa_activa}')
+            print(f'betaraster-> La capa activa es una capa raster (no ok): {nombre_capa_activa}')
             mensaje(f'La capa activa ({nombre_capa_activa}) es ráster. Activa una capa vectorial para poder hacer la consulta.', mi_level=Qgis.Warning)
         elif layer_activo.type() == QgsMapLayer.VectorLayer:
             nombre_capa_activa = layer_activo.name()
-            print(f'La capa activa es una capa vectorial (ok): {nombre_capa_activa}.')
+            print(f'betaraster-> La capa activa es una capa vectorial (ok): {nombre_capa_activa}.')
             if nombre_capa_activa == 'cargar_nubeDePuntos_LidarPNOA2':
                 mensaje(f'Está seleccionada la malla de ficheros Lidar ({nombre_capa_activa}); elige una capa de rodales o similar.', mi_level=Qgis.Warning)
             else:
@@ -685,7 +687,7 @@ def capa_vector_activa():
                 # capa_activa_vector = True
                 layer_rodales = layer_activo
         else:
-            print('La capa activa no es ni raster ni vectorial.')
+            print(f'betaraster-> La capa activa no es ni raster ni vectorial.')
             mensaje(f'La capa activa no es vectorial. Activa una capa vectorial para poder hacer consultas.', mi_level = Qgis.Warning)
     layer_rodales = layer_activo
     return layer_rodales
@@ -703,7 +705,7 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         self.center()
 
         # ======================================================================
-        print('dasoraster-> Se va a mostrar la guia rápida')
+        print(f'betaraster-> Se va a mostrar la guia rápida')
         ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
         ruta_ayudas_local = os.path.join(PLUGIN_DIR, 'resources/docs')
         rutas_ayudas = [ruta_ayudas_red, ruta_ayudas_local]
@@ -729,25 +731,25 @@ class VentanaBienvenidaGuiaRapida(QDialog):
 
         intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
         intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
-        print(f'Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
+        print(f'betaraster-> Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
 
         # Layout horizontal para el texto
-        texto_layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
         # usar_html = True
         self.mi_texto = QTextBrowser()
         self.mi_texto.setHtml(intro_dasolidar_html_read)
         # Ajusto el scroll para mostrar la parte superior
         self.mi_texto.verticalScrollBar().setValue(0)
-        texto_layout.addWidget(self.mi_texto)
+        main_layout.addWidget(self.mi_texto)
         # intro_dasolidar_html_obj.close()
 
         self.ok_button = QPushButton('Ok')
         self.ok_button.clicked.connect(self.accept)
-        texto_layout.addWidget(self.mi_texto)
-        texto_layout.setAlignment(self.ok_button, Qt.AlignCenter)
+        main_layout.addWidget(self.ok_button)
+        main_layout.setAlignment(self.ok_button, Qt.AlignCenter)
 
         # Establezco el layout principal
-        self.setLayout(texto_layout)
+        self.setLayout(main_layout)
 
     def center(self):
         qr = self.frameGeometry()
@@ -755,23 +757,61 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+def chekear_unidad_V(unidad_v_path, mensajes_path):
+    if os.path.isdir(unidad_v_path):
+        if os.path.isdir(mensajes_path):
+            unidad_V_disponible = True
+        else:
+            try:
+                os.mkdir(mensajes_path)
+                unidad_V_disponible = True
+            except FileExistsError:
+                # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
+                unidad_V_disponible = False
+                print(f'betaraster-> El directorio "{mensajes_path}" ya existe.')
+            except Exception as e:
+                unidad_V_disponible = False
+                print(f'betaraster-> Error al crear el directorio: {mensajes_path}')
+                print(f'betaraster-> Error: {e}')
+    else:
+        unidad_V_disponible = False
+    return unidad_V_disponible
 
+def abrir_fichero_almacen(unidad_V_disponible, msg_filename):
+    if unidad_V_disponible:
+        try:
+            msg_obj = open(msg_filename, mode='a+')
+            msg_obj.seek(0)
+            msg_previo = msg_obj.readlines()
+        except Exception as e:
+            print(f'betaraster-> Error al crear o abrir el fichero de mensajes: {msg_filename}')
+            print(f'betaraster-> Error: {e}')
+            msg_obj = None
+            msg_previo = []
+    else:
+        msg_obj = None
+        msg_previo = []
+    return msg_obj
+
+
+# Copiar en el script de arranque
 # ==============================================================================
 class VentanaAsistente(QDialog):
-    def __init__(self, parent=None, botones_disponibles='consulta_diferida_sugerencia'):
-        print(f'Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
+    def __init__(self, parent=None, botones_disponibles='sugerencia_consulta_bengi'):
+        print(f'betaraster-> Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
         super().__init__(parent)
 
-        # botones_disponibles='consulta_diferida'
-        # botones_disponibles='consulta_diferida_sugerencia'
-        # botones_disponibles='consulta_diferida_sugerencia_inmediata'
-        # botones_disponibles='consulta_ejecucion'
+        # botones_disponibles='consulta_bengi'
+        # botones_disponibles='sugerencia_consulta_bengi'
+        # botones_disponibles='sugerencia_consulta_bengi_vega'
+        # botones_disponibles='sugerencia_consultas_ejecucion'
 
-        if botones_disponibles == 'consulta_diferida':
+        print(f'betaraster-> botones_disponibles: {botones_disponibles}')
+        if botones_disponibles == 'consulta_bengi':
             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
-        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+        elif botones_disponibles == 'sugerencia_consulta_bengi':
             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
-        elif botones_disponibles == 'consulta_ejecucion':
+        elif botones_disponibles == 'sugerencia_consultas_ejecucion':
             self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
         else:
             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
@@ -782,17 +822,17 @@ class VentanaAsistente(QDialog):
 
         # ======================================================================
         # Layout horizontal para el texto
-        self.texto_layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout()
         # Mensaje de texto
         self.mi_texto = QLabel('Escribe tu consulta o petición:')
         self.mi_texto.setAlignment(Qt.AlignLeft)
-        self.texto_layout.addWidget(self.mi_texto)
+        self.main_layout.addWidget(self.mi_texto)
 
         # # Ventana de texto con tamaño fijo
         # self.text_input = QLineEdit(self)
         self.text_input = QTextEdit(self)
         self.text_input.setFixedSize(550, 100)  # Establece el tamaño (ancho, alto) en píxeles
-        self.texto_layout.addWidget(self.text_input)
+        self.main_layout.addWidget(self.text_input)
 
         # ======================================================================
         # botones_layout = QHBoxLayout()
@@ -805,88 +845,117 @@ class VentanaAsistente(QDialog):
         # ======================================================================
 
         # ======================================================================
-        if botones_disponibles == 'consulta_diferida':
+        if botones_disponibles == 'consulta_bengi':
             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
             self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
-                    tipo_consulta='diferida',
+                    tipo_consulta='bengi',
                 )
             )
             self.consulta_bengi_button.setEnabled(True)
-        elif botones_disponibles.startswith('consulta_diferida_sugerencia'):
+        elif botones_disponibles.startswith('sugerencia_consulta_bengi'):
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
             self.sugerencia_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
                     tipo_consulta='sugerencia',
                 )
             )
             self.sugerencia_button.setEnabled(True)
-            if botones_disponibles.startswith('consulta_diferida_sugerencia_inmediata'):
-                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta para rpta diferida', QDialogButtonBox.AcceptRole)
+            if botones_disponibles =='sugerencia_consulta_bengi':
+                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
                 self.consulta_bengi_button.clicked.connect(
-                    lambda event: self.lanzar_consulta_sugerencia(
+                    lambda event: self.lanzar_sugerencia_consulta_accion(
                         mi_evento=event,
-                        tipo_consulta='diferida',
+                        tipo_consulta='bengi',
+                    )
+                )
+            elif botones_disponibles == 'sugerencia_consulta_bengi_vega':
+                self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
+                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+                self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
+                if usuario_beta:
+                    self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+                else:
+                    self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+                self.consulta_bengi_button.clicked.connect(
+                    lambda event: self.lanzar_sugerencia_consulta_accion(
+                        mi_evento=event,
+                        tipo_consulta='bengi',
                     )
                 )
                 self.consulta_bengi_button.setEnabled(True)
-                self.consulta_vega_button = self.buttonBox.addButton('Enviar consulta para rpta inmediata', QDialogButtonBox.AcceptRole)
                 self.consulta_vega_button.clicked.connect(
-                    lambda event: self.lanzar_consulta_sugerencia(
+                    lambda event: self.lanzar_sugerencia_consulta_accion(
                         mi_evento=event,
-                        tipo_consulta='inmediata',
+                        tipo_consulta='vega',
                     )
                 )
-                self.consulta_vega_button.setEnabled(False)
-            else:
-                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-                self.consulta_bengi_button.clicked.connect(
-                    lambda event: self.lanzar_consulta_sugerencia(
-                        mi_evento=event,
-                        tipo_consulta='diferida',
-                    )
-                )
+                if usuario_beta:
+                    self.consulta_vega_button.setEnabled(True)
+                else:
+                    self.consulta_vega_button.setEnabled(False)
             self.consulta_bengi_button.setEnabled(True)
-        elif botones_disponibles == 'consulta_ejecucion':
+        elif botones_disponibles == 'sugerencia_consultas_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
             self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
             self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
             self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
-            self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+            if usuario_beta:
+                self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+            else:
+                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
             self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
-            self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
+            if usuario_beta:
+                self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
+            else:
+                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
             self.sugerencia_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
                     tipo_consulta='sugerencia',
                 )
             )
             self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
-                    tipo_consulta='diferida',
+                    tipo_consulta='bengi',
                 )
             )
             self.consulta_vega_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
-                    tipo_consulta='inmediata',
+                    tipo_consulta='vega',
                 )
             )
-            self.accion_button.clicked.connect(self.lanzar_accion)
+            self.accion_button.clicked.connect(
+                # self.lanzar_accion
+                lambda event: self.lanzar_sugerencia_consulta_accion(
+                    mi_evento=event,
+                    tipo_consulta='accion',
+                )
+
+            )
+
             self.sugerencia_button.setEnabled(True)
             self.consulta_bengi_button.setEnabled(True)
-            self.consulta_vega_button.setEnabled(False)
-            self.accion_button.setEnabled(False)
+            if usuario_beta:
+                self.consulta_vega_button.setEnabled(True)
+                self.accion_button.setEnabled(True)
+            else:
+                self.consulta_vega_button.setEnabled(False)
+                self.accion_button.setEnabled(False)
         else:
             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
             self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_consulta_sugerencia(
+                lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
-                    tipo_consulta='diferida',
+                    tipo_consulta='bengi',
                 )
             )
             self.consulta_bengi_button.setEnabled(True)
@@ -896,17 +965,17 @@ class VentanaAsistente(QDialog):
 
         # ======================================================================
         # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
-        self.guardar_consulta_checkbox = QCheckBox('Guardar sugerencia, petición, consulta o ejecución.')
+        self.guardar_consulta_checkbox = QCheckBox('Guardar sugerencia, petición, consulta o ejecución en fichero de texto para que esté a disposición de todos los usuarios.')
         self.guardar_consulta_checkbox.setChecked(True)
-        self.texto_layout.addWidget(self.guardar_consulta_checkbox)
+        self.main_layout.addWidget(self.guardar_consulta_checkbox)
         # ======================================================================
 
         # Añadir el layout de botones al layout principal
-        # self.texto_layout.addLayout(botones_layout)
-        self.texto_layout.addWidget(self.buttonBox)
+        # self.main_layout.addLayout(botones_layout)
+        self.main_layout.addWidget(self.buttonBox)
 
         # Establecer el layout principal
-        self.setLayout(self.texto_layout)
+        self.setLayout(self.main_layout)
 
     def center(self):
         qr = self.frameGeometry()
@@ -921,43 +990,20 @@ class VentanaAsistente(QDialog):
             self,
             tipo_consulta,
         ):
+        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+            clase_consulta = 'consulta'
+        elif tipo_consulta == 'accion':
+            clase_consulta = tipo_consulta
+        else:
+            clase_consulta = tipo_consulta
+
+        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
         unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
         mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-        if os.path.isdir(unidad_v_path):
-            if os.path.isdir(mensajes_path):
-                unidad_V_disponible = True
-            else:
-                try:
-                    os.mkdir(mensajes_path)
-                    unidad_V_disponible = True
-                except FileExistsError:
-                    # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
-                    unidad_V_disponible = False
-                    print(f'El directorio "{mensajes_path}" ya existe.')
-                except Exception as e:
-                    unidad_V_disponible = False
-                    print(f'Error al crear el directorio: {mensajes_path}')
-                    print(f'Error: {e}')
-        else:
-            unidad_V_disponible = False
-        if unidad_V_disponible:
-            hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-            ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-            if tipo_consulta == 'diferida':
-                clase_consulta = 'consulta'
-            msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
-            try:
-                msg_obj = open(msg_filename, mode='a+')
-                msg_obj.seek(0)
-                msg_previo = msg_obj.readlines()
-            except Exception as e:
-                print(f'Error al crear o abrir el fichero de mensajes: {msg_filename}')
-                print(f'Error: {e}')
-                msg_obj = None
-                msg_previo = []
-        else:
-            msg_obj = None
-            msg_previo = []
+        unidad_V_disponible = chekear_unidad_V(unidad_v_path, mensajes_path)
+        msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
+        msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
         msg_guardado_ok = False
         if msg_obj:
             texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n'
@@ -965,6 +1011,63 @@ class VentanaAsistente(QDialog):
                 msg_obj.write(texto_codificado_consulta)
                 msg_obj.close()
                 msg_guardado_ok = True
+                if (tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi') and False:
+                    QMessageBox.information(
+                        iface.mainWindow(),
+                        f'{clase_consulta} dasolidar',
+                        f'Muchas gracias por tu {clase_consulta}.'
+                        f'\nIntentaremos responder lo antes posible.'
+                        f'\nLo haremos preferentemente por correo electrónico.'
+                        f'\nTu e-mail: {usuario_actual}@jcyl.es'
+                    )
+            except Exception as e:
+                print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
+                print(f'betaraster-> Error: {e}')
+        print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
+        if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
+            if not msg_guardado_ok:
+                QMessageBox.information(
+                    iface.mainWindow(),
+                    f'{clase_consulta} dasolidar',
+                    f'No ha sido posible registrar tu {clase_consulta}.'
+                    f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+                    f'\nSi quieres hacer una {clase_consulta} puedes enviar'
+                    f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
+                )
+
+    def enviar_consulta(
+            self,
+            tipo_consulta,
+        ):
+        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+            clase_consulta = 'consulta'
+        else:
+            clase_consulta = tipo_consulta
+        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+        try:
+            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+            outlook = win32com.client.Dispatch("Outlook.Application")
+            mail = outlook.CreateItem(0)
+            mail.To = EMAIL_DASOLIDAR1
+            mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
+            mail.Body = texto_codificado_consulta
+            mail.Send()
+            print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR1}')
+            mail = outlook.CreateItem(0)
+            mail.To = EMAIL_DASOLIDAR2
+            mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
+            mail.Body = texto_codificado_consulta
+            mail.Send()
+            print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR2}')
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text=f'Se ha enviado un correo electrónico con tu {clase_consulta} a {EMAIL_DASOLIDAR1}',
+                # showMore=f'',
+                duration=5,
+                level=Qgis.Info,
+            )
+            if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
                 QMessageBox.information(
                     iface.mainWindow(),
                     f'{clase_consulta} dasolidar',
@@ -973,101 +1076,78 @@ class VentanaAsistente(QDialog):
                     f'\nLo haremos preferentemente por correo electrónico.'
                     f'\nTu e-mail: {usuario_actual}@jcyl.es'
                 )
-            except Exception as e:
-                print(f'Error al guardar el mensaje en {msg_filename}')
-                print(f'Error: {e}')
-        if not msg_guardado_ok:
+
+        except Exception as mi_error:
+            print(f'betaraster-> Ocurrió un error al enviar el mail: {mi_error}')
             QMessageBox.information(
                 iface.mainWindow(),
                 f'{clase_consulta} dasolidar',
                 f'No ha sido posible registrar tu {clase_consulta}.'
                 f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
                 f'\nSi quieres hacer una {clase_consulta} puedes enviar'
-                f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
-            )
-
-    def enviar_consulta(
-            self,
-            tipo_consulta,
-        ):
-        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-        try:
-            outlook = win32com.client.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)
-            mail.To = EMAIL_DASOLIDAR1
-            mail.Subject = f'dsld_{tipo_consulta}_{usuario_actual}'
-            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
-            mail.Body = texto_codificado_consulta
-            mail.Send()
-            mail.To = EMAIL_DASOLIDAR2
-            mail.Send()
-            iface.messageBar().pushMessage(
-                title='dasoraster',
-                text=f'Se ha enviado un correo electrónico tu {tipo_consulta} a {EMAIL_DASOLIDAR1}',
-                # showMore=f'',
-                duration=15,
-                level=Qgis.Warning,
-            )
-        except:
-            QMessageBox.information(
-                iface.mainWindow(),
-                f'{tipo_consulta} dasolidar',
-                f'No ha sido posible registrar tu {tipo_consulta}.'
-                f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
-                f'\nSi quieres hacer una {tipo_consulta} puedes enviar'
                 f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
             )
 
-    def lanzar_consulta_sugerencia(
+    def lanzar_sugerencia_consulta_accion(
             self,
             mi_evento=None,
             mi_boton=None,
-            tipo_consulta='diferida'
+            tipo_consulta='bengi'
         ):
-        print(f'---> lanzar_consulta_sugerencia 00-> tipo_consulta {tipo_consulta}')
+        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+            clase_consulta = 'consulta'
+        else:
+            clase_consulta = tipo_consulta
+        print(f'betaraster-> lanzar_sugerencia_consulta_accion -> tipo_consulta {tipo_consulta}')
         self.button_pressed = f'consulta_{tipo_consulta}'
         self.accept()
-        print(f'Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
-        print(f'guardar_consulta_checkbox: {self.guardar_consulta_checkbox.isChecked()}')
-        if tipo_consulta == 'sugerencia' or tipo_consulta == 'diferida':
+        print(f'betaraster-> Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
+        print(f'betaraster-> guardar_consulta_checkbox: {self.guardar_consulta_checkbox.isChecked()}')
+        if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi' or tipo_consulta == 'vega':
             guardar_consultas_en_txt = True
             enviar_consultas_por_mail = True
             if self.guardar_consulta_checkbox.isChecked() and guardar_consultas_en_txt:
                 self.guardar_consulta(tipo_consulta)
-            if enviar_consultas_por_mail:
+            if enviar_consultas_por_mail and tipo_consulta != 'accion':
                 self.enviar_consulta(tipo_consulta)
-        else:
+        if tipo_consulta == 'vega':
             QMessageBox.information(
                 iface.mainWindow(),
-                f'Consulta dasolidar <{tipo_consulta}>',
+                f'Consulta dasolidar <{clase_consulta}>',
                 f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
+            )
+        if tipo_consulta == 'accion':
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'Acción dasolidar <{clase_consulta}>',
+                f'Esta utilidad estará disponible próximamente.'
             )
         # return (self.text_input.toPlainText(), 'consulta')
 
-    def lanzar_accion(self):
-        print('---> lanzar_accion')
-        self.button_pressed = 'accion'
-        self.accept()
-        print(self.text_input.toPlainText(), 'accion')
-        QMessageBox.information(
-            iface.mainWindow(),
-            'Petición dasolidar',
-            f'Gracias por la petición.\nEsta utilidad estará disponible próximamente'
-        )
-        # return (self.text_input.toPlainText(), 'accion')
+    # def lanzar_accion(self):
+    #     print(f'betaraster-> lanzar_accion')
+    #     self.button_pressed = 'accion'
+    #     self.accept()
+    #     print(self.text_input.toPlainText(), 'accion')
+    #     QMessageBox.information(
+    #         iface.mainWindow(),
+    #         'Petición dasolidar',
+    #         f'Gracias por la petición.\nEsta utilidad estará disponible próximamente'
+    #     )
+    #     # return (self.text_input.toPlainText(), 'accion')
 
 
+# ==============================================================================
 class AutoCargaLasFile(QgsMapToolEmitPoint):
     def __init__(
             self,
             canvas,
             autocarga_escala_maxima=AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA,
-            autocarga_mostrar_lasfiles_en_leyenda=False,
+            autocarga_mostrar_lasfiles_en_leyenda=True,
             verboseLocal=False,
     ):
         super(AutoCargaLasFile, self).__init__(canvas)
-        print(f'dasoraster-> Iniciando AutoCargaLasFile')
+        print(f'betaraster-> Iniciando AutoCargaLasFile')
 
         self.canvas = canvas
         self.autocarga_escala_maxima = autocarga_escala_maxima
@@ -1107,20 +1187,20 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         self.active_extra = False
 
     def on_canvas_changed(self):
-        print(f'\ndasoraster-> on_canvas_changed-> self.active_auto_lasfile: {self.active_auto_lasfile}')
+        print(f'betaraster-> \ndasoraster-> on_canvas_changed-> self.active_auto_lasfile: {self.active_auto_lasfile}')
         current_extent = self.canvas.extent()
-        print(f'\tprevious_extent: {self.previous_extent}')
-        print(f'\tcurrent_extent:  {current_extent}')
+        print(f'betaraster-> \tprevious_extent: {self.previous_extent}')
+        print(f'betaraster-> \tcurrent_extent:  {current_extent}')
         if current_extent != self.previous_extent:
             self.on_extent_changed()
             self.previous_extent = current_extent
         # self.actualizar_lasfiles()
 
     def on_scale_changed(self):
-        print(f'\ndasoraster-> on_scale_changed-> self.active_auto_lasfile: {self.active_auto_lasfile}')
+        print(f'betaraster-> \ndasoraster-> on_scale_changed-> self.active_auto_lasfile: {self.active_auto_lasfile}')
         current_extent = self.canvas.extent()
-        print(f'\tprevious_extent: {self.previous_extent}')
-        print(f'\tcurrent_extent:  {current_extent}')
+        print(f'betaraster-> \tprevious_extent: {self.previous_extent}')
+        print(f'betaraster-> \tcurrent_extent:  {current_extent}')
         if current_extent != self.previous_extent:
             self.on_extent_changed()
             self.previous_extent = current_extent
@@ -1130,11 +1210,11 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         self.actualizar_lasfiles()
 
     def actualizar_lasfiles(self):
-        print(f'dasoraster-> actualizar_lasfiles-> self.active_auto_lasfile: {self.active_auto_lasfile}')
+        print(f'betaraster-> actualizar_lasfiles-> self.active_auto_lasfile: {self.active_auto_lasfile}')
         # (extent_actual, top_left, bottom_right) = self.esquinas_extent()
         if self.active_auto_lasfile:
             escala_actual = self.canvas.scale()
-            # print(f'Escala actual: 1:{round(escala_actual)} (herramienta activa: {escala_actual <= self.autocarga_escala_maxima})')
+            # print(f'betaraster-> Escala actual: 1:{round(escala_actual)} (herramienta activa: {escala_actual <= self.autocarga_escala_maxima})')
             if escala_actual > self.autocarga_escala_maxima:
                 iface.messageBar().pushMessage(
                     title='dasoraster',
@@ -1161,7 +1241,7 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                         features_list = list(selected_features)
                         num_features = len(features_list)
                         if num_features != 1:
-                            print(f'Número de bloques seleccionados-> {num_features} (debería ser uno solo)')
+                            print(f'betaraster-> Número de bloques seleccionados-> {num_features} (debería ser uno solo)')
                         for feature in features_list:
                             contador_bloques_totales += 1
                             # Obtener el valor del campo COPC1
@@ -1175,7 +1255,7 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                             copc_NW_value = feature['COPC_NW']
                             copc_SE_value = feature['COPC_SE']
                             copc_SW_value = feature['COPC_SW']
-                            # print(f'dasoraster-> Bloque ID: {feature.id()}, COPC1: {type(copc_1_value)}: {copc_1_value}')
+                            # print(f'betaraster-> Bloque ID: {feature.id()}, COPC1: {type(copc_1_value)}: {copc_1_value}')
                             if type(copc_1_value) == str and not 'Aviso' in copc_1_value:
                                 # carga_ok-> 0: Algo falla; 1: Carga ok; 2: Ya cargado previamente; -1: No encontrado; -2: No hay bloque
                                 (carga_ok, copcLazFile_path_name_ok) = cargar_nube_de_puntos(
@@ -1200,20 +1280,20 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                                     contador_bloques_cargados += 1
                                 # copcLazFile_name_ok = os.path.splitext(os.path.basename(copcLazFile_path_name_ok))[0]
                                 copcLazFile_name_ok = os.path.basename(copcLazFile_path_name_ok)
-                                print(f'\t-> Fichero lidar: {copcLazFile_name_ok}; carga_ok: {carga_ok}')
+                                print(f'betaraster-> \t-> Fichero lidar: {copcLazFile_name_ok}; carga_ok: {carga_ok}')
                             else:
                                 print(
                                     f'\t-> Fichero no válido o no disponible: {copc_1_value}'
                                 )
-            # print(f'dasoraster-> contador_bloques_totales:    {contador_bloques_totales}')
-            print(f'dasoraster-> contador_bloques_cargados:    {contador_bloques_cargados} = {len(self.lista_lasfiles_cargando)}')
-            print(f'dasoraster-> num bloques previos+cargados: {len(self.lista_lasfiles_cargados)}')
+            # print(f'betaraster-> contador_bloques_totales:    {contador_bloques_totales}')
+            print(f'betaraster-> contador_bloques_cargados:    {contador_bloques_cargados} = {len(self.lista_lasfiles_cargando)}')
+            print(f'betaraster-> num bloques previos+cargados: {len(self.lista_lasfiles_cargados)}')
 
             mi_proyecto = QgsProject.instance()
             project_root = mi_proyecto.layerTreeRoot()
             grupo_lidar = project_root.findGroup(GRUPO_LIDAR_DESCARGADO)
             if not grupo_lidar:
-                print(f'No hay grupo {GRUPO_LIDAR_DESCARGADO} -> Se crea para contener los lasfiles')
+                print(f'betaraster-> No hay grupo {GRUPO_LIDAR_DESCARGADO} -> Se crea para contener los lasfiles')
                 # grupo_previo = False
                 if self.verboseLocal:
                     iface.messageBar().pushMessage(
@@ -1229,18 +1309,18 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                         layer_path = layer.layer().dataProvider().dataSourceUri()
                         if layer_path not in self.lista_lasfiles_cargando:
                             # Eliminar la capa del proyecto por no estar visible
-                            print(f'Se elimina del proyecto la capa {layer.layer().name()}')
-                            print(f'\tLayer.id: {layer.layer().id()}')
+                            print(f'betaraster-> Se elimina del proyecto la capa {layer.layer().name()}')
+                            print(f'betaraster-> \tLayer.id: {layer.layer().id()}')
                             if layer_path in self.lista_lasfiles_cargados:
                                 self.lista_lasfiles_cargados.remove(layer_path)
-                                print(f'\t-> Eliminada tb de la lista self.lista_lasfiles_cargados.')
+                                print(f'betaraster-> \t-> Eliminada tb de la lista self.lista_lasfiles_cargados.')
                             else:
-                                print(f'\t-> No estába en la lista self.lista_lasfiles_cargados ¿?.')
+                                print(f'betaraster-> \t-> No estába en la lista self.lista_lasfiles_cargados ¿?.')
                             mi_proyecto.removeMapLayer(layer.layer().id())
                         else:
-                            print(f'Se mantiene la capa {layer.layer().name()}')
+                            print(f'betaraster-> Se mantiene la capa {layer.layer().name()}')
                     else:
-                        print(f'Algo falla porque la capa es None {layer.layer()}')
+                        print(f'betaraster-> Algo falla porque la capa es None {layer.layer()}')
 
 
     def esquinas_extent(self, verbose=False):
@@ -1249,8 +1329,8 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         top_left = QgsPointXY(extent_actual.xMinimum(), extent_actual.yMaximum())
         bottom_right = QgsPointXY(extent_actual.xMaximum(), extent_actual.yMinimum())
         if verbose:
-            print(f'\tEsquina sup izda: {top_left}')
-            print(f'\tEsquina inf dcha: {bottom_right}')
+            print(f'betaraster-> \tEsquina sup izda: {top_left}')
+            print(f'betaraster-> \tEsquina inf dcha: {bottom_right}')
         return (extent_actual, top_left, bottom_right)
 
     def esquinas_bloques(self, DIMENSION_BLOQUE, verbose=False):
@@ -1260,9 +1340,9 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         y_ini = DIMENSION_BLOQUE * math.ceil(extent_actual.yMinimum() / DIMENSION_BLOQUE)
         y_fin = DIMENSION_BLOQUE * math.ceil(extent_actual.yMaximum() / DIMENSION_BLOQUE)
         if verbose:
-            print(f'dasoraster-> esquinas_bloques:')
-            print(f'\t-> Min X Y: {x_ini} {y_ini}')
-            print(f'\t-> Max X Y: {x_fin} {y_fin}')
+            print(f'betaraster-> esquinas_bloques:')
+            print(f'betaraster-> \t-> Min X Y: {x_ini} {y_ini}')
+            print(f'betaraster-> \t-> Max X Y: {x_fin} {y_fin}')
         return (extent_actual, x_ini, x_fin, y_ini, y_fin)
 
     def check_scale(self):
@@ -1285,7 +1365,7 @@ class ConsultarRodalTool(QgsMapToolEmitPoint):
         self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)  # Definir rubberBand
         self.rubberBand.setColor(Qt.red)  # Color del rubberBand
         self.rubberBand.setWidth(2)  # Ancho del rubberBand
-        print(f'dasoraster-> Instanciando ConsultarRodalTool')
+        print(f'betaraster-> Instanciando ConsultarRodalTool')
         self.setCursor()
 
 
@@ -1300,6 +1380,223 @@ class PDFViewer(QMainWindow):
         self.browser.setUrl(QUrl.fromLocalFile(pdf_path))
 
         self.setCentralWidget(self.browser)
+
+
+def pedir_datos():
+    dialog = QDialog()
+    dialog.setWindowTitle("Entrada de Datos")
+
+    layout = QVBoxLayout()
+
+    # Texto explicativo
+    label_explicativo = QLabel("Este es el texto explicativo")
+    layout.addWidget(label_explicativo)
+
+    # Tipo de variable (desplegable)
+    tipo_variable_label = QLabel("Selecciona el tipo de variable:")
+    layout.addWidget(tipo_variable_label)
+    tipo_variable_combo = QComboBox()
+    tipo_variable_combo.addItems(["Variable 1", "Variable 2", "Variable 3"])  # Añadir opciones
+    layout.addWidget(tipo_variable_combo)
+
+    # Valor (entrada numérica)
+    valor_label = QLabel("Introduce el valor:")
+    layout.addWidget(valor_label)
+    valor_input = QLineEdit()
+    valor_input.setValidator(QDoubleValidator())  # Solo permite números
+    layout.addWidget(valor_input)
+
+    # Unidad (desplegable)
+    unidad_label = QLabel("Selecciona la unidad:")
+    layout.addWidget(unidad_label)
+    unidad_combo = QComboBox()
+    unidad_combo.addItems(["Unidad 1", "Unidad 2", "Unidad 3"])  # Añadir opciones
+    layout.addWidget(unidad_combo)
+
+    # Cuadro de texto (varias líneas)
+    texto_multilinea_label = QLabel("Comentarios adicionales:")
+    layout.addWidget(texto_multilinea_label)
+    texto_multilinea_input = QTextEdit()
+    layout.addWidget(texto_multilinea_input)
+
+    # Botones
+    button_box = QDialogButtonBox()
+    enviar_button = button_box.addButton("Enviar", QDialogButtonBox.AcceptRole)
+    cancelar_button = button_box.addButton("Cancelar", QDialogButtonBox.RejectRole)
+    layout.addWidget(button_box)
+
+    dialog.setLayout(layout)
+
+    # Conectar botones
+    enviar_button.clicked.connect(dialog.accept)
+    cancelar_button.clicked.connect(dialog.reject)
+
+    # Mostrar el diálogo
+    if dialog.exec_() == QDialog.Accepted:
+        # Aquí puedes manejar los datos ingresados
+        tipo_variable = tipo_variable_combo.currentText()
+        valor = valor_input.text()
+        unidad = unidad_combo.currentText()
+        texto_adicional = texto_multilinea_input.toPlainText()
+        # Modifico texto_adicional para incluir "Comentario", número de línea y la línea
+        lineas = texto_adicional.splitlines()
+        texto_adicional_modificado = ''
+        for i, linea in enumerate(lineas, start=1):
+            if linea == '':
+                continue
+            texto_adicional_modificado += f'Obs\t{i}\t{linea}\n'
+        # if texto_adicional_modificado == '':
+        #     texto_adicional_modificado += f'\n'
+        print(f'Tipo: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {texto_adicional}')
+        return (True, [tipo_variable, valor, unidad, texto_adicional_modificado])
+    else:
+        return (False, [])
+
+def guardar_enviar_resultado(
+    tipo_consulta,
+    resultado_msg,
+    x_consulta,
+    y_consulta,
+    radio_parcela,
+    rodal_superficie,
+    variable_medida,
+    valor_medio,
+    unidad_medida,
+    num_pixeles,
+):
+    print("Botón 'Enviar' presionado. Ejecutando función...")
+#ççç
+    (datos_ok, datos_recibidos) = pedir_datos()
+    if datos_ok:
+        [tipo_variable, valor, unidad, texto_adicional_modificado] = datos_recibidos
+    else:
+        [tipo_variable, valor, unidad, texto_adicional_modificado] = ['nodata', 0, 'nodata', '']
+    hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+    ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+    texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n'
+    texto_codificado_consulta += f'{tipo_consulta}\t{x_consulta:0.1f}\t{y_consulta:0.1f}'\
+                                 f'\t{radio_parcela}\t{rodal_superficie}\t{num_pixeles}'\
+                                 f'\t{variable_medida}\t{valor_medio}\t{unidad_medida}'\
+                                 f'\t{tipo_variable}\t{valor}\t{unidad}\n'\
+                                 f'{texto_adicional_modificado}\n'
+
+    unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+    mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
+    unidad_V_disponible = chekear_unidad_V(unidad_v_path, mensajes_path)
+    msg_filename = os.path.join(mensajes_path, f'{tipo_consulta}s.dsl')
+    msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
+    msg_guardado_ok = False
+    if msg_obj:
+        try:
+            msg_obj.write(texto_codificado_consulta)
+            msg_obj.close()
+            msg_guardado_ok = True
+        except Exception as e:
+            print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
+            print(f'betaraster-> Error: {e}')
+    print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
+    if not msg_guardado_ok:
+        QMessageBox.information(
+            iface.mainWindow(),
+            f'Contraste {tipo_consulta} dasolidar',
+            f'No ha sido posible registrar los datos de tu {tipo_consulta}.'
+            f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+            f'\nSi quieres remitir datos manualmente puedes enviar'
+            f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
+        )
+
+    try:
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        mail = outlook.CreateItem(0)
+        mail.To = EMAIL_DASOLIDAR1
+        mail.Subject = f'dsld_{tipo_consulta}_{usuario_actual}'
+        mail.Body = texto_codificado_consulta
+        mail.Send()
+        print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR1}')
+        mail = outlook.CreateItem(0)
+        mail.To = EMAIL_DASOLIDAR2
+        mail.Subject = f'dsld_{tipo_consulta}_{usuario_actual}'
+        mail.Body = texto_codificado_consulta
+        mail.Send()
+        print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR2}')
+        iface.messageBar().pushMessage(
+            title='dasoraster',
+            text=f'Se ha enviado un correo electrónico con tus datos de {tipo_consulta} a {EMAIL_DASOLIDAR1}',
+            # showMore=f'',
+            duration=5,
+            level=Qgis.Info,
+        )
+        if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'Contarste de datos de {tipo_consulta} dasolidar',
+                f'Muchas gracias por tu aportación.'
+            )
+    except Exception as mi_error:
+        print(f'betaraster-> Ocurrió un error al enviar el mail: {mi_error}')
+        QMessageBox.information(
+            iface.mainWindow(),
+            f'{clase_consulta} dasolidar',
+            f'No ha sido posible registrar tu {clase_consulta}.'
+            f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+            f'\nSi quieres hacer una {clase_consulta} puedes enviar'
+            f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
+        )
+
+
+def mostrar_resultado(
+        tipo_consulta,
+        resultado_msg,
+        x_consulta,
+        y_consulta,
+        radio_parcela,
+        rodal_superficie,
+        variable_medida,
+        valor_medio,
+        unidad_medida,
+        num_pixeles,
+    ):
+    # Crear un QDialog
+    dialog = QDialog()
+    dialog.setWindowTitle(f'Consulta dasométrica: {tipo_consulta}')
+
+    # Crear un layout vertical
+    layout = QVBoxLayout()
+
+    # Agregar un QLabel para el mensaje
+    label = QLabel(resultado_msg)
+    layout.addWidget(label)
+
+    # Crear el botón de "OK"
+    ok_button = QPushButton("OK")
+    ok_button.setToolTip("No enviar datos de contraste.")  # Tooltip para el botón OK
+    ok_button.clicked.connect(dialog.accept)  # Cerrar el diálogo al hacer clic
+    layout.addWidget(ok_button)
+
+    # Crear el botón de "Enviar"
+    enviar_button = QPushButton("Aportar datos de contraste")
+    enviar_button.setToolTip("Pulsa este botón si dispones de datos en esta misma ubicación\ny quieres compartirlos con los coordinadores del proyecto dasolidar.\n\nEsto nos permitirá detectar modelos que no dan buenas estimaciones y mejorarlos.\nLos modelos son específicos de cada especie y zona y tus aportaciones\nnos ayudan a detectar estratos y parámetros que hay que revisar.")
+    enviar_button.clicked.connect(
+        lambda: (guardar_enviar_resultado(
+            tipo_consulta,
+            resultado_msg,
+            x_consulta,
+            y_consulta,
+            radio_parcela,
+            rodal_superficie,
+            variable_medida,
+            valor_medio,
+            unidad_medida,
+            num_pixeles,
+        ), dialog.accept()) 
+    )  # Conectar el botón a la función
+    layout.addWidget(enviar_button)
+
+    # Establecer el layout en el diálogo
+    dialog.setLayout(layout)
+
+    # Mostrar el diálogo
+    dialog.exec_()
 
 
 class Dasoraster:
@@ -1328,7 +1625,7 @@ class Dasoraster:
         # self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)
         self.autocarga_lasfiles = False
         self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA, type=int)
-        self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', False, type=bool)
+        self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', True, type=bool)
 
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
@@ -1349,8 +1646,6 @@ class Dasoraster:
         # TODO: We are going to let the user set this up in a future iteration  #  #new (mensaje de Plugin builder)
         self.toolbar = self.iface.addToolBar(u'dasoraster')  #  #new
         self.toolbar.setObjectName(u'dasoraster')  #  #new
-
-        #print('** INITIALIZING Consulta parcela')  #  #new
 
         self.pluginIsActive = False  #  #new
         # Check if plugin was started the first time in current QGIS session
@@ -1458,8 +1753,6 @@ class Dasoraster:
             # self.iface.addToolBarIcon(action)
             self.toolbar.addAction(action)  #  #new
 
-        # print(u'dasoraster')  #  #new
-        # print(f'action: {type(action)} {dir(action)}')  #  #new
         if add_to_menu:
             # self.iface.addPluginToRasterMenu(  #  #new
             self.iface.addPluginToMenu(
@@ -1584,7 +1877,7 @@ class Dasoraster:
                     self.canvas.mapCanvasRefreshed.disconnect(self.autoCargaLasFileObj.on_canvas_changed)
                     self.canvas.scaleChanged.disconnect(self.autoCargaLasFileObj.on_scale_changed)
         except:
-            print('dasoraster-> No se pueden desconectar las señales asociadas a mapCanvasRefreshed y a scaleChanged')
+            print(f'betaraster-> No se pueden desconectar las señales asociadas a mapCanvasRefreshed y a scaleChanged')
 
         self.toolbar = None
         self.actions = []
@@ -1634,11 +1927,11 @@ class Dasoraster:
         if not self.layer_selec:
             return False
 
-        print(f'layer identificado: {self.layer_selec}')
+        print(f'betaraster-> layer identificado: {self.layer_selec}')
 
         # Compruebo el CRS del self.layer_selec
         self.layer_crs = self.layer_selec.crs()
-        print(f'CRS del self.layer_selec: {self.layer_crs.authid()}')
+        print(f'betaraster-> CRS del self.layer_selec: {self.layer_crs.authid()}')
         # Defino el CRS del punto (EPSG:25830)
         point_crs = QgsCoordinateReferenceSystem('EPSG:25830')
         if self.layer_crs != point_crs:
@@ -1646,13 +1939,13 @@ class Dasoraster:
             if self.layer_crs.authid() in ['EPSG:25829', 'EPSG:25830']:
                 transform = QgsCoordinateTransform(point_crs, self.layer_crs, QgsProject.instance())
                 transformed_punto_click = transform.transform(punto_click)
-                print(f'Punto transformado: {transformed_punto_click.x()}, {transformed_punto_click.y()}')
+                print(f'betaraster-> Punto transformado: {transformed_punto_click.x()}, {transformed_punto_click.y()}')
             else:
-                print('El self.layer_selec no está en EPSG:25829 ni EPSG:25830.')
+                print(f'betaraster-> El self.layer_selec no está en EPSG:25829 ni EPSG:25830.')
             # punto_click = QgsPointXY(X, Y)
-            print('Se han convertido las coordenadas del punto (EPSG:25830) al crs del layer vectorial:')
-            print(f'punto_click original {point_crs.authid()}-> {punto_click}')
-            print(f'punto_click transfor {self.layer_crs.authid()}-> {transformed_punto_click}')
+            print(f'betaraster-> Se han convertido las coordenadas del punto (EPSG:25830) al crs del layer vectorial:')
+            print(f'betaraster-> punto_click original {point_crs.authid()}-> {punto_click}')
+            print(f'betaraster-> punto_click transfor {self.layer_crs.authid()}-> {transformed_punto_click}')
         else:
             transformed_punto_click = punto_click
 
@@ -1667,7 +1960,7 @@ class Dasoraster:
             features_list = list(selected_features)
             # Contar el número de características
             num_features = len(features_list)
-            print(f'Número de poligonos seleccionados-> {num_features}')
+            print(f'betaraster-> Número de poligonos seleccionados-> {num_features}')
             if num_features == 0:
                 resultado_msg = f'La capa consultada ({self.layer_selec.name()}) no tiene ningún polígono en ese punto'
                 QMessageBox.information(
@@ -1678,7 +1971,7 @@ class Dasoraster:
 
             for feature in features_list:
                 if tipo_consulta == 'lasfile':
-                    print(f'ID: {feature.id()}, COPC1: {feature["COPC1"]}')
+                    print(f'betaraster-> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
                     # Obtener el valor del campo COPC1
                     copc_1_value = feature['COPC1']
                     copc_2_value = feature['COPC2']
@@ -1690,7 +1983,7 @@ class Dasoraster:
                     copc_NW_value = feature['COPC_NW']
                     copc_SE_value = feature['COPC_SE']
                     copc_SW_value = feature['COPC_SW']
-                    print(f'copc_value {type(copc_1_value)}: {copc_1_value}')
+                    print(f'betaraster-> copc_value {type(copc_1_value)}: {copc_1_value}')
                     if not type(copc_1_value) == str:
                         iface.messageBar().pushMessage(
                             title='dasoraster',
@@ -1725,7 +2018,7 @@ class Dasoraster:
                         )
 
                 elif tipo_consulta == 'rodal':
-                    print(f'Feature id: {feature.id()}')
+                    print(f'betaraster-> Feature id: {feature.id()}')
                     self.rodal_feat = feature
                     self.tool_rodal.rubberBand.setToGeometry(self.rodal_feat.geometry(), self.layer_selec)
                     self.tool_rodal.rubberBand.setColor(QColor(255, 0, 0, 100))  # Color rojo con transparencia
@@ -1743,11 +2036,11 @@ class Dasoraster:
 
                 break  # Salir después de encontrar el primer polígono que contiene el punto
         else:
-            print('No se encontró ningún polígono que contenga el punto.')
+            print(f'betaraster-> No se encontró ningún polígono que contenga el punto.')
 
 
     def cargar_lasfile(self):
-        print(f'dasoraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
+        print(f'betaraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
         if self.action2.isChecked():
             self.action2.setChecked(False)
         if self.action3.isChecked():
@@ -1765,29 +2058,29 @@ class Dasoraster:
                     tipo_consulta='lasfile',
                 )
             )
-            # print(f'dasoraster-> self.action1.isChecked() 2: {self.action1.isChecked()}')
+            # print(f'betaraster-> self.action1.isChecked() 2: {self.action1.isChecked()}')
             # Establezco la herramienta de mapa actual
             iface.mapCanvas().setMapTool(self.tool_cargar_lasf)
-            # print(f'dasoraster-> self.action1.isChecked() 3: {self.action1.isChecked()}')
+            # print(f'betaraster-> self.action1.isChecked() 3: {self.action1.isChecked()}')
         else:
             try:
-                print(f'No elimino el cursor de descarga')
+                print(f'betaraster-> No elimino el cursor de descarga')
                 self.canvas.unsetMapTool(self.tool_cargar_lasf)
             except Exception as mi_error:
-                print(f'dasoraster-> Error:  {mi_error}')
+                print(f'betaraster-> Error:  {mi_error}')
             self.action1.setChecked(False)
 
     def consultar_parcela(self):
-        print(f'dasoraster-> self.action2.isChecked() 1: {self.action2.isChecked()}')
+        print(f'betaraster-> self.action2.isChecked() 1: {self.action2.isChecked()}')
         if self.action1.isChecked():
             self.action1.setChecked(False)
         if self.action3.isChecked():
             self.action3.setChecked(False)
 
         escala_actual = self.canvas.scale()
-        print(f'dasoraster-> Escala del mapa: {escala_actual}')
+        print(f'betaraster-> Escala del mapa: {escala_actual}')
         if escala_actual > 100000 / self.radio_parcela:
-            print(f'dasoraster-> Escala insuficiente para ver la parcela')
+            print(f'betaraster-> Escala insuficiente para ver la parcela')
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text=f'Amplia la escala del mapa para poder ver la parcela de {self.radio_parcela} metros de radio.',
@@ -1803,7 +2096,7 @@ class Dasoraster:
         #     #     self.action2.setChecked(False)
         # else:
         #     self.action2.setChecked(True)
-        print(f'dasoraster-> self.action2.isChecked() 2: {self.action2.isChecked()}')
+        print(f'betaraster-> self.action2.isChecked() 2: {self.action2.isChecked()}')
         if self.action2.isChecked():
             # self.tool_parcela = QgsMapToolEmitPoint(self.canvas)
             self.tool_parcela = CustomMapTool(
@@ -1821,27 +2114,27 @@ class Dasoraster:
                 )
             )
             self.canvas.setMapTool(self.tool_parcela)
-            print(f'dasoraster-> self.action2.isChecked() 3: {self.action2.isChecked()}')
+            print(f'betaraster-> self.action2.isChecked() 3: {self.action2.isChecked()}')
             if not self.consulta_multiple:
                 self.action2.setChecked(False)
         else:
             try:
-                print(f'Elimino trazado de la parcela (a)')
+                print(f'betaraster-> Elimino trazado de la parcela (a)')
                 self.tool_parcela.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
                 self.canvas.unsetMapTool(self.tool_parcela)
             except Exception as mi_error:
-                print(f'dasoraster-> Error:  {mi_error}')
+                print(f'betaraster-> Error:  {mi_error}')
             self.action2.setChecked(False)
-            print(f'dasoraster-> self.action2.isChecked() 4: {self.action2.isChecked()}')
+            print(f'betaraster-> self.action2.isChecked() 4: {self.action2.isChecked()}')
 
     def consultar_rodal(self):
-        print(f'dasoraster-> self.action3.isChecked() 1: {self.action3.isChecked()}')
+        print(f'betaraster-> self.action3.isChecked() 1: {self.action3.isChecked()}')
         if self.action1.isChecked():
             self.action1.setChecked(False)
         if self.action2.isChecked():
             self.action2.setChecked(False)
 
-        print(f'Se ha pulsado el botón consultar_rodal')
+        print(f'betaraster-> Se ha pulsado el botón consultar_rodal')
         raster_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\PNOA2_2017 - 2021\variablesDasometricas\version_202411'
         raster_filename_1 = 'dasoLidar_VolumenMadera_m3_ha.tif'
         raster_filename_2 = 'dasoLidar_VolumenMadera_m3_ha_EPSG25830'
@@ -1860,19 +2153,19 @@ class Dasoraster:
                         level=Qgis.Warning,
                     )
                     return
-        print(f'Fichero VCC: {raster_filepath}')
-        print(f'Disponible:  {os.path.exists(raster_filepath)}')
+        print(f'betaraster-> Fichero VCC: {raster_filepath}')
+        print(f'betaraster-> Disponible:  {os.path.exists(raster_filepath)}')
 
         # # Descartado el uso de gdal para leer el ráster de volúmenes
         # raster_leido_ok = False
         # if os.path.exists(raster_filepath):
         #     raster_volumen_dataset = gdal.Open(raster_filepath)
-        #     print(f'raster_volumen_dataset: {raster_volumen_dataset}')
+        #     print(f'betaraster-> raster_volumen_dataset: {raster_volumen_dataset}')
         #     if raster_volumen_dataset:
         #         raster_band = raster_volumen_dataset.GetRasterBand(1)
         #         # Leer el ráster como un array de numpy
         #         raster_array = raster_band.ReadAsArray()
-        #         print(f'raster_array.shape: {raster_array.shape}')
+        #         print(f'betaraster-> raster_array.shape: {raster_array.shape}')
         #         raster_leido_ok = True
         # if not raster_leido_ok:
         #     raster_volumen_dataset = None
@@ -1880,7 +2173,7 @@ class Dasoraster:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        print(f'dasoraster-> self.action3.isChecked() 1: {self.action3.isChecked()}')
+        print(f'betaraster-> self.action3.isChecked() 1: {self.action3.isChecked()}')
         # self.tool_rodal = ConsultarRodalTool(self.canvas)
         # self.tool_rodal = QgsMapToolEmitPoint(iface.mapCanvas())
         self.tool_rodal = ConsultarRodalTool(iface.mapCanvas())
@@ -1895,10 +2188,10 @@ class Dasoraster:
                 # raster_array=raster_array,
             )
         )
-        print(f'dasoraster-> self.action3.isChecked() 2: {self.action3.isChecked()}')
+        print(f'betaraster-> self.action3.isChecked() 2: {self.action3.isChecked()}')
         # Establezco la herramienta de mapa actual
         iface.mapCanvas().setMapTool(self.tool_rodal)
-        print(f'dasoraster-> self.action3.isChecked() 3: {self.action3.isChecked()}')
+        print(f'betaraster-> self.action3.isChecked() 3: {self.action3.isChecked()}')
 
 
     def buscar_raster_volumenes(self):
@@ -1917,7 +2210,7 @@ class Dasoraster:
                 capa_VCC_ok = capa_VCC
                 break
             else:
-                print(f'Capa {capa_VCC} no encontrada')
+                print(f'betaraster-> Capa {capa_VCC} no encontrada')
         return capa_VCC_encontrada, capa_raster_selec, capa_VCC_ok
 
     def buscar_raster_activo(self, capa_VCC_ok, capa_VCC_encontrada):
@@ -1926,7 +2219,7 @@ class Dasoraster:
         capa_raster_selec = None
         if layer_activo is None:
             if not capa_VCC_encontrada:
-                print('No hay ninguna capa activa.')
+                print(f'betaraster-> No hay ninguna capa activa.')
                 iface.messageBar().pushMessage(
                     title='dasoraster',
                     text=f'No se ha encontrado la capa ráster de volumen {capa_VCC_ok} y no hay ninguna capa activa. Activa una capa ráster para poder hacer consultas.',
@@ -1936,11 +2229,11 @@ class Dasoraster:
                 )
         else:
             if layer_activo.type() == QgsMapLayer.RasterLayer:
-                print('La capa activa es una capa raster.')
+                print(f'betaraster-> La capa activa es una capa raster.')
                 capa_activa_es_raster = True
                 capa_raster_selec = layer_activo
                 if capa_VCC_encontrada:
-                    print(f'Capa de volumen encontrada; pero se consulta la capa activa: {layer_activo.name()}')
+                    print(f'betaraster-> Capa de volumen encontrada; pero se consulta la capa activa: {layer_activo.name()}')
                     iface.messageBar().pushMessage(
                         title='dasoraster',
                         text=f'Se consulta la capa ráster activa: {layer_activo.name()}; si se quiere consultar el volumen activar capa ráster de volumen ({capa_VCC_ok}).',
@@ -1949,7 +2242,7 @@ class Dasoraster:
                         level=Qgis.Info,
                     )
                 else:
-                    print(f'Capas de volumen no encontradas; se consulta la capa activa: {layer_activo.name()}')
+                    print(f'betaraster-> Capas de volumen no encontradas; se consulta la capa activa: {layer_activo.name()}')
                     iface.messageBar().pushMessage(
                         title='dasoraster',
                         text=f'No se ha encontrado la capa ráster de volumen {capa_VCC_ok}; se consulta la capa activa: {layer_activo.name()}.',
@@ -1958,7 +2251,7 @@ class Dasoraster:
                         level=Qgis.Info,
                     )
             elif layer_activo.type() == QgsMapLayer.VectorLayer and not capa_VCC_encontrada:
-                print('La capa activa es una capa vectorial.')
+                print(f'betaraster-> La capa activa es una capa vectorial.')
                 iface.messageBar().pushMessage(
                     title='dasoraster',
                     text=f'No se ha encontrado la capa ráster de volumen {capa_VCC_ok} y la capa activa es vectorial. Activa una capa ráster para poder hacer consultas.',
@@ -1967,7 +2260,7 @@ class Dasoraster:
                     level=Qgis.Warning,
                 )
             elif not capa_VCC_encontrada:
-                print('La capa activa no es ni raster ni vectorial.')
+                print(f'betaraster-> La capa activa no es ni raster ni vectorial.')
                 iface.messageBar().pushMessage(
                     title='dasoraster',
                     text=f'No se ha encontrado la capa ráster de volumen {capa_VCC_ok} y la capa activa no es ráster. Activa una capa ráster para poder hacer consultas.',
@@ -1987,12 +2280,12 @@ class Dasoraster:
             # raster_dataset_volumen=None,
             # raster_array=None,
     ):
-        print(f'dasoraster-> obtener_volumen-> punto_click: {punto_click}')
-        print(f'dasoraster-> obtener_volumen-> boton_click: {boton_click}')
-        print(f'dasoraster-> obtener_volumen-> tipo_consulta: {tipo_consulta}')
+        print(f'betaraster-> obtener_volumen-> punto_click:   {punto_click}')
+        print(f'betaraster-> obtener_volumen-> boton_click:   {boton_click}')
+        print(f'betaraster-> obtener_volumen-> tipo_consulta: {tipo_consulta}')
 
         if boton_click == Qt.LeftButton:
-            print(f'Has hecho click con el botón izdo en (b): {punto_click}')
+            print(f'betaraster-> Has hecho click con el botón izdo en (b): {punto_click}')
             capa_activa_es_raster = False
 
             if tipo_consulta == 'parcela':
@@ -2010,7 +2303,7 @@ class Dasoraster:
             #  Consultar rodal -> Siempre se consulta volumen xq la capa activa es la de rodales/lotes/polígonos
             #  Consultar parcela -> Se consulta la capa raster activa salvo que no sea raster en cuy caso se busca la de volúmenes
             capa_VCC_encontrada, capa_raster_volumen, capa_VCC_ok = self.buscar_raster_volumenes()
-            print(f'dasoraster-> capa_raster_volumen ({type(capa_raster_volumen)}: {capa_raster_volumen})')
+            print(f'betaraster-> capa_raster_volumen ({type(capa_raster_volumen)}: {capa_raster_volumen})')
 
             if tipo_consulta == 'parcela':
                 # Usar la capa activa si es raster; en caso contrario, usar la capa de volúmenes
@@ -2027,7 +2320,7 @@ class Dasoraster:
 
             variable_medida = capa_raster_selec.name()
 
-            print(f'dasoraster-> capa_raster_selec ({type(capa_raster_selec)}: {capa_raster_selec})')
+            print(f'betaraster-> capa_raster_selec ({type(capa_raster_selec)}: {capa_raster_selec})')
 
             x_consulta = punto_click.x()
             y_consulta = punto_click.y()
@@ -2053,7 +2346,7 @@ class Dasoraster:
                     rodal_geom_reprojected = rodal_geom.clone()
                     rodal_geom_reprojected.transform(transformer)
                     rodal_superficie = rodal_geom_reprojected.area()
-                print(f'Superficie del rodal: {rodal_superficie / 10000:0.2f} ha')
+                print(f'betaraster-> Superficie del rodal: {rodal_superficie / 10000:0.2f} ha')
                 if rodal_superficie / 10000 > 500:
                     mensaje('Calculando volumen del rodal...', mi_duration=10)
 
@@ -2068,7 +2361,7 @@ class Dasoraster:
                 )
 
             else:
-                print('Dasoraster-> Revisar este error')
+                print(f'betaraster-> Revisar este error')
 
             unidad_medida = ''
             if isinstance(valor_medio, (int, float)):
@@ -2141,6 +2434,7 @@ class Dasoraster:
                 )
             else:
                 if tipo_consulta == 'parcela':
+                    rodal_superficie = 0
                     resultado_msg = f'Parcela de radio: {self.radio_parcela} m'
                     resultado_msg += f'\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}'
                     if unidad_medida == 'm3/ha':
@@ -2169,25 +2463,32 @@ class Dasoraster:
                     if usuario_actual.lower() == 'benmarjo':
                         resultado_msg += f'\n\nNúmero de pixeles: {num_pixeles}'
                 else:
-                    print(f'Atención: revisar código')
-                QMessageBox.information(
-                    self.iface.mainWindow(),
-                    f'Consulta dasolidar: {tipo_consulta}',
+                    print(f'betaraster-> Atención: revisar código')
+                mostrar_resultado(
+                    tipo_consulta,
                     resultado_msg,
+                    x_consulta,
+                    y_consulta,
+                    self.radio_parcela,
+                    rodal_superficie,
+                    variable_medida,
+                    valor_medio,
+                    unidad_medida,
+                    num_pixeles,
                 )
             if tipo_consulta == 'parcela':
                 if self.consulta_multiple:
                     # self.action2.setChecked(True)
                     if self.action2.isChecked():
-                        print(f'Se lanza de nuevo la herramienta (b)')
+                        print(f'betaraster-> Se lanza de nuevo la herramienta (b)')
                         self.consultar_parcela()
-                    print(f'dasoraster-> self.action2.isChecked() 5a: {self.action2.isChecked()}')
+                    print(f'betaraster-> self.action2.isChecked() 5a: {self.action2.isChecked()}')
                 else:
-                    print(f'Elimino trazado de la parcela (b)')
+                    print(f'betaraster-> Elimino trazado de la parcela (b)')
                     # Elimino el círculo después de hacer clic
                     self.action2.setChecked(False)
                     self.canvas.unsetMapTool(self.tool_parcela)
-                    print(f'dasoraster-> self.action2.isChecked() 5b: {self.action2.isChecked()}')
+                    print(f'betaraster-> self.action2.isChecked() 5b: {self.action2.isChecked()}')
 
     def mostrar_dialogo_compilado(self):
         if self.first_start_consulta_rodal == True:
@@ -2199,15 +2500,15 @@ class Dasoraster:
             # Run the dialog event loop
             result = self.dlg_consulta_rodal.exec_()
         except Exception as mi_error:
-            print(f'dasoraster-> Error:  {mi_error}')
+            print(f'betaraster-> Error:  {mi_error}')
 
     def explorar_ldata(self):
-        print('---> explorar_ldata')
+        print(f'betaraster-> explorar_ldata')
         ldata_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$'
         if os.path.exists(ldata_path):
-            print(f'Directorio disponible ok: {ldata_path}')
+            print(f'betaraster-> Directorio disponible ok: {ldata_path}')
         else:
-            print(f'Directorio no accesible: {ldata_path}')
+            print(f'betaraster-> Directorio no accesible: {ldata_path}')
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text=f'No hay acceso a la unidad de red {ldata_path}.',
@@ -2217,24 +2518,24 @@ class Dasoraster:
             )
             return
         rpta_ok = subprocess.Popen(f'explorer "{ldata_path}"')
-        # print(f'Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
-        print(f'Directorio explorado: {rpta_ok.args}')
-        print(f'Respuesta: {rpta_ok.returncode}')
+        # print(f'betaraster-> Rpta de explorar_ldata: {type(rpta_ok)}')  #  <class 'subprocess.Popen'>
+        print(f'betaraster-> Directorio explorado: {rpta_ok.args}')
+        print(f'betaraster-> Respuesta: {rpta_ok.returncode}')
 
     def guia_rapida_dasolidar(self):
         global config_class
-        print(f'Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
+        print(f'betaraster-> Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
         dialog = VentanaBienvenidaGuiaRapida()
         if dialog.ok:
             rpta_ok = dialog.exec_()
         # Esto no lo uso. La opción de mostrar ventana de bienvenida la dejo para el script de arranque
         if rpta_ok == QDialog.Accepted and False:
             if dialog.mostrar_checkbox.isChecked():
-                print('Seguir mostrando la ventana de bienvenida')
+                print(f'betaraster-> Seguir mostrando la ventana de bienvenida')
                 config_class.dl_mostrar_ventana_bienvenida = True
                 config_class.dl_mostrar_message_bienvenida = True
             else:
-                print('No mostrar la ventana de bienvenida')
+                print(f'betaraster-> No mostrar la ventana de bienvenida')
                 config_class.dl_mostrar_ventana_bienvenida = False
                 config_class.dl_mostrar_message_bienvenida = True
             mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
@@ -2247,16 +2548,16 @@ class Dasoraster:
         for ruta_manual in rutas_manual:
             manual_dasolidar_pdf_filepath = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
             if os.path.exists(manual_dasolidar_pdf_filepath):
-                print(f'manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
+                print(f'betaraster-> manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
                 if self.lector_pdf_windows:
                     if platform.system() == 'Windows':
                         os.startfile(manual_dasolidar_pdf_filepath)
                 else:
                     try:
                         from PyQt5.QtWebEngineWidgets import QWebEngineView
-                        print('PyQtWebEngine está instalado.')
+                        print(f'betaraster-> PyQtWebEngine está instalado.')
                     except ImportError:
-                        print('PyQtWebEngine no está instalado.')
+                        print(f'betaraster-> PyQtWebEngine no está instalado.')
                         iface.messageBar().pushMessage(
                             title='dasoraster',
                             text='Solo está disponible la opción de lector pdf predeterminado de Windows. No necesitas hacer nada, ya hemos activado por tí esa opción en [settingd] -> Vuelve a intentarlo.',
@@ -2274,7 +2575,7 @@ class Dasoraster:
                     sys.exit(app.exec_())
                 break
             else:
-                print(f'Fichero no disponible: {manual_dasolidar_pdf_filepath}')
+                print(f'betaraster-> Fichero no disponible: {manual_dasolidar_pdf_filepath}')
         if not os.path.exists(manual_dasolidar_pdf_filepath):
             iface.messageBar().pushMessage(
                 title='dasoraster',
@@ -2289,20 +2590,20 @@ class Dasoraster:
         try:
             dialog = VentanaAsistente(
                 parent=None,
-                botones_disponibles='consulta_ejecucion',
+                botones_disponibles='sugerencia_consultas_ejecucion',
             )
             rpta_ok = dialog.exec_()
         except Exception as e:
-            print(f'Ocurrió un error al mostrar la ventana 1: {e}')
+            print(f'betaraster-> Ocurrió un error al mostrar la ventana 1: {e}')
         # Esto siguiente sobra; lo dejo just in case
-        print(f'Rpta de mostrar_asistente: {rpta_ok}')
+        print(f'betaraster-> Rpta de mostrar_asistente: {rpta_ok}')
         if rpta_ok == QDialog.Accepted:
             consulta_usuario = dialog.get_text()
             boton_pulsado = dialog.button_pressed
-            print('Texto de consulta o petición:', consulta_usuario)
-            print('Botón pulsado:', boton_pulsado)
+            print(f'betaraster-> Texto de consulta o petición:', consulta_usuario)
+            print(f'betaraster-> Botón pulsado:', boton_pulsado)
         else:
-            print('Consulta o petición canceladas')
+            print(f'betaraster-> Consulta o petición canceladas')
 
     def dasoraster_settings(self):
         dict_settings = {}
@@ -2368,20 +2669,20 @@ class Dasoraster:
 
     def dasoraster_extra(self):
         self.iface.messageBar().pushMessage(f'Botón disponible para nuevas utilidades', level=Qgis.Info)
-        print(f'dasoraster-> self.action_extra.isEnabled() 1: {self.action_extra.isEnabled()}')
-        print(f'dasoraster-> self.action_extra.isChecked() 1: {self.action_extra.isChecked()}')
+        print(f'betaraster-> self.action_extra.isEnabled() 1: {self.action_extra.isEnabled()}')
+        print(f'betaraster-> self.action_extra.isChecked() 1: {self.action_extra.isChecked()}')
         self.toggle_plugin()
-        print(f'dasoraster-> self.action_extra.isEnabled() 2: {self.action_extra.isEnabled()}')
-        print(f'dasoraster-> self.action_extra.isChecked() 2: {self.action_extra.isChecked()}')
+        print(f'betaraster-> self.action_extra.isEnabled() 2: {self.action_extra.isEnabled()}')
+        print(f'betaraster-> self.action_extra.isChecked() 2: {self.action_extra.isChecked()}')
 
     def toggle_plugin(self):
-        # print(f'dasoraster-> toggle_plugin-> self.active_extra 1: {self.active_extra}')
+        # print(f'betaraster-> toggle_plugin-> self.active_extra 1: {self.active_extra}')
         self.active_extra = not self.active_extra
         if self.active_extra:
             self.iface.messageBar().pushMessage('Botón extra activado', level=Qgis.Info)
         else:
             self.iface.messageBar().pushMessage('Botón extra desactivado', level=Qgis.Info)
-        print(f'dasoraster-> toggle_plugin-> self.active_extra 2: {self.active_extra}')
+        print(f'betaraster-> toggle_plugin-> self.active_extra 2: {self.active_extra}')
 
 
 # ==============================================================================
@@ -2438,12 +2739,12 @@ class CustomMapTool(QgsMapToolEmitPoint):
 
     def canvasReleaseEvent(self, event):
         punto_release = self.toMapCoordinates(event.pos())
-        print(f'Has hecho click en (a): {punto_release}')
+        print(f'betaraster-> Has hecho click en (a): {punto_release}')
         if self.consulta_multiple:
-            print(f'Se lanza de nuevo la herramienta')
+            print(f'betaraster-> Se lanza de nuevo la herramienta')
             # self.consultar_parcela()
         else:
-            print(f'Elimino trazado de la parcela')
+            print(f'betaraster-> Elimino trazado de la parcela')
             # Elimino el círculo después de hacer clic
             self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
 
@@ -2465,7 +2766,7 @@ class ConsultarRodalTool(QgsMapToolEmitPoint):
         self.rubberBand = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.rubberBand.setColor(Qt.red)
         self.rubberBand.setWidth(2)
-        print(f'dasoraster-> Instanciando ConsultarRodalTool')
+        print(f'betaraster-> Instanciando ConsultarRodalTool')
         self.setCursor()
 
     def activate(self):
@@ -2485,18 +2786,18 @@ class ConsultarRodalTool(QgsMapToolEmitPoint):
 
     def canvasReleaseEvent(self, event):
         punto_release = self.toMapCoordinates(event.pos())
-        print(f'dasoraster-> Se ha hecho click en (2) {punto_release}')
+        print(f'betaraster-> Se ha hecho click en (2) {punto_release}')
         self.pointEmitted.emit(punto_release)
 
     def canvasReleaseEvent_sin_uso(self, event):
         layer = self.canvas.currentLayer()
         if not isinstance(layer, QgsVectorLayer):
-            print('La capa activa no es vectorial.')
+            print(f'betaraster-> La capa activa no es vectorial.')
             return
-        print(f'dasoraster-> Vector layer: {layer.name()}')
+        print(f'betaraster-> Vector layer: {layer.name()}')
 
         punto_release = self.toMapCoordinates(event.pos())
-        print(f'dasoraster-> Se ha hecho click en (0) {punto_release}')
+        print(f'betaraster-> Se ha hecho click en (0) {punto_release}')
 
         # self.setLayer(layer)
         # features_identificadas = self.featureIdentified()
@@ -2506,14 +2807,14 @@ class ConsultarRodalTool(QgsMapToolEmitPoint):
         features_identificadas = self.identify(punto_release, [layer], QgsMapToolIdentifyFeature.LayerSelection)
 
         if not features_identificadas:
-            print('No se encontró ningún polígono en el punto clicado.')
+            print(f'betaraster-> No se encontró ningún polígono en el punto clicado.')
             return
 
         # Convertir el iterador a una lista para contar las características
         features_list = list(features_identificadas)
         # Contar el número de características
         num_features = len(features_list)
-        print(f'Número de poligonos identificados-> {num_features}')
+        print(f'betaraster-> Número de poligonos identificados-> {num_features}')
 
         # for feature in features_list:
         feature = features_list[0].mFeature
@@ -2522,15 +2823,15 @@ class ConsultarRodalTool(QgsMapToolEmitPoint):
         # Obtener la capa raster VolumenMadera_m3_ha
         raster_layer = QgsProject.instance().mapLayersByName('VolumenMadera_m3_ha')[0]
         if not isinstance(raster_layer, QgsRasterLayer):
-            print('No se encontró la capa raster VolumenMadera_m3_ha.')
+            print(f'betaraster-> No se encontró la capa raster VolumenMadera_m3_ha.')
             return
 
-        print(f'dasoraster-> Raster layer: {raster_layer.name()}')
+        print(f'betaraster-> Raster layer: {raster_layer.name()}')
 
         # Calcular el valor medio de los píxeles del ráster en el polígono
         stats = raster_layer.dataProvider().bandStatistics(1, QgsRasterBandStats.Mean, feature.geometry().boundingBox())
         mean_value = stats.mean
-        print(f'El valor medio de los píxeles del ráster en el polígono es: {mean_value}')
+        print(f'betaraster-> El valor medio de los píxeles del ráster en el polígono es: {mean_value}')
 
 
 
@@ -2572,7 +2873,7 @@ class SettingsDialog(QDialog):
         else:
             self.autocarga_lasfiles_input.setChecked(False)
             self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA))
-            self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(False)
+            self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(True)
         if not usuario_beta:
             self.lector_pdf_windows_input.setEnabled(False)
             self.autocarga_lasfiles_input.setEnabled(False)
