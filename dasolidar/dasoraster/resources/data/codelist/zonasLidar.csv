@@ -1,0 +1,26 @@
+EstratoLetra	EstratoNombre	EstratoNumero
+a	Cordillera Cantábrica	0
+b	Páramos leoneses y palentinos	1
+c	Cabrera - Sanabria - Culebra - Aliste - Penillanuras occidentales	2
+d	Campos y campiñas	3
+e	Gata-Bejar-Ávila	4
+f	Sistema Central	5
+g	Pinares centro - Sepúlveda	6
+h	Soria sur	7
+i	Torozos - Cerrato - Burgos sur	8
+j	Sistema Ibérico norte	9
+k	Burgos centro y norte	10
+ab	Cantabrica y páramos detríticos	[0, 1]
+di	Campos y páramos calizos	[3, 8]
+abk	Cantábrica y páramos detríticos Le-Pa-Bu	[0, 1, 10]
+gi	Páramos calizos y pinares centro	[6, 8]
+hj	Soria	[7, 9]
+bdgi	Páramos detríticos y cuenca del Duero	[1, 3, 6, 8]
+ef	Sistema Central completo	[4, 5]
+hjk	Soria-Burgos sin páramos calizos	[7, 9, 10]
+abcdefg	Resto quejigo	[0, 1, 2, 3, 4, 5, 6]
+cdefgi	Resto pinus nigra	[2, 3, 4, 5, 6, 8]
+abcefhjk	Resto piñonero	[0, 1, 2, 4, 5, 7, 9, 10]
+bcdefghijk	Resto haya	[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+abcdefgk	Resto sabina	[0, 1, 2, 3, 4, 5, 6, 10]
+abcdefghijk	CyL	[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

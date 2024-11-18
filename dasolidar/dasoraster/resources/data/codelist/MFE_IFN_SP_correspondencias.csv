@@ -1,0 +1,174 @@
+nSP1	Especie	Cod2L	nSPeq
+1	Heberdenia bahamensis		0
+7	Acacia spp.	Ai	43
+8	Phillyrea latifolia	Pf	44
+10	Sin asignar	Xx	43
+11	Ailanthus altissima	Af	43
+12	Malus sylvestris	Ms	44
+13	Celtis australis	Ca	43
+14	Taxus baccata	Tb	26
+15	Crataegus spp.	Cr	43
+16	Pyrus spp.	Px	44
+17	Cedrus atlantica	Da	26
+18	Chamaecyparis lawsoniana	Cw	38
+19	Otras coníferas	Oc	26
+20	Pinos	Pi	26
+21	Pinus sylvestris	Ps	21
+22	Pinus uncinata	Pu	21
+23	Pinus pinea	Pp	23
+24	Pinus halepensis	Ph	24
+25	Pinus nigra	Pn	25
+26	Pinus pinaster	Pt	26
+27	Pinus canariensis	Pe	26
+28	Pinus radiata	Pr	28
+29	Otros pinos	Op	26
+30	Mezcla de coníferas		26
+31	Abies alba	Aa	21
+32	Abies pinsapo	Ap	21
+33	Picea abies	Pa	21
+34	Pseudotsuga menziesii	Pm	21
+35	Larix spp.	Lr	26
+36	Cupressus sempervirens	Us	38
+37	Juniperus communis	Jc	38
+38	Juniperus thurifera	Jt	38
+39	Juniperus phoenicea	Jp	38
+40	Quercus	Qq	43
+41	Quercus robur	Qr	42
+42	Quercus petraea	Qt	42
+43	Quercus pyrenaica	Qp	43
+44	Quercus faginea	Qf	44
+45	Quercues ilex	Qi	45
+46	Quercus suber	Qs	45
+47	Quercus canariensis	Qn	44
+48	Quercus rubra	Qb	42
+49	Otros quercus	Oq	43
+50	Mezcla de árboles de ribera	Wr	58
+51	Populus alba	La	58
+52	Populus tremula	Lt	58
+53	Tamarix spp.	Tx	44
+54	Alnus glutinosa	Ag	43
+55	Fraxinus angustifolia	Fa	43
+56	Ulmus minor	Um	44
+57	Salix spp.	Sx	44
+58	Populus nigra	Lg	58
+59	Otros árboles ripícolas	Or	43
+60	Mezcla de eucaliptos	Ze	71
+61	Eucalyptus globulus	Eg	71
+62	Eucalyptus camaldulensis	Ec	71
+63	Otros eucaliptos	Eo	71
+64	Eucalyptus nitens	En	71
+65	Ilex aquifolium	Ia	44
+66	Olea europaea	Oe	45
+67	Ceratonia siliqua	Cq	45
+68	Arbutus unedo 	Au	45
+69	Phoenix spp.	Hx	0
+70	Mezcla de frondosas de gran porte	Zf	43
+71	Fagus sylvatica	Fs	71
+72	Castanea sativa	Cs	72
+73	Betula spp.	Be	43
+74	Corylus avellana	Ce	44
+75	Juglans regia	Jr	43
+76	Acer campestre	Ac	44
+77	Tilia spp.	Ti	43
+78	Sorbus spp.	So	44
+79	Platanus hispanica	Nh	43
+80	Laurisilva		0
+81	Myrica faya		0
+82	Ilex canariensis		0
+84	Persea indica		0
+85	Sideroxylon marmulano		0
+86	Picconia excelsa		0
+87	Ocotea phoetens		0
+88	Apollonias barbujana		0
+89	Otras laurisilvas		0
+90	Mezcla de pequeñas frondosas	Zp	43
+92	Robinia pseudoacacia	Rp	43
+94	Laurus nobilis	Ln	44
+95	Prunus spp.	Rv	44
+96	Rhus coriaria	Rc	44
+97	Sambucus nigra	Sn	44
+98	Carpinus betulus	Cb	42
+99	Otras frondosas	Of	43
+207	Acacia melanoxylon	Ax	43
+215	Crataegus monogyna	Cm	44
+217	Cedrus deodara	Dd	21
+219	Tetraclinis articulata	Ta	26
+229	Pinus banksiana	#N/D	26
+230	Pinus strobus	#N/D	26
+235	Larix decidua	Ld	26
+236	Cupressus arizonica	Ua	38
+237	Juniperus oxycedrus	Jo	38
+238	Juniperus turbinata	Jb	38
+243	Quercus humilis	Qh	44
+244	Quercus lusitanica	Qu	44
+245	Quercus ilex ssp. Ilex	Qx	45
+253	Tamarix canariensis	Tn	44
+255	Fraxinus excelsior	Fe	43
+256	Ulmus glabra	Ug	44
+257	Salix alba	Sb	44
+258	Populus x canadensis	Lq	258
+264	Eucalyptus viminalis	Ev	71
+268	Arbutus canariensis		0
+273	Betula alba	Ba	44
+275	Juglans nigra	Jn	43
+276	Acer monspessulanum	Am	44
+277	Tilia cordata	Tc	43
+278	Sorbus aria	Sa	44
+279	Platanus orientalis	No	71
+281	Myrica rivas-martinezii		44
+282	Ilex platyphylla		0
+289	Pleiomeris canariensis		0
+292	Sophora japonica	Hj	0
+293	Pistacia atlantica		0
+294	Laurus azorica		0
+299	Ficus carica	Fc	44
+307	Acacia dealbata	Ad	43
+315	Crataegus laevigata	Cl	44
+317	Cedrus libani	Dl	26
+319	Thuja spp.	Tu	26
+335	Larix leptolepis	Lp	26
+336	Cupressus lusitanica	Ui	38
+337	Juniperus cedrus		38
+344	Quercus alpestris	Qa	44
+355	Fraxinus ornus	Fo	43
+356	Ulmus pumila	Up	44
+357	Salix atrocinerea	Sq	44
+364	Eucalyptus gomphocephalus		71
+373	Betula pendula	Bp	44
+376	Acer negundo	An	44
+377	Tilia platyphyllos	Tp	43
+378	Sorbus aucuparia	Su	44
+389	Rhamnus glandulosa		44
+392	Gleditsia triacanthos	Gt	43
+395	Prunus avium	Ra	44
+399	Morus spp.	Mo	44
+415	Crataegus lacinata	Ck	44
+435	Larix x eurolepis	Le	26
+436	Cupressus macrocarpa	Uc	38
+455	Fraxinus spp.	Fr	43
+456	Ulmus spp.	Uu	44
+457	Salix babylonica	By	44
+464	Eucalyptus robusta	Ef	71
+469	Phoenix canariensis	Hr	0
+476	Acer opalus	Al	44
+478	Sorbus domestica	Sd	44
+489	Visnea mocanera		0
+495	Prunus lusitanica	Rl	44
+499	Morus alba	Ma	43
+515	Crataegus azarolus	Cz	44
+557	Salix cantabrica	Si	44
+569	Dracaena draco		0
+576	Acer pseudoplatanus	As	44
+578	Sorbus torminalis	St	44
+595	Prunus padus	Rd	44
+599	Morus nigra	Mn	44
+657	Salix caprea	Sc	44
+676	Acer platanoides	At	44
+678	Sorbus latifolia	Sl	44
+757	Salix elaeagnos	Se	44
+776	Acer spp. 	Ar	44
+778	Sorbus chamaemespilus	Sh	44
+857	Salix fragilis	Sf	44
+858	Salix canariensis		44
+957	Salix purpurea	Sp	44
+999	Especie sin identificar	Re	43
