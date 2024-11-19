@@ -200,7 +200,9 @@ except:
     print(f'betaraster-> No se ha podido instalar el complemento.')
     iface.messageBar().pushMessage(
         title='dasoraster',
-        text='Parece que este PC no tiene acceso a la ubicación de red del proyecto dasolidar. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta en el proyecto.',
+        text='Parece que este PC o este proyecto Lidar tiene dificultades para ejecutarse correctamente.'\
+             '\n Puede deberse a que no tiene acceso a la ubicación de red del proyecto dasolidar.'\
+             '\nEs posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta en el proyecto.',
         showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
         duration=30,
         level=Qgis.Warning,
@@ -277,9 +279,9 @@ else:
     listaId332_versionBeta = []
 
 if usuario_actual in listaId332_versionBeta:
-    usuario_beta = True
+    usuario_alfa = True
 else:
-    usuario_beta = False
+    usuario_alfa = False
 
 clave_uso_version = f'dasolidar/uso_dasoraster_v.{__version__}'
 mi_config = QgsSettings()
@@ -377,7 +379,7 @@ def leer_csv_codigos():
             print(f'\nLista valores de {cod2L_nSP_file_name}')
         for index, mi_row in cod2L_nSP_df.iterrows():
             if VERBOSE:
-                print(f"índice: {index}, {mi_row['cod2L']} {mi_row['nSP']}")
+                print(f'índice: {index}, {mi_row["cod2L"]} {mi_row["nSP"]}')
             dict_cod2L_nSP[mi_row['cod2L']] = mi_row['nSP']
             dict_nSP_cod2L[mi_row['nSP']] = mi_row['cod2L']
     # =========================================================================
@@ -555,7 +557,8 @@ def capa_malla_lasfiles():
         if not os.path.isdir(aux_path):
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
+                text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos ({aux_path}).'\
+                     '\nEs posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
                 showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
                 duration=30,
                 level=Qgis.Warning,
@@ -577,7 +580,8 @@ def capa_malla_lasfiles():
             print(f'betaraster-> No se pudo cargar la capa "cargar_nubeDePuntos_LidarPNOA2".')
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
+                text='Parece que este PC tiene dificultades para leer la capa {cargar_nubeDePuntos_LidarPNOA2}. Comprueba que está en el proyecto.'\
+                    '\nPuede seer debido a que no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
                 showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
                 duration=30,
                 level=Qgis.Warning,
@@ -860,7 +864,7 @@ def cargar_nube_de_puntos(
             carga_ok = -1
             if verboseLocal and verboseWarning:
                 iface.messageBar().pushMessage(
-                    f'Aviso: falta el bloque {copcLazFile_path_name_ok} (pendiente de copiar a \\repoarchivohm.jcyl.red). Notificar a Jose Bengoa (benmarjo@jcyl.es)',
+                    f'Aviso: falta el bloque {copcLazFile_path_name_ok} (pendiente de copiar a \\repoarchivohm.jcyl.red). Notificar a {EMAIL_DASOLIDAR1}',
                     level=Qgis.Warning,
                     duration=15
                 )
@@ -1078,13 +1082,14 @@ class VentanaAsistente(QDialog):
         # ======================================================================
         # Botones de Consulta, Acción y Cancelar
         self.buttonBox = QDialogButtonBox()
+        self.buttonBox.setToolTip('dasoraster (proyecto dasolidar)')
         # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
         # ======================================================================
 
         # ======================================================================
         if botones_disponibles == 'consulta_bengi':
             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+            self.consulta_bengi_button.setToolTip('Haz clic aquí para enviar una consulta al equipo dasolidar.')
             self.consulta_bengi_button.clicked.connect(
                 lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
@@ -1094,7 +1099,7 @@ class VentanaAsistente(QDialog):
             self.consulta_bengi_button.setEnabled(True)
         elif botones_disponibles.startswith('sugerencia_consulta_bengi'):
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
-            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
+            self.sugerencia_button.setToolTip('Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.')
             self.sugerencia_button.clicked.connect(
                 lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
@@ -1104,7 +1109,7 @@ class VentanaAsistente(QDialog):
             self.sugerencia_button.setEnabled(True)
             if botones_disponibles =='sugerencia_consulta_bengi':
                 self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+                self.consulta_bengi_button.setToolTip('Haz clic aquí para enviar una consulta al equipo dasolidar.')
                 self.consulta_bengi_button.clicked.connect(
                     lambda event: self.lanzar_sugerencia_consulta_accion(
                         mi_evento=event,
@@ -1113,12 +1118,12 @@ class VentanaAsistente(QDialog):
                 )
             elif botones_disponibles == 'sugerencia_consulta_bengi_vega':
                 self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
-                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+                self.consulta_bengi_button.setToolTip('Haz clic aquí para enviar una consulta al equipo dasolidar.')
                 self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
-                if usuario_beta:
-                    self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+                if usuario_alfa:
+                    self.consulta_vega_button.setToolTip('Haz clic aquí para enviar una consulta a Vega (IA).')
                 else:
-                    self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+                    self.consulta_vega_button.setToolTip('Opción solo disponible para alfa testers.')
                 self.consulta_bengi_button.clicked.connect(
                     lambda event: self.lanzar_sugerencia_consulta_accion(
                         mi_evento=event,
@@ -1132,26 +1137,26 @@ class VentanaAsistente(QDialog):
                         tipo_consulta='vega',
                     )
                 )
-                if usuario_beta:
+                if usuario_alfa:
                     self.consulta_vega_button.setEnabled(True)
                 else:
                     self.consulta_vega_button.setEnabled(False)
             self.consulta_bengi_button.setEnabled(True)
         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
-            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
+            self.sugerencia_button.setToolTip('Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.')
             self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
-            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+            self.consulta_bengi_button.setToolTip('Haz clic aquí para enviar una consulta al equipo dasolidar.')
             self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
-            if usuario_beta:
-                self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+            if usuario_alfa:
+                self.consulta_vega_button.setToolTip('Haz clic aquí para enviar una consulta a Vega (IA).')
             else:
-                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+                self.consulta_vega_button.setToolTip('Opción solo disponible para alfa testers.')
             self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
-            if usuario_beta:
-                self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
+            if usuario_alfa:
+                self.accion_button.setToolTip('Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.')
             else:
-                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+                self.consulta_vega_button.setToolTip('Opción solo disponible para alfa testers.')
             self.sugerencia_button.clicked.connect(
                 lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
@@ -1181,7 +1186,7 @@ class VentanaAsistente(QDialog):
 
             self.sugerencia_button.setEnabled(True)
             self.consulta_bengi_button.setEnabled(True)
-            if usuario_beta:
+            if usuario_alfa:
                 self.consulta_vega_button.setEnabled(True)
                 self.accion_button.setEnabled(True)
             else:
@@ -1595,7 +1600,7 @@ def pedir_datos_parcela_rodal(
     num_especie_preseleccionada = 0
     lista_especie_nombre_2L = []
     for contador_especie, (key, value) in enumerate(dict_especies.items()):
-        lista_especie_nombre_2L.append(f"{value} ({key})")
+        lista_especie_nombre_2L.append(f'{value} ({key})')
         # print(f'betaraster-> {cod_2L_especie} -> {key}')
         if cod_2L_especie == key:
             # print(f'    betaraster-> ok')
@@ -1623,19 +1628,19 @@ def pedir_datos_parcela_rodal(
     layout.addWidget(label_explicativo2)
 
     # Especie (desplegable)
-    especie_label = QLabel("Selecciona la especie:")
+    especie_label = QLabel('Selecciona la especie:')
     layout.addWidget(especie_label)
     especie_combo = QComboBox()
     especie_combo.addItems(lista_especie_nombre_2L)
     # for key, value in dict_especies.items():
-    #     especie_combo.addItem(f"{value} ({key})")
+    #     especie_combo.addItem(f'{value} ({key})')
     #     especie_combo.addItem({key)
     especie_combo.setCurrentIndex(num_especie_preseleccionada)
     # especie_combo.setCurrentText(cod_2L_especie)
     layout.addWidget(especie_combo)
 
     # Tipo de variable (desplegable)
-    tipo_variable_label = QLabel("Selecciona la variable dasométrica (o metrica lidar):")
+    tipo_variable_label = QLabel('Selecciona la variable dasométrica (o metrica lidar):')
     layout.addWidget(tipo_variable_label)
     tipo_variable_combo = QComboBox()
     tipo_variable_combo.addItems(mis_variables_nombre)
@@ -1643,14 +1648,14 @@ def pedir_datos_parcela_rodal(
     layout.addWidget(tipo_variable_combo)
 
     # Valor (entrada numérica)
-    valor_label = QLabel("Introduce el valor:")
+    valor_label = QLabel('Introduce el valor:')
     layout.addWidget(valor_label)
     valor_input = QLineEdit()
     valor_input.setValidator(QDoubleValidator())  # Solo permite números
     layout.addWidget(valor_input)
 
     # Unidad (desplegable)
-    unidad_label = QLabel("Selecciona la unidad:")
+    unidad_label = QLabel('Selecciona la unidad:')
     layout.addWidget(unidad_label)
     unidad_combo = QComboBox()
     unidad_combo.addItems(mis_variables_unidad)
@@ -1671,18 +1676,18 @@ def pedir_datos_parcela_rodal(
         otra_unidad = tipo_unidad
         if tipo_unidad == 'otra':
             entrada_texto_dialogo = QDialog()
-            entrada_texto_dialogo.setWindowTitle("Especifica la unidad")
+            entrada_texto_dialogo.setWindowTitle('Especifica la unidad')
 
             layout_texto = QVBoxLayout()
-            label_texto = QLabel("Por favor, introduce la unidad utilizada:")
+            label_texto = QLabel('Por favor, introduce la unidad utilizada:')
             layout_texto.addWidget(label_texto)
 
             entrada_texto = QLineEdit()
             layout_texto.addWidget(entrada_texto)
 
             button_box_texto = QDialogButtonBox()
-            aceptar_button = button_box_texto.addButton("Aceptar", QDialogButtonBox.AcceptRole)
-            cancelar_button = button_box_texto.addButton("Cancelar", QDialogButtonBox.RejectRole)
+            aceptar_button = button_box_texto.addButton('Aceptar', QDialogButtonBox.AcceptRole)
+            cancelar_button = button_box_texto.addButton('Cancelar', QDialogButtonBox.RejectRole)
             layout_texto.addWidget(button_box_texto)
 
             entrada_texto_dialogo.setLayout(layout_texto)
@@ -1709,15 +1714,15 @@ def pedir_datos_parcela_rodal(
     # actualizar_unidades()
 
     # Cuadro de texto (varias líneas)
-    texto_multilinea_label = QLabel("Comentarios adicionales:")
+    texto_multilinea_label = QLabel('Comentarios adicionales:')
     layout.addWidget(texto_multilinea_label)
     texto_multilinea_input = QTextEdit()
     layout.addWidget(texto_multilinea_input)
 
     # Botones
     button_box = QDialogButtonBox()
-    enviar_button = button_box.addButton("Enviar", QDialogButtonBox.AcceptRole)
-    cancelar_button = button_box.addButton("Cancelar", QDialogButtonBox.RejectRole)
+    enviar_button = button_box.addButton('Enviar', QDialogButtonBox.AcceptRole)
+    cancelar_button = button_box.addButton('Cancelar', QDialogButtonBox.RejectRole)
     layout.addWidget(button_box)
 
     dialog.setLayout(layout)
@@ -1734,7 +1739,7 @@ def pedir_datos_parcela_rodal(
         valor = valor_input.text()
         unidad = unidad_combo.currentText()
         texto_adicional = texto_multilinea_input.toPlainText()
-        # Modifico texto_adicional para incluir "Comentario", número de línea y la línea
+        # Modifico texto_adicional para incluir 'Comentario', número de línea y la línea
         lineas = texto_adicional.splitlines()
         texto_adicional_modificado = ''
         for i, linea in enumerate(lineas, start=1):
@@ -1786,7 +1791,7 @@ def enviar_mail(
         else:
             motivacion = motivo
         try:
-            outlook = win32com.client.Dispatch("Outlook.Application")
+            outlook = win32com.client.Dispatch('Outlook.Application')
             mail = outlook.CreateItem(0)
             mail.To = destinatario
             if asunto == 'dsld':
@@ -1884,6 +1889,8 @@ def guardar_enviar_resultado(
         else:
             print(f'Unidad V no disponible: {mensajes_path}')
             geojson_pathname = ''
+    else:
+        geojson_pathname = ''
 
     (enviar_ok, datos_recibidos) = pedir_datos_parcela_rodal(
         tipo_consulta,
@@ -2251,7 +2258,7 @@ class Dasoraster:
             parent=self.iface.mainWindow(),
         )
 
-        if usuario_beta:
+        if usuario_alfa:
             icon_path = ':/plugins/dasoraster/resources/images/icon_arbol.png'
             self.action_extra = self.add_action(
                 icon_path,
@@ -2413,7 +2420,7 @@ class Dasoraster:
                     if not type(copc_1_value) == str:
                         iface.messageBar().pushMessage(
                             title='dasoraster',
-                            text='Aviso: código pendiente de revisar. Informar de este aviso al autor de este complemento (benmarjo@jcyl.es).',
+                            text=f'Aviso: código pendiente de revisar. Informar de este aviso al autor de este complemento ({EMAIL_DASOLIDAR1}).',
                             # showMore=f'',
                             duration=30,
                             level=Qgis.Warning,
@@ -2953,7 +2960,7 @@ class Dasoraster:
                 timer.setSingleShot(True)
                 timer.timeout.connect(lambda: self.tool_rodal.rubberBand.reset(QgsWkbTypes.PolygonGeometry))
                 timer.start(3000)  # 1000 ms = 1 segundo
-
+# ç
             # Busco la capa ráster que tiene los volúmemens para:
             #  Consultar rodal -> Siempre se consulta volumen xq la capa activa es la de rodales/lotes/polígonos
             #  Consultar parcela -> Se consulta la capa raster activa salvo que no sea raster en cuy caso se busca la de volúmenes
@@ -2973,6 +2980,11 @@ class Dasoraster:
                 )
                 if not capa_raster_sel_ok:
                     return False
+                # En realidad cuando conulto parcel, solo necesito el crs
+                # para darselo a mostrar_resultado<> que lo usa cuando
+                # se consulta u rodal y se aportan datos para mandar por mail
+                self.layer_crs = self.capa_raster_elegida.crs()
+                print(f'betaraster-> self.layer_crs ({type(self.layer_crs)}): {self.layer_crs}')
             else:
                 self.capa_raster_elegida = capa_VCC_selec
             variable_medida = self.capa_raster_elegida.name()
@@ -3169,7 +3181,7 @@ class Dasoraster:
                         resultado_msg += f'\n    {variable_medida}: {valor_medio} {unidad_medida}'
 
 
-                    if usuario_actual.lower() == 'benmarjo':
+                    if usuario_alfa:
                         resultado_msg += f'\n\nNúmero de pixeles: {num_pixeles}'
                 else:
                     print(f'betaraster-> Atención: revisar código')
@@ -3609,7 +3621,7 @@ class SettingsDialog(QDialog):
         self.autocarga_escala_maxima_input = QLineEdit()
         # self.autocarga_mostrar_lasfiles_en_leyenda_input = QCheckBox()
         self.lector_pdf_windows_input = QCheckBox()
-        if usuario_beta:
+        if usuario_alfa:
             self.autocarga_lasfiles_input.setChecked(autocarga_lasfiles)
             self.autocarga_escala_maxima_input.setText(str(autocarga_escala_maxima))
             # self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(autocarga_mostrar_lasfiles_en_leyenda)
@@ -3619,7 +3631,7 @@ class SettingsDialog(QDialog):
             self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA))
             # self.autocarga_mostrar_lasfiles_en_leyenda_input.setChecked(True)
             self.lector_pdf_windows_input.setChecked(True)
-        if not usuario_beta:
+        if not usuario_alfa:
             self.autocarga_lasfiles_input.setEnabled(False)
             self.autocarga_escala_maxima_input.setEnabled(False)
             # self.autocarga_mostrar_lasfiles_en_leyenda_input.setEnabled(False)
@@ -3630,11 +3642,11 @@ class SettingsDialog(QDialog):
         form_layout.addRow('Parcela circular:', self.consultar_circulo_input)
         form_layout.addRow('Consulta multi-parcela:', self.consulta_multiple_input)
         form_layout.addRow('Buscar especie y modelo:', self.buscar_esp_modelo_input)
-        form_layout.addRow('Carga automatica de lasfiles:', self.autocarga_lasfiles_input)
-        form_layout.addRow('Escala max. carga automatica:', self.autocarga_escala_maxima_input)
+        form_layout.addRow('Activar carga automática lasfiles:', self.autocarga_lasfiles_input)
+        form_layout.addRow('Escala maxima en carga automática:', self.autocarga_escala_maxima_input)
         # form_layout.addRow('Mostrar lasfiles en leyenda:', self.autocarga_mostrar_lasfiles_en_leyenda_input)
         form_layout.addRow('Usar lector pdf Windows:', self.lector_pdf_windows_input)
-        if not usuario_beta:
+        if not usuario_alfa:
             label = QLabel('Carga automática de lasfiles en pruebas:\nSolo está disponible para alfa testers')
             form_layout.addRow(label)
 

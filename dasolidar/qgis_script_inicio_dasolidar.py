@@ -96,7 +96,7 @@ if type(config_class.dl_ventana_bienvenida) == str:
 print(f'betaraster-> dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bienvenida)}) {config_class.dl_ventana_bienvenida}')
 # ==============================================================================
 
-
+acceso_lidardata = True
 # ==============================================================================
 # Lo siguiente es código replicado en SIGMENA.py con tres diferencias:
 #  No incluyo Los imports porque van arriba
@@ -104,7 +104,7 @@ print(f'betaraster-> dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bie
 #  El chequeo se hace siempre en vez de un día a la semana o al mes
 #  No existe listaId332_check
 # ==============================================================================
-## Inicio dasolidar
+# Inicio sigmena.py
 # ==============================================================================
 # Se revisan los enlaces directos del proyecto dasoLidar (se eliminan los que sobran y/o se actualizan si procede)
 # Si Javi cambia algo en SIGMENA.py, aprovechar para:
@@ -124,14 +124,9 @@ print(f'betaraster-> dl_ventana_bienvenida 2: ({type(config_class.dl_ventana_bie
 #  4. Complemento O:/sigmena/utilidad/PROGRAMA/QGIS/Complementos/dasoraster.zip
 
 
-
-
-
-
-
 # home_env = os.path.expanduser(os.environ['HOME'])
-
 # HOME_DIR = str(pathlib.Path.home())
+
 hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
 # current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 EMAIL_DASOLIDAR1 = 'benmarjo@jcyl.es'
@@ -493,8 +488,7 @@ if hacer_log_de_instalacion and dasolidar_log:
     except:
         pass
 # ==============================================================================
-## Fin dasolidar
-
+## Fin sigmena.py
 
 
 
@@ -582,14 +576,14 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
             checkbox_layout.setAlignment(Qt.AlignLeft)
         else:
             checkbox_layout.setAlignment(Qt.AlignCenter)
-        if contenido_ventana == 'bienvenida':
+        if contenido_ventana == 'bienvenida' or contenido_ventana == 'primeros_pasos':
             # Checkbox desmarcado por defecto
             if contenido_ventana == 'bienvenida' or not acceso_lidardata:
                 self.mostrar_checkbox = QCheckBox('Volver a mostrar esta ventana al iniciar este proyecto.')
             elif contenido_ventana == 'primeros_pasos':
-                self.mostrar_checkbox = QCheckBox('Volver a mostrar la ventana de bienvenida al iniciar este proyecto.')
+                self.mostrar_checkbox = QCheckBox('Mostrar la ventana de bienvenida al iniciar este proyecto.')
             else:
-                self.mostrar_checkbox = QCheckBox('Volver a mostrar la ventana de bienvenida al iniciar este proyecto.')
+                self.mostrar_checkbox = QCheckBox('Mostrar la ventana de bienvenida al iniciar este proyecto.')
             try:
                 self.mostrar_checkbox.setChecked(config_class.dl_ventana_bienvenida)
             except (Exception) as mi_error:
@@ -599,7 +593,7 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
             self.mostrar_checkbox = None
         self.ok_button = QPushButton('Ok')
         self.ok_button.clicked.connect(self.accept)
-        if contenido_ventana == 'bienvenida':
+        if contenido_ventana == 'bienvenida' or contenido_ventana == 'primeros_pasos':
             # main_layout.addWidget(self.mostrar_checkbox)
             checkbox_layout.addWidget(self.mostrar_checkbox)
         checkbox_layout.addWidget(self.ok_button)
@@ -1204,6 +1198,7 @@ def dasolidar_IA_consulta_ejecucion(
         botones_disponibles='sugerencia_consultas_ejecucion'
     ):
     print(f'betaraster-> dasolidar_IA_consulta_ejecucion ok 1. botones_disponibles: {type(botones_disponibles)} {botones_disponibles}')
+    rpta_ok = 0
     try:
         dialog = VentanaAsistente(parent=None, botones_disponibles=botones_disponibles)
         rpta_ok = dialog.exec_()
