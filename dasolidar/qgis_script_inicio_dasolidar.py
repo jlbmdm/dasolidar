@@ -1275,11 +1275,13 @@ def mostrar_messagebar_bienvenida():
         mi_button3 = QPushButton(mi_widget)
         mi_button4 = QPushButton(mi_widget)
         mi_button5 = QPushButton(mi_widget)
+        mi_button6 = QPushButton(mi_widget)
         mi_button1.setText('Primeros pasos con dasolidar')
         mi_button2.setText('Manual de consulta')
         mi_button3.setText('Explorar lidarData')
         mi_button4.setText('Asistente dasolidar')
         mi_button5.setText('Curso Lidar')
+        mi_button6.setText('Seminario beta')
         # mi_button1.pressed.connect(mostrar_html_qt)
         # mi_button1.pressed.connect(mostrar_html_qgs)
         mi_button1.pressed.connect(
@@ -1303,12 +1305,18 @@ def mostrar_messagebar_bienvenida():
                 explorar_directorio=r'dasoLidar\varios\cursoLidar'
             )
         )
+        mi_button6.pressed.connect(
+            lambda: mostrar_explorar_ldata(
+                explorar_directorio=r'dasoLidar\varios\seminarioBeta'
+            )
+        )
         # ==============================================================================
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
         mi_widget.layout().addWidget(mi_button3)
         mi_widget.layout().addWidget(mi_button4)
         mi_widget.layout().addWidget(mi_button5)
+        mi_widget.layout().addWidget(mi_button6)
         iface.messageBar().pushWidget(mi_widget, Qgis.Info)
 
 

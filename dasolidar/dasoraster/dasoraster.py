@@ -1283,7 +1283,7 @@ class VentanaAsistente(QDialog):
         ):
         hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
         ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-        texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+        texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
         enviar_mail(
             cuerpo=texto_codificado_consulta,
             motivo=tipo_consulta,
@@ -1902,11 +1902,11 @@ def guardar_enviar_resultado(
     else:
         [especie, tipo_variable, valor, unidad, texto_adicional_modificado] = ['Xx', 'nodata', 0, 'nodata', '']
         return
-    texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n'
-    texto_codificado_consulta += f'{tipo_consulta}\t{x_consulta:0.1f}\t{y_consulta:0.1f}'\
-                                 f'\t{radio_parcela}\t{rodal_superficie}\t{num_pixeles}'\
-                                 f'\t{variable_medida}\t{valor_medio}\t{unidad_medida}'\
-                                 f'\t{especie}\t{tipo_variable}\t{valor}\t{unidad}\n'\
+    texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
+    texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
+                                 f';{radio_parcela};{rodal_superficie};{num_pixeles}'\
+                                 f';{variable_medida};{valor_medio};{unidad_medida}'\
+                                 f';{especie};{tipo_variable};{valor};{unidad}\n'\
                                  f'{texto_adicional_modificado}\n'
 
     msg_guardado_ok = guardar_en_V(
