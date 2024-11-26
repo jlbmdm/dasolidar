@@ -1665,6 +1665,11 @@ def pedir_datos_parcela_rodal(
     layout.addWidget(unidad_combo)
     otra_unidad_global = 'm3/ha'
 
+    publicar_en_red_social_checkbox = QCheckBox('Publicar los datos aportados en dasonet')
+    publicar_en_red_social_checkbox.setChecked(True)
+    layout.addWidget(publicar_en_red_social_checkbox)
+
+
     # Función para actualizar las unidades según la variable seleccionada
     def actualizar_unidades():
         unidad_combo.clear()  # Limpiar las unidades anteriores
@@ -1744,6 +1749,7 @@ def pedir_datos_parcela_rodal(
         else:
             cod_variable = 'error'
 
+        publicar_datos = publicar_en_red_social_checkbox.isChecked()
         valor = valor_input.text()
         unidad = unidad_combo.currentText()
         texto_adicional = texto_multilinea_input.toPlainText()
@@ -1760,7 +1766,7 @@ def pedir_datos_parcela_rodal(
         if unidad == 'otra':
             unidad = otra_unidad_global
         print(f'Tipo: Especie: {especie}, tipo_variable: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {texto_adicional}')
-        return (True, [especie, tipo_variable, valor, unidad, texto_adicional_modificado])
+        return (True, [especie, tipo_variable, valor, unidad, texto_adicional_modificado, publicar_datos])
     else:
         return (False, [])
 
@@ -1792,6 +1798,7 @@ def enviar_mail(
         destinatario=EMAIL_DASOLIDAR1,
         asunto='dsld',
         adjunto=None,
+        publicar_datos=False,
     ):
         mail_enviado_ok = False
         if motivo == 'bengi' or motivo == 'vega':
@@ -1843,10 +1850,17 @@ def enviar_mail(
                 f'\nTu e-mail: {usuario_actual}@jcyl.es'
             )
         if motivo == 'parcela' or motivo == 'rodal':
+            if publicar_datos:
+                texto_dasonet = f'Podrás ver tu {motivo} en dasonet en uno o dos minutos.\n'\
+                    'Por el momento, dasonet son dos capas ubicadas\n'\
+                    'en el grupo de capas "dasonet" del proyecto lidarQgis.'
+            else:
+                texto_dasonet = ''
             QMessageBox.information(
                 iface.mainWindow(),
                 f'Datos de contraste de {motivo} dasolidar enviados.',
-                f'Muchas gracias por tu aportación.'
+                f'Muchas gracias por tu aportación.\n\n'\
+                f'{texto_dasonet}'
             )
         return mail_enviado_ok
 
@@ -1906,15 +1920,16 @@ def guardar_enviar_resultado(
         cod_especie_asimilada_num,
     )
     if enviar_ok:
-        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado] = datos_recibidos
+        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado, publicar_datos] = datos_recibidos
     else:
-        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado] = ['Xx', 'nodata', 0, 'nodata', '']
+        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado, publicar_datos] = ['Xx', 'nodata', 0, 'nodata', '', False]
         return
     texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
     texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
                                  f';{radio_parcela};{rodal_hectareas};{num_pixeles}'\
                                  f';{variable_dasolidar};{valor_medio};{unidad_dasolidar}'\
-                                 f';{especie_aportada};{variable_aportada};{valor_aportado};{unidad_aportada}\n'\
+                                 f';{especie_aportada};{variable_aportada};{valor_aportado};{unidad_aportada}'\
+                                 f';{publicar_datos}\n'\
                                  f'{texto_adicional_modificado}\n'
 
     msg_guardado_ok = guardar_en_V(
@@ -1926,6 +1941,7 @@ def guardar_enviar_resultado(
         cuerpo=texto_codificado_consulta,
         motivo=tipo_consulta,
         adjunto=geojson_pathname,
+        publicar_datos=publicar_datos,
     )
 
     if not msg_guardado_ok and not mail_enviado_ok:

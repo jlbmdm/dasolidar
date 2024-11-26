@@ -198,7 +198,6 @@ else:
     hacer_log_de_instalacion = False
     leer_lista_usuarios_dasolidar = False
 
-
 def log_de_instalacion():
     dasolidar_list = []
     dasolidar_log = None
