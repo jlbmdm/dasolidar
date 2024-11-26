@@ -354,6 +354,9 @@ dict_capas_variables_dasometricas = {
     'VolumenLeñas_m3_ha': 'VLE',
     'AlturaDominanteLidar_m': 'Hdom',
 }
+dict_cod_variables_dasometricas_inverso = {}
+for key, variable_dasometrica in dict_cod_variables_dasometricas.items():
+    dict_cod_variables_dasometricas_inverso[variable_dasometrica[0]] = key
 
 
 def leer_csv_codigos():
@@ -1248,7 +1251,7 @@ class VentanaAsistente(QDialog):
         msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
         msg_guardado_ok = False
         if msg_obj:
-            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n'
+            texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS};{self.text_input.toPlainText()}\n'
             try:
                 msg_obj.write(texto_codificado_consulta)
                 msg_obj.close()
@@ -1588,7 +1591,7 @@ def pedir_datos_parcela_rodal(
         cod_variable_explicada,
         cod_especie_asimilada_num,
     ):
-#ççççç
+
     if cod_especie_asimilada_num in dict_nSP_cod2L.keys():
         cod_2L_especie = dict_nSP_cod2L[cod_especie_asimilada_num]
     else:
@@ -1736,6 +1739,11 @@ def pedir_datos_parcela_rodal(
         # Aquí puedes manejar los datos ingresados
         especie = especie_combo.currentText()
         tipo_variable = tipo_variable_combo.currentText()
+        if tipo_variable in dict_cod_variables_dasometricas_inverso.keys():
+            cod_variable = dict_cod_variables_dasometricas_inverso[tipo_variable]
+        else:
+            cod_variable = 'error'
+
         valor = valor_input.text()
         unidad = unidad_combo.currentText()
         texto_adicional = texto_multilinea_input.toPlainText()
@@ -1745,7 +1753,7 @@ def pedir_datos_parcela_rodal(
         for i, linea in enumerate(lineas, start=1):
             if linea == '':
                 continue
-            texto_adicional_modificado += f'Obs\t{i}\t{linea}\n'
+            texto_adicional_modificado += f'Obs;{i:02};{linea}\n'
         # if texto_adicional_modificado == '':
         #     texto_adicional_modificado += f'\n'
 
@@ -1848,10 +1856,10 @@ def guardar_enviar_resultado(
     x_consulta,
     y_consulta,
     radio_parcela,
-    rodal_superficie,
-    variable_medida,
+    rodal_hectareas,
+    variable_dasolidar,
     valor_medio,
-    unidad_medida,
+    unidad_dasolidar,
     num_pixeles,
     cod_2L_especie,
     cod_modelo_txt,
@@ -1898,15 +1906,15 @@ def guardar_enviar_resultado(
         cod_especie_asimilada_num,
     )
     if enviar_ok:
-        [especie, tipo_variable, valor, unidad, texto_adicional_modificado] = datos_recibidos
+        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado] = datos_recibidos
     else:
-        [especie, tipo_variable, valor, unidad, texto_adicional_modificado] = ['Xx', 'nodata', 0, 'nodata', '']
+        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado] = ['Xx', 'nodata', 0, 'nodata', '']
         return
     texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
     texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
-                                 f';{radio_parcela};{rodal_superficie};{num_pixeles}'\
-                                 f';{variable_medida};{valor_medio};{unidad_medida}'\
-                                 f';{especie};{tipo_variable};{valor};{unidad}\n'\
+                                 f';{radio_parcela};{rodal_hectareas};{num_pixeles}'\
+                                 f';{variable_dasolidar};{valor_medio};{unidad_dasolidar}'\
+                                 f';{especie_aportada};{variable_aportada};{valor_aportado};{unidad_aportada}\n'\
                                  f'{texto_adicional_modificado}\n'
 
     msg_guardado_ok = guardar_en_V(
@@ -1934,6 +1942,7 @@ def guardar_enviar_resultado(
             iface.mainWindow(),
             f'Contraste {tipo_consulta} dasolidar',
             f'No ha sido posible enviar por mail los datos de tu {tipo_consulta}.'
+            f'\nPuede ser debido a que Outlook no se está ejecutando en tu ordenador.'
             f'\nPero éstos han quedado registrados en el fichero de datos dasolidar que se revisa periódicamente.'
             f'\nDe todas formas, si quieres que el equipo dasolidar reciba también los datos por mail,'
             f'\npuedes enviar un correo electrónico a {EMAIL_DASOLIDAR1}'
@@ -1955,10 +1964,10 @@ def mostrar_resultado(
         x_consulta,
         y_consulta,
         radio_parcela,
-        rodal_superficie,
-        variable_medida,
+        rodal_hectareas,
+        variable_dasolidar,
         valor_medio,
-        unidad_medida,
+        unidad_dasolidar,
         num_pixeles,
         cod_2L_especie,
         cod_modelo_txt,
@@ -1988,27 +1997,33 @@ def mostrar_resultado(
     # Crear el botón de 'Enviar'
     enviar_button = QPushButton('Aportar datos de contraste')
     enviar_button.setToolTip('Pulsa este botón si dispones de datos en esta misma ubicación\ny quieres compartirlos con los coordinadores del proyecto dasolidar.\n\nEsto nos permitirá detectar modelos que no dan buenas estimaciones y mejorarlos.\nLos modelos son específicos de cada especie y zona y tus aportaciones\nnos ayudan a detectar estratos y parámetros que hay que revisar.')
+    
+    # Conectar el botón a la función y cerrar el diálogo
     enviar_button.clicked.connect(
-        lambda: (guardar_enviar_resultado(
-            tipo_consulta,
-            resultado_msg,
-            x_consulta,
-            y_consulta,
-            radio_parcela,
-            rodal_superficie,
-            variable_medida,
-            valor_medio,
-            unidad_medida,
-            num_pixeles,
-            cod_2L_especie,
-            cod_modelo_txt,
-            cod_variable_explicada,
-            cod_especie_asimilada_num,
-            cod_estratozona_txt,
-            rodal_feat=rodal_feat,
-            layer_crs=layer_crs,
-        ), dialog.accept()) 
-    )  # Conectar el botón a la función
+        lambda: (
+            guardar_enviar_resultado(
+                tipo_consulta,
+                resultado_msg,
+                x_consulta,
+                y_consulta,
+                radio_parcela,
+                rodal_hectareas,
+                variable_dasolidar,
+                valor_medio,
+                unidad_dasolidar,
+                num_pixeles,
+                cod_2L_especie,
+                cod_modelo_txt,
+                cod_variable_explicada,
+                cod_especie_asimilada_num,
+                cod_estratozona_txt,
+                rodal_feat=rodal_feat,
+                layer_crs=layer_crs,
+            ),
+            dialog.accept()  # Cerrar el diálogo después de ejecutar la función
+        )
+    )
+    
     layout.addWidget(enviar_button)
 
     # Establecer el layout en el diálogo
@@ -2987,7 +3002,7 @@ class Dasoraster:
                 print(f'betaraster-> self.layer_crs ({type(self.layer_crs)}): {self.layer_crs}')
             else:
                 self.capa_raster_elegida = capa_VCC_selec
-            variable_medida = self.capa_raster_elegida.name()
+            variable_dasolidar = self.capa_raster_elegida.name()
             print(f'betaraster-> self.capa_raster_elegida ({type(self.capa_raster_elegida)}: {self.capa_raster_elegida.name()})')
 
             if self.buscar_esp_modelo:
@@ -3032,14 +3047,14 @@ class Dasoraster:
                 rodal_geom = rodal_feat.geometry()
                 dest_crs = QgsCoordinateReferenceSystem('EPSG:25830')
                 if dest_crs == self.layer_crs:
-                    rodal_superficie = rodal_geom.area()
+                    rodal_hectareas = rodal_geom.area() / 10000
                 else:
                     transformer = QgsCoordinateTransform(self.layer_crs, dest_crs, QgsProject.instance())
                     rodal_geom_reprojected = rodal_geom.clone()
                     rodal_geom_reprojected.transform(transformer)
-                    rodal_superficie = rodal_geom_reprojected.area()
-                print(f'betaraster-> Superficie del rodal: {rodal_superficie / 10000:0.2f} ha')
-                if rodal_superficie / 10000 > 500:
+                    rodal_hectareas = rodal_geom_reprojected.area() / 10000
+                print(f'betaraster-> Superficie del rodal: {rodal_hectareas:0.2f} ha')
+                if rodal_hectareas > 500:
                     mensaje('Calculando volumen del rodal...', mi_duration=10)
 
                 valor_medio, num_pixeles = calcular_valor_medio_parcela_rodal(
@@ -3054,57 +3069,57 @@ class Dasoraster:
             else:
                 print(f'betaraster-> Revisar este error')
 
-            unidad_medida = ''
+            unidad_dasolidar = ''
             if isinstance(valor_medio, (int, float)):
                 if (
-                    variable_medida.upper().startswith('VOL')
-                    or variable_medida.upper().startswith('VCC')
+                    variable_dasolidar.upper().startswith('VOL')
+                    or variable_dasolidar.upper().startswith('VCC')
                     or (
-                        'VOLUMEN' in variable_medida.upper()
-                        and not variable_medida.upper().startswith('IAVC')
-                        and not variable_medida.upper().startswith('CRE')
-                        and not 'CRECIM' in variable_medida.upper()
+                        'VOLUMEN' in variable_dasolidar.upper()
+                        and not variable_dasolidar.upper().startswith('IAVC')
+                        and not variable_dasolidar.upper().startswith('CRE')
+                        and not 'CRECIM' in variable_dasolidar.upper()
                     )
                 ):
                     valor_medio = int(round(valor_medio))
-                    unidad_medida = 'm3/ha'
+                    unidad_dasolidar = 'm3/ha'
                 elif (
-                    variable_medida.upper().startswith('BA')
-                    or variable_medida.upper().startswith('BIO')
-                    or 'BIOMASA' in variable_medida.upper()
+                    variable_dasolidar.upper().startswith('BA')
+                    or variable_dasolidar.upper().startswith('BIO')
+                    or 'BIOMASA' in variable_dasolidar.upper()
                 ):
                     valor_medio = int(round(valor_medio))
-                    unidad_medida = 't/ha'
+                    unidad_dasolidar = 't/ha'
                 elif (
-                    variable_medida.upper().startswith('ALT')
-                    or 'ALTURA' in variable_medida.upper()
+                    variable_dasolidar.upper().startswith('ALT')
+                    or 'ALTURA' in variable_dasolidar.upper()
                 ):
                     valor_medio = round(valor_medio, 1)
-                    unidad_medida = 'm'
+                    unidad_dasolidar = 'm'
                 elif (
-                    variable_medida.upper().startswith('COB')
-                    or 'COBERTURA' in variable_medida.upper()
-                    or 'CUBIERTA' in variable_medida.upper()
-                    or 'FRACCION' in variable_medida.upper()
+                    variable_dasolidar.upper().startswith('COB')
+                    or 'COBERTURA' in variable_dasolidar.upper()
+                    or 'CUBIERTA' in variable_dasolidar.upper()
+                    or 'FRACCION' in variable_dasolidar.upper()
                 ):
                     valor_medio = int(round(valor_medio))
-                    unidad_medida = '%'
+                    unidad_dasolidar = '%'
                 elif (
-                    variable_medida.upper().startswith('AB')
-                    or 'BASIMETRICA' in variable_medida.upper()
+                    variable_dasolidar.upper().startswith('AB')
+                    or 'BASIMETRICA' in variable_dasolidar.upper()
                 ):
                     valor_medio = round(valor_medio, 1)
-                    unidad_medida = 'm2/ha'
+                    unidad_dasolidar = 'm2/ha'
                 elif (
-                    variable_medida.upper().startswith('IAVC')
-                    or variable_medida.upper().startswith('CRE')
-                    or 'CRECIM' in variable_medida.upper()
+                    variable_dasolidar.upper().startswith('IAVC')
+                    or variable_dasolidar.upper().startswith('CRE')
+                    or 'CRECIM' in variable_dasolidar.upper()
                 ):
                     valor_medio = round(valor_medio, 2)
-                    unidad_medida = 'm3/ha.año'
+                    unidad_dasolidar = 'm3/ha.año'
                 else:
                     valor_medio = round(valor_medio, 2)
-                    unidad_medida = ''
+                    unidad_dasolidar = ''
             else:
                 valor_medio = -1
 
@@ -3121,11 +3136,11 @@ class Dasoraster:
                 QMessageBox.information(
                     self.iface.mainWindow(),
                     'Consulta dasolidar: parcela',
-                    f'Parcela de r={self.radio_parcela} m\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}\nValor en capa {variable_medida}: No hay pixeles con valores válidos'
+                    f'Parcela de r={self.radio_parcela} m\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}\nValor en capa {variable_dasolidar}: No hay pixeles con valores válidos'
                 )
             else:
                 if tipo_consulta == 'parcela':
-                    rodal_superficie = 0
+                    rodal_hectareas = 0
                     resultado_msg = f'Parcela de radio: {self.radio_parcela} m'
                     resultado_msg += f'\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}'
                     if self.buscar_esp_modelo:
@@ -3142,10 +3157,10 @@ class Dasoraster:
                             cod_estratozona_txt,
                             cod_modelo_txt,
                         )
-                    if unidad_medida == 'm3/ha':
-                        resultado_msg += f'\n\nVolumen medio: {valor_medio} {unidad_medida}'
+                    if unidad_dasolidar == 'm3/ha':
+                        resultado_msg += f'\n\nVolumen medio: {valor_medio} {unidad_dasolidar}'
                     else:
-                        resultado_msg += f'\n\n{variable_medida}: {valor_medio} {unidad_medida}'
+                        resultado_msg += f'\n\n{variable_dasolidar}: {valor_medio} {unidad_dasolidar}'
                 elif tipo_consulta == 'rodal':
                     rodal_fid = rodal_feat.id()
                     resultado_msg = ''
@@ -3156,7 +3171,7 @@ class Dasoraster:
 
                     resultado_msg += f'Información del polígono (rodal o lote):'
                     resultado_msg += f'\n    Id: {rodal_fid}'
-                    resultado_msg += f'\n    Superficie: {rodal_superficie / 10000:0.2f} ha'
+                    resultado_msg += f'\n    Superficie: {rodal_hectareas:0.2f} ha'
                     if self.buscar_esp_modelo:
                         resultado_msg = self.mostrar_modelo(
                             resultado_msg,
@@ -3171,14 +3186,14 @@ class Dasoraster:
                             cod_estratozona_txt,
                             cod_modelo_txt,
                         )
-                    if unidad_medida == 'm3/ha':
+                    if unidad_dasolidar == 'm3/ha':
                         resultado_msg += f'\n\nVolumen de madera:'
-                        valor_total = int(round(valor_medio * rodal_superficie / 10000))
-                        resultado_msg += f'\n    Volumen medio:  {str(valor_medio):>8} {unidad_medida}'
+                        valor_total = int(round(valor_medio * rodal_hectareas))
+                        resultado_msg += f'\n    Volumen medio:  {str(valor_medio):>8} {unidad_dasolidar}'
                         resultado_msg += f'\n    Volumen total: {str(valor_total):>8} m3'
                     else:
                         resultado_msg += f'\n\nValor medio de la variable:'
-                        resultado_msg += f'\n    {variable_medida}: {valor_medio} {unidad_medida}'
+                        resultado_msg += f'\n    {variable_dasolidar}: {valor_medio} {unidad_dasolidar}'
 
 
                     if usuario_alfa:
@@ -3193,10 +3208,10 @@ class Dasoraster:
                     x_consulta,
                     y_consulta,
                     self.radio_parcela,
-                    rodal_superficie,
-                    variable_medida,
+                    rodal_hectareas,
+                    variable_dasolidar,
                     valor_medio,
-                    unidad_medida,
+                    unidad_dasolidar,
                     num_pixeles,
                     cod_2L_especie,
                     cod_modelo_txt,
