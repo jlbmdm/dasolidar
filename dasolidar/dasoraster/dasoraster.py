@@ -286,6 +286,19 @@ else:
 clave_uso_version = f'dasolidar/uso_dasoraster_v.{__version__}'
 mi_config = QgsSettings()
 
+mfe25cyl_sp = os.path.join(PLUGIN_DIR, 'mfe25cyl_sp.csv')
+dict_spp_mfe25cyl = {}
+if os.path.exists(mfe25cyl_sp):
+    try:
+        with open(mfe25cyl_sp, mode='r', encoding='utf-8') as my_list:
+            lista_spp_mfe25cyl = my_list.readlines()
+        lista_spp_num = [int(mi_sp.split(separador_dasolistas)[0]) for mi_sp in lista_spp_mfe25cyl]
+        for mi_sp in lista_spp_mfe25cyl:
+            list_sp = mi_sp.split(separador_dasolistas)
+            dict_spp_mfe25cyl[int(list_sp[0])] = list_sp[1:]
+    except:
+        print(f'betaraster-> Error al leer la lista de especies: {mfe25cyl_sp}')
+
 class Configuracion():
     def __init__(self):
         self.dl_usos = mi_config.value(clave_uso_version, 0)
@@ -550,7 +563,12 @@ def capa_malla_lasfiles():
         iface.messageBar().pushMessage(
             title='dasoraster',
             text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto. Pulsa el botón [mostrar más] y vuelve a intentarlo.',
-            showMore=f'Se intenta cargar desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\nSe va a cargar de forma automática esa capa en el proyecto; una vez hecho vuelve a intentar la carga del fichero lidar (nube de puntos)',
+            showMore=f'Este complemento está preparado para trabajar con el proyecto LidarQgis.\n'\
+                'Si estás trabajando con un proyecto tuyo es posible que éste no tenga la capa cargar_nubeDePuntos_LidarPNOA2 (malla para descarga de fichero lidar).\n'\
+                'A continuacón se va a intentar cargar esa capa desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\n'\
+                'Para eso necesitas tener acceso a esa ubicación de red, para lo cual debes estar dado de alta en la lista de usuarios dasolidar.\n'\
+                'Para saber si estás dado de alta puedes enviar esta consulta con el botón "Consultas & IA" de este complemento dasoraster.\n'
+                'Si tiene éxito la carga automática esa capa en el proyecto; una vez hecho vuelve a intentar la carga del fichero lidar (nube de puntos)',
             duration=20,
             level=Qgis.Warning,
         )
@@ -936,6 +954,54 @@ def capa_vector_activa():
     layer_rodales = layer_activo
     return layer_rodales
 
+def identifica_especie(self_punto_click, capa_mfe_sp1_encontrada, capa_mfe_sp1_raster_ok):
+    cod_num_mfe_ok = False
+    if capa_mfe_sp1_encontrada:
+        result_mfe_sp1 = capa_mfe_sp1_raster_ok.dataProvider().identify(self_punto_click, QgsRaster.IdentifyFormatValue)
+        if result_mfe_sp1.isValid():
+            try:
+                cod_num_mfe_sp_ = int(result_mfe_sp1.results()[1])  #  Acceder al valor del píxel
+                cod_num_mfe_ok = True
+            except:
+                cod_num_mfe_sp_ = 0  #  'noNumero'
+        else:
+            cod_num_mfe_sp_ = 0  #  'noValida'
+    else:
+        cod_num_mfe_sp_ = 0  #  'noCapa'
+
+    if cod_num_mfe_ok and cod_num_mfe_sp_ in dict_spp_mfe25cyl.keys():
+        try:
+            cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][0]
+            nombre_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][1]
+            dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][2]
+        except:
+            print(f'betaraster-> cod_sp error 1 ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_}')
+            cod_2L_sp_ = 'Xx'
+            nombre_sp_ = 'Especie desconocida'
+            dasolidar_sp_ = 'NO'
+    else:
+        print(f'betaraster-> cod_sp error 2 ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_}')
+        cod_2L_sp_ = 'Xx'
+        nombre_sp_ = 'Especie desconocida'
+        dasolidar_sp_ = 'NO'
+    return (cod_num_mfe_sp_, cod_2L_sp_, nombre_sp_, dasolidar_sp_)
+
+def leer_raster_float(self_punto_click, capa_raster_float_encontrada, capa_raster_float_ok):
+    valor_raster_ok = False
+    if capa_raster_float_encontrada:
+        result_mfe_sp1 = capa_raster_float_ok.dataProvider().identify(self_punto_click, QgsRaster.IdentifyFormatValue)
+        if result_mfe_sp1.isValid():
+            try:
+                valor_raster_float = result_mfe_sp1.results()[1]  #  Acceder al valor del píxel
+                valor_raster_ok = True
+            except:
+                valor_raster_float = 0.0
+        else:
+            valor_raster_float = 0.0
+    else:
+        valor_raster_float = 0.0
+    return (valor_raster_float, valor_raster_ok)
+
 
 class VentanaBienvenidaGuiaRapida(QDialog):
     def __init__(self, parent=None):
@@ -1038,6 +1104,98 @@ def abrir_fichero_almacen(unidad_V_disponible, msg_filename):
     return msg_obj
 
 
+class VentanaDasonet(QDialog):
+    def __init__(self, parent=None):
+        print(f'betaraster-> Instanciando VentanaDasonet')
+        super().__init__(parent)
+
+        self.setWindowTitle('Edición o borrado de datos aportados a dasonet')
+        # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
+        # self.setGeometry(100, 100, 700, 400)
+        self.resize(450, 150)  #  Ancho y alto en píxeles
+        self.center()
+
+        # ======================================================================
+        # Layout horizontal para el texto
+        self.main_layout = QVBoxLayout()
+        # Mensaje de texto
+        self.mi_texto = QLabel('Indica qué datos quieres cambiar o borrar y, si lo deseas, el motivo:')
+        self.mi_texto.setAlignment(Qt.AlignLeft)
+        self.main_layout.addWidget(self.mi_texto)
+
+        # # Ventana de texto con tamaño fijo
+        # self.text_input = QLineEdit(self)
+        self.text_input = QTextEdit(self)
+        self.text_input.setFixedSize(400, 130)  # Establece el tamaño (ancho, alto) en píxeles
+        self.main_layout.addWidget(self.text_input)
+
+        # ======================================================================
+        # botones_layout = QHBoxLayout()
+        # # Añadir botones
+        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
+        # ======================================================================
+        # Botones de Consulta, Acción y Cancelar
+        self.buttonBox = QDialogButtonBox()
+        self.buttonBox.setToolTip('dasonet (proyecto dasolidar)')
+        # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
+        # ======================================================================
+
+        self.edicion_borrado_dasonet_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
+        self.edicion_borrado_dasonet_button.setToolTip('Haz clic aquí para enviar tu petición de modificaicón o borrado al equipo dasolidar.')
+        self.edicion_borrado_dasonet_button.clicked.connect(self.lanzar_edicion_borrado_dasonet)
+        self.edicion_borrado_dasonet_button.setEnabled(True)
+
+        self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
+        self.cancel_button.clicked.connect(self.reject)
+        # ======================================================================
+
+        # ======================================================================
+        # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
+        self.dasonet_checkbox = QCheckBox(f'Eliminar de dasonet todos los datos aportados por mí ({usuario_actual}).')
+        self.dasonet_checkbox.setChecked(False)
+        self.main_layout.addWidget(self.dasonet_checkbox)
+        # ======================================================================
+
+        # Añadir el layout de botones al layout principal
+        # self.main_layout.addLayout(botones_layout)
+        self.main_layout.addWidget(self.buttonBox)
+
+        # Establecer el layout principal
+        self.setLayout(self.main_layout)
+
+    def lanzar_edicion_borrado_dasonet(self):
+        pass
+
+    def enviar_dasonet(self):
+        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+        dasonet_borrar_todo = self.dasonet_checkbox.isChecked()
+        texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
+        texto_codificado_consulta += f'dasonet;Borrar todo:;{dasonet_borrar_todo}\n'
+        texto_codificado_consulta += f'{self.text_input.toPlainText()}\n'
+        enviar_mail(
+            cuerpo=texto_codificado_consulta,
+            motivo='dasonet',
+            # borrar_todo=dasonet_borrar_todo,
+        )
+
+    def lanzar_edicion_borrado_dasonet(self):
+        print(f'betaraster-> lanzar_edicion_borrado_dasonet')
+        self.button_pressed = f'Enviar_edicion_borrado_dasonet'
+        self.accept()
+        print(f'betaraster-> Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
+        self.enviar_dasonet()
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = self.screen().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def get_text(self):
+        return self.text_input.toPlainText()
+
+
 # Copiar en el script de arranque
 # ==============================================================================
 class VentanaAsistente(QDialog):
@@ -1045,20 +1203,18 @@ class VentanaAsistente(QDialog):
         print(f'betaraster-> Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
         super().__init__(parent)
 
-        # botones_disponibles='consulta_bengi'
+        # NO-> botones_disponibles='consulta_bengi'
         # botones_disponibles='sugerencia_consulta_bengi'
         # botones_disponibles='sugerencia_consulta_bengi_vega'
         # botones_disponibles='sugerencia_consultas_ejecucion'
 
         print(f'betaraster-> botones_disponibles: {botones_disponibles}')
-        if botones_disponibles == 'consulta_bengi':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
-        elif botones_disponibles == 'sugerencia_consulta_bengi':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
+        if botones_disponibles == 'sugerencia_consulta_bengi':
+            self.setWindowTitle('Aquí puedes escribir sugerencias y consultas.')
         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
+            self.setWindowTitle('Aquí puedes hacer sugerencias, consultas o peticiones. Próximamente podrás pedir que se ejecute una acción.')
         else:
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+            self.setWindowTitle('Disponible próximamente.')
         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
         # self.setGeometry(100, 100, 700, 400)
         self.resize(600, 200)  #  Ancho y alto en píxeles
@@ -1145,6 +1301,18 @@ class VentanaAsistente(QDialog):
                 else:
                     self.consulta_vega_button.setEnabled(False)
             self.consulta_bengi_button.setEnabled(True)
+
+            self.dasonet_button = self.buttonBox.addButton('Dasonet', QDialogButtonBox.AcceptRole)
+            self.dasonet_button.setToolTip('Haz clic aquí para retirar o modificar datos (parcelas o rodales) aportados a dasonet.')
+            self.dasonet_button.clicked.connect(self.editar_dasonet)
+            # self.dasonet_button.clicked.connect(
+            #     lambda event: self.editar_dasonet(
+            #         mi_evento=event,
+            #     )
+            # )
+            self.dasonet_button.setEnabled(True)
+
+
         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
             self.sugerencia_button.setToolTip('Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.')
@@ -1155,11 +1323,16 @@ class VentanaAsistente(QDialog):
                 self.consulta_vega_button.setToolTip('Haz clic aquí para enviar una consulta a Vega (IA).')
             else:
                 self.consulta_vega_button.setToolTip('Opción solo disponible para alfa testers.')
+
+            self.dasonet_button = self.buttonBox.addButton('Dasonet', QDialogButtonBox.AcceptRole)
+            self.dasonet_button.setToolTip('Haz clic aquí para retirar o modificar datos (parcelas o rodales) aportados a dasonet.')
+
             self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
             if usuario_alfa:
                 self.accion_button.setToolTip('Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.')
             else:
                 self.consulta_vega_button.setToolTip('Opción solo disponible para alfa testers.')
+
             self.sugerencia_button.clicked.connect(
                 lambda event: self.lanzar_sugerencia_consulta_accion(
                     mi_evento=event,
@@ -1184,17 +1357,24 @@ class VentanaAsistente(QDialog):
                     mi_evento=event,
                     tipo_consulta='accion',
                 )
-
             )
+            self.dasonet_button.clicked.connect(self.editar_dasonet)
+            # self.dasonet_button.clicked.connect(
+            #     lambda event: self.editar_dasonet(
+            #         mi_evento=event,
+            #     )
+            # )
 
             self.sugerencia_button.setEnabled(True)
             self.consulta_bengi_button.setEnabled(True)
+            self.dasonet_button.setEnabled(True)
             if usuario_alfa:
                 self.consulta_vega_button.setEnabled(True)
                 self.accion_button.setEnabled(True)
             else:
                 self.consulta_vega_button.setEnabled(False)
                 self.accion_button.setEnabled(False)
+
         else:
             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
             self.consulta_bengi_button.clicked.connect(
@@ -1286,7 +1466,13 @@ class VentanaAsistente(QDialog):
         ):
         hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
         ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-        texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+        if tipo_consulta == 'dasonet':
+            texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
+            texto_codificado_consulta += f'dasonet;Borrar todo:;{False}\n'
+            texto_codificado_consulta += f'{self.text_input.toPlainText()}\n'
+        else:
+            texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+
         enviar_mail(
             cuerpo=texto_codificado_consulta,
             motivo=tipo_consulta,
@@ -1339,6 +1525,39 @@ class VentanaAsistente(QDialog):
     #         f'Gracias por la petición.\nEsta utilidad estará disponible próximamente'
     #     )
     #     # return (self.text_input.toPlainText(), 'accion')
+
+    def editar_dasonet(self):
+        print(f'betaraster-> Se va editar / modificar los datos aportados a dasonet')
+        self.button_pressed = f'Enviar_edicion_borrado_dasonet'
+        if self.text_input.toPlainText() != '':
+            self.accept()
+            self.enviar_consulta('dasonet')
+        else:
+            self.accept()
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'Editar/borrar aportaciones a dasonet',
+                f'Por el momento solo se pueden editar o borrar aportaciones de forma manual.\n'\
+                f'Escribe en la siguiente ventana algún dato de tu aportación para que\n'\
+                f'la localicemos y, si quieres, también el motivo del cambio/borrado.\n'\
+                f'Nosotros nos encargamos de buscarla y editarla o borrarla siguiendo tus instrucciones.'
+            )
+            print(f'betaraster-> Mensaje mostrados')
+            try:
+                dialog = VentanaDasonet(parent=None)
+                rpta_ok = dialog.exec_()
+                print(f'betaraster-> Rpta de VentanaDasonet: {rpta_ok}')
+            except Exception as e:
+                print(f'betaraster-> Ocurrió un error al mostrar la ventana dasonet 1: {e}')
+            # Esto siguiente sobra; lo dejo just in case
+            if rpta_ok == QDialog.Accepted:
+                consulta_usuario = dialog.get_text()
+                boton_pulsado = dialog.button_pressed
+                print(f'betaraster-> Texto de consulta o petición:', consulta_usuario)
+                print(f'betaraster-> Botón pulsado:', boton_pulsado)
+            else:
+                print(f'betaraster-> Consulta o petición canceladas')
+
 
 
 # ==============================================================================
@@ -1559,7 +1778,6 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         self.canvas.mapCanvasRefreshed.disconnect(self.on_canvas_changed)
         self.canvas.scaleChanged.disconnect(self.on_scale_changed)
         self.iface.removeToolBarIcon(self.action)
-
 
 
 class ConsultarRodalTool(QgsMapToolEmitPoint):
@@ -1799,6 +2017,7 @@ def enviar_mail(
         asunto='dsld',
         adjunto=None,
         publicar_datos=False,
+        # borrar_todo=False,
     ):
         mail_enviado_ok = False
         if motivo == 'bengi' or motivo == 'vega':
@@ -1862,6 +2081,15 @@ def enviar_mail(
                 f'Muchas gracias por tu aportación.\n\n'\
                 f'{texto_dasonet}'
             )
+        if motivo == 'dasonet':
+            QMessageBox.information(
+                iface.mainWindow(),
+                f'{motivacion} dasolidar',
+                f'Muchas gracias por colaborar en este proyecto.'
+                f'\nIntentaremos atender tu petición de modificación/borrado lo antes posible.'
+                f'\nTe mandaremos un correo electrónico para confirmarlo.'
+                f'\nTu e-mail: {usuario_actual}@jcyl.es'
+            )
         return mail_enviado_ok
 
 def guardar_enviar_resultado(
@@ -1869,6 +2097,7 @@ def guardar_enviar_resultado(
     resultado_msg,
     x_consulta,
     y_consulta,
+    parcela_circular,
     radio_parcela,
     rodal_hectareas,
     variable_dasolidar,
@@ -1883,7 +2112,7 @@ def guardar_enviar_resultado(
     rodal_feat=None,
     layer_crs=None,
 ):
-    print('Botón [Aportar datos de contraste] presionado. Se pide al usuario que aporte datos')
+    print('Botón [Aportar datos de contraste] presionado. Se pide al usuario que aporte datos de parcela/rodal')
     hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
     ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
     ahora_H_M_SS = datetime.fromtimestamp(time.time()).strftime('%H%M%S')
@@ -1926,7 +2155,7 @@ def guardar_enviar_resultado(
         return
     texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
     texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
-                                 f';{radio_parcela};{rodal_hectareas};{num_pixeles}'\
+                                 f';{parcela_circular};{radio_parcela};{rodal_hectareas};{num_pixeles}'\
                                  f';{variable_dasolidar};{valor_medio};{unidad_dasolidar}'\
                                  f';{especie_aportada};{variable_aportada};{valor_aportado};{unidad_aportada}'\
                                  f';{publicar_datos}\n'\
@@ -1979,6 +2208,7 @@ def mostrar_resultado(
         resultado_msg,
         x_consulta,
         y_consulta,
+        parcela_circular,
         radio_parcela,
         rodal_hectareas,
         variable_dasolidar,
@@ -2014,14 +2244,16 @@ def mostrar_resultado(
     enviar_button = QPushButton('Aportar datos de contraste')
     enviar_button.setToolTip('Pulsa este botón si dispones de datos en esta misma ubicación\ny quieres compartirlos con los coordinadores del proyecto dasolidar.\n\nEsto nos permitirá detectar modelos que no dan buenas estimaciones y mejorarlos.\nLos modelos son específicos de cada especie y zona y tus aportaciones\nnos ayudan a detectar estratos y parámetros que hay que revisar.')
     
-    # Conectar el botón a la función y cerrar el diálogo
+    # Conecto el botón a la función y cierro el diálogo
     enviar_button.clicked.connect(
         lambda: (
-            guardar_enviar_resultado(
+            dialog.accept(),  #  Cierro el diálogo inmediatamente
+            QTimer.singleShot(0, lambda: guardar_enviar_resultado(  #  Llamo a la función después de cerrar el diálogo
                 tipo_consulta,
                 resultado_msg,
                 x_consulta,
                 y_consulta,
+                parcela_circular,
                 radio_parcela,
                 rodal_hectareas,
                 variable_dasolidar,
@@ -2035,8 +2267,7 @@ def mostrar_resultado(
                 cod_estratozona_txt,
                 rodal_feat=rodal_feat,
                 layer_crs=layer_crs,
-            ),
-            dialog.accept()  # Cerrar el diálogo después de ejecutar la función
+            ))
         )
     )
     
@@ -2065,12 +2296,13 @@ class Dasoraster:
         self.canvas = iface.mapCanvas()
         self.tool_parcela = None
         self.autoCargaLasFileObj = None
-
+# ç
         settings = QSettings()
         self.radio_parcela = settings.value('dasoraster/radio_parcela', 15, type=float)
-        self.consultar_circulo = settings.value('dasoraster/consultar_circulo', True, type=bool)
+        self.parcela_circular = settings.value('dasoraster/parcela_circular', True, type=bool)
         self.consulta_multiple = settings.value('dasoraster/consulta_multiple', True, type=bool)
-        self.buscar_esp_modelo = settings.value('dasoraster/buscar_esp_modelo', False, type=bool)
+        self.buscar_modelo_regresion = settings.value('dasoraster/buscar_modelo_regresion', False, type=bool)
+        self.buscar_esp_mfe = settings.value('dasoraster/buscar_esp_mfe', True, type=bool)
         # self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)
         self.autocarga_lasfiles = False
         self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA, type=int)
@@ -2276,7 +2508,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/resources/images/icon_star.png'
         self.action7 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster\n       IA'),
+            text=self.tr(u'dasoraster\nConsultas & IA'),
             callback=self.dasolidar_IA,
             parent=self.iface.mainWindow(),
         )
@@ -2566,7 +2798,7 @@ class Dasoraster:
             self.tool_parcela = CustomMapTool(
                 self.canvas,
                 self.radio_parcela,
-                self.consultar_circulo,
+                self.parcela_circular,
                 self.consulta_multiple,
             )
             # self.tool_parcela.canvasClicked.connect(self.obtener_volumen)
@@ -2676,6 +2908,41 @@ class Dasoraster:
             else:
                 print(f'betaraster-> Capa {capa_nombre_MFE_1} no encontrada')
         return capa_MFE_encontrada, capa_MFE_vector_ok, capa_nombre_MFE_ok
+
+    def buscar_raster_mfe(self):
+        # Parámetros de entrada
+        capa_nombre_mfe_sp1 = f'mfe25_nSP1'
+        capa_nombre_mfe_sp2 = f'mfe25_nSP2'
+        capa_nombre_mfe_spx = f'mfe25_O2_O1O2'
+        capa_raster_mfe_sp1 = QgsProject.instance().mapLayersByName(capa_nombre_mfe_sp1)
+        capa_raster_mfe_sp2 = QgsProject.instance().mapLayersByName(capa_nombre_mfe_sp2)
+        capa_raster_mfe_spx = QgsProject.instance().mapLayersByName(capa_nombre_mfe_spx)
+        capa_mfe_sp1_raster_ok = None
+        capa_mfe_sp2_raster_ok = None
+        capa_mfe_spx_raster_ok = None
+        if capa_raster_mfe_sp1:
+            capa_mfe_sp1_raster_ok = capa_raster_mfe_sp1[0]
+            capa_mfe_sp1_encontrada = True
+        else:
+            capa_mfe_sp1_encontrada = False
+            print(f'betaraster-> Capa {capa_nombre_mfe_sp1} no encontrada')
+        if capa_raster_mfe_sp2:
+            capa_mfe_sp2_raster_ok = capa_raster_mfe_sp2[0]
+            capa_mfe_sp2_encontrada = True
+        else:
+            capa_mfe_sp2_encontrada = False
+            print(f'betaraster-> Capa {capa_nombre_mfe_sp2} no encontrada')
+        if capa_raster_mfe_spx:
+            capa_mfe_spx_raster_ok = capa_raster_mfe_spx[0]
+            capa_mfe_spx_encontrada = True
+        else:
+            capa_mfe_spx_encontrada = False
+            print(f'betaraster-> Capa {capa_nombre_mfe_spx} no encontrada')
+        return (
+            capa_mfe_sp1_encontrada, capa_mfe_sp1_raster_ok, capa_nombre_mfe_sp1,
+            capa_mfe_sp2_encontrada, capa_mfe_sp2_raster_ok, capa_nombre_mfe_sp2,
+            capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok, capa_nombre_mfe_spx,
+        )
 
     def buscar_raster_modelos(self, cod_variable_dasometrica):
         # Parámetros de entrada
@@ -2820,46 +3087,74 @@ class Dasoraster:
         return capa_raster_sel_ok, capa_raster_selec
 
     def identifica_esp_modelo(self):
-        capa_MFE_encontrada, capa_MFE_vector_ok, capa_MFE_ok = self.buscar_vector_especies()
-        # layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
-        buffer_size=0.001
-        request = QgsFeatureRequest().setFilterRect(
-            QgsRectangle(
-                self.punto_click.x() - buffer_size,
-                self.punto_click.y() - buffer_size,
-                self.punto_click.x() + buffer_size,
-                self.punto_click.y() + buffer_size
-            )
-        )
-        # selected_features = capa_MFE_vector_ok.dataProvider().getFeatures(request)
-        selected_features = capa_MFE_vector_ok.getFeatures(request)
-        cod_num_especie = 1
-        contador_teselas_totales = 0
-        if selected_features:
-            # Convierto el iterador a una lista para contar las características
-            features_list = list(selected_features)
-            num_features = len(features_list)
-            if num_features != 1:
-                print(f'betaraster-> Número de teselas MFE seleccionados-> {num_features} (debería ser una solo)')
-            for feature in features_list:
-                contador_teselas_totales += 1
-                # Obtener el valor del campo COPC1
-                cod_num_especie = feature['n_sp1']
-                cod_2L_especie = feature['SP1']
-                nombre_especie = feature['Especie1']
-                break
+        pass
 
-            if cod_num_especie in dict_nSP_cod2L.keys():
-                cod_2L_especie_ = dict_nSP_cod2L[cod_num_especie]
-            else:
-                cod_2L_especie_ = 'Xx'
+    def identifica_esp_mfe(self, usar_mfe_raster=True):
+        if usar_mfe_raster:
+            (
+                capa_mfe_sp1_encontrada, capa_mfe_sp1_raster_ok, capa_nombre_mfe_sp1,
+                capa_mfe_sp2_encontrada, capa_mfe_sp2_raster_ok, capa_nombre_mfe_sp2,
+                capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok, capa_nombre_mfe_spx,
+            ) = self.buscar_raster_mfe()
+            (
+                cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1
+            ) = identifica_especie(self.punto_click, capa_mfe_sp1_encontrada, capa_mfe_sp1_raster_ok)
+            (
+                cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2
+            ) = identifica_especie(self.punto_click, capa_mfe_sp2_encontrada, capa_mfe_sp2_raster_ok)
+
+            (
+                valor_raster_float, valor_raster_ok
+            ) = leer_raster_float(self.punto_click, capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok)
         else:
-            cod_num_especie = 0
-            cod_2L_especie = 'Xx'
-            cod_2L_especie_ = 'Xx'
-            nombre_especie = 'Especie desconocida'
-        print(f'betaraster-> cod_num_especie: {cod_num_especie}; cod_2L_especie: {cod_2L_especie}; {cod_2L_especie_}; nombre_especie: {nombre_especie}')
+            capa_MFE_encontrada, capa_MFE_vector_ok, capa_MFE_ok = self.buscar_vector_especies()
+            # layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
+            buffer_size=0.001
+            request = QgsFeatureRequest().setFilterRect(
+                QgsRectangle(
+                    self.punto_click.x() - buffer_size,
+                    self.punto_click.y() - buffer_size,
+                    self.punto_click.x() + buffer_size,
+                    self.punto_click.y() + buffer_size
+                )
+            )
+            # selected_features = capa_MFE_vector_ok.dataProvider().getFeatures(request)
+            selected_features = capa_MFE_vector_ok.getFeatures(request)
+            cod_num_especie = 1
+            contador_teselas_totales = 0
+            if selected_features:
+                # Convierto el iterador a una lista para contar las características
+                features_list = list(selected_features)
+                num_features = len(features_list)
+                if num_features != 1:
+                    print(f'betaraster-> Número de teselas MFE seleccionados-> {num_features} (debería ser una solo)')
+                for feature in features_list:
+                    contador_teselas_totales += 1
+                    # Obtener el valor del campo COPC1
+                    cod_num_especie = feature['n_sp1']
+                    cod_2L_especie = feature['SP1']
+                    nombre_especie = feature['Especie1']
+                    break
 
+                if cod_num_especie in dict_nSP_cod2L.keys():
+                    cod_2L_especie_ = dict_nSP_cod2L[cod_num_especie]
+                else:
+                    cod_2L_especie_ = 'Xx'
+            else:
+                cod_num_especie = 0
+                cod_2L_especie = 'Xx'
+                cod_2L_especie_ = 'Xx'
+                nombre_especie = 'Especie desconocida'
+            print(f'betaraster-> cod_num_especie: {cod_num_especie}; cod_2L_especie: {cod_2L_especie}; {cod_2L_especie_}; nombre_especie: {nombre_especie}')
+        return (
+            (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1),
+            (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2),
+            (valor_raster_float, valor_raster_ok),
+            (capa_MFE_encontrada, cod_num_especie, cod_2L_especie, nombre_especie),
+        )
+# ç
+
+    def identifica_modelo(self):
         # Se deduce la variable dasometrica a la vista de la capa consultada
         if self.capa_raster_elegida.name() in dict_capas_variables_dasometricas.keys():
             cod_variable_dasometrica = dict_capas_variables_dasometricas[self.capa_raster_elegida.name()]
@@ -2867,8 +3162,9 @@ class Dasoraster:
             print(f'betaraster-> self.capa_raster_elegida.name(): {self.capa_raster_elegida.name()}')
             print(f'betaraster-> dict_capas_variables_dasometricas.keys(): {dict_capas_variables_dasometricas.keys()}')
             cod_variable_dasometrica = 'DESC'
-
-        capa_MDL_encontrada, capa_MDL_raster_ok, capa_nombre_MDL = self.buscar_raster_modelos(cod_variable_dasometrica)
+        (
+            capa_MDL_encontrada, capa_MDL_raster_ok, capa_nombre_MDL
+        ) = self.buscar_raster_modelos(cod_variable_dasometrica)
         if capa_MDL_encontrada:
             result_modeloDL = capa_MDL_raster_ok.dataProvider().identify(self.punto_click, QgsRaster.IdentifyFormatValue)
             if result_modeloDL.isValid():
@@ -2899,10 +3195,6 @@ class Dasoraster:
             cod_estratozona_txt = 'x'
 
         return (
-            capa_MFE_encontrada,
-            cod_num_especie,
-            cod_2L_especie,
-            nombre_especie,
             capa_MDL_encontrada,
             capa_nombre_MDL,
             cod_num_txt_modeloDL,
@@ -2927,7 +3219,7 @@ class Dasoraster:
             cod_modelo_txt,
         ):
         resultado_msg += f'\n\nInformación del punto clickeado:'
-        if self.buscar_esp_modelo:
+        if self.buscar_modelo_regresion:
             if type(cod_estratozona_txt) == str:
                 cod_estratozona_txt_sinExtras = cod_estratozona_txt.replace('&sinHoja', '').replace('&sinUso', '')
                 if cod_estratozona_txt_sinExtras in dict_zonas.keys():
@@ -3021,12 +3313,32 @@ class Dasoraster:
             variable_dasolidar = self.capa_raster_elegida.name()
             print(f'betaraster-> self.capa_raster_elegida ({type(self.capa_raster_elegida)}: {self.capa_raster_elegida.name()})')
 
-            if self.buscar_esp_modelo:
+            if self.buscar_esp_mfe:
+                usar_mfe_raster = True
                 (
-                    capa_MFE_encontrada,
-                    cod_num_especie,
-                    cod_2L_especie,
-                    nombre_especie,
+                    (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1),
+                    (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2),
+                    (valor_raster_float, valor_raster_ok),
+                    (capa_MFE_encontrada, cod_num_especie, cod_2L_especie, nombre_especie),
+                ) = self.identifica_esp_mfe(usar_mfe_raster=usar_mfe_raster)
+                if usar_mfe_raster:
+                    capa_MFE_encontrada = capa_mfe_sp1_encontrada
+                    cod_num_especie = cod_num_mfe_sp1
+                    cod_2L_especie = cod_2L_sp1
+                    nombre_especie = nombre_sp1
+            else:
+                # Fuente: capa vectorial:
+                capa_MFE_encontrada = False
+                cod_num_especie = 0
+                cod_2L_especie = 'Xx'
+                nombre_especie = 'Especie desconocida'
+                # Fuente: capas raster:
+                (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1) = (False, 0, 'Xx', 'Especie desconocida', 'NO')
+                (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2) = (False, 0, 'Xx', 'Especie desconocida', 'NO')
+                (valor_raster_float, valor_raster_ok) = (0.0, False)
+
+            if self.buscar_modelo_regresion:
+                (
                     capa_MDL_encontrada,
                     capa_nombre_MDL,
                     cod_num_txt_modeloDL,
@@ -3034,12 +3346,8 @@ class Dasoraster:
                     cod_variable_explicada,
                     cod_especie_asimilada_num,
                     cod_estratozona_txt,
-                ) = self.identifica_esp_modelo()
+                ) = self.identifica_modelo()
             else:
-                capa_MFE_encontrada = False
-                cod_num_especie = 0
-                cod_2L_especie = 'Xx'
-                nombre_especie = 'Especie desconocida'
                 capa_MDL_encontrada = False
                 capa_nombre_MDL = ''
                 cod_num_txt_modeloDL = ''
@@ -3056,7 +3364,7 @@ class Dasoraster:
                     x_consulta,
                     y_consulta,
                     radio_parcela=self.radio_parcela,
-                    consultar_circulo=self.consultar_circulo,
+                    parcela_circular=self.parcela_circular,
                 )
             elif tipo_consulta == 'rodal':
                 valor_medio, num_pixeles = 0, 0
@@ -3078,7 +3386,7 @@ class Dasoraster:
                     x_consulta,
                     y_consulta,
                     # radio_parcela=self.radio_parcela,
-                    # consultar_circulo=self.consultar_circulo,
+                    # parcela_circular=self.parcela_circular,
                     rodal_consulta=True,
                     rodal_geom=rodal_geom,
                 )
@@ -3159,7 +3467,7 @@ class Dasoraster:
                     rodal_hectareas = 0
                     resultado_msg = f'Parcela de radio: {self.radio_parcela} m'
                     resultado_msg += f'\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}'
-                    if self.buscar_esp_modelo:
+                    if self.buscar_modelo_regresion:
                         resultado_msg = self.mostrar_modelo(
                             resultado_msg,
                             capa_MFE_encontrada,
@@ -3188,7 +3496,7 @@ class Dasoraster:
                     resultado_msg += f'Información del polígono (rodal o lote):'
                     resultado_msg += f'\n    Id: {rodal_fid}'
                     resultado_msg += f'\n    Superficie: {rodal_hectareas:0.2f} ha'
-                    if self.buscar_esp_modelo:
+                    if self.buscar_modelo_regresion:
                         resultado_msg = self.mostrar_modelo(
                             resultado_msg,
                             capa_MFE_encontrada,
@@ -3223,6 +3531,7 @@ class Dasoraster:
                     resultado_msg,
                     x_consulta,
                     y_consulta,
+                    self.parcela_circular,
                     self.radio_parcela,
                     rodal_hectareas,
                     variable_dasolidar,
@@ -3357,7 +3666,7 @@ class Dasoraster:
         except Exception as e:
             print(f'betaraster-> Ocurrió un error al mostrar la ventana 1: {e}')
         # Esto siguiente sobra; lo dejo just in case
-        print(f'betaraster-> Rpta de mostrar_asistente: {rpta_ok}')
+        print(f'betaraster-> Rpta de VentanaAsistente: {rpta_ok}')
         if rpta_ok == QDialog.Accepted:
             consulta_usuario = dialog.get_text()
             boton_pulsado = dialog.button_pressed
@@ -3369,9 +3678,10 @@ class Dasoraster:
     def dasoraster_settings(self):
         dict_settings = {}
         dict_settings['radio_parcela'] = self.radio_parcela
-        dict_settings['consultar_circulo'] = self.consultar_circulo
+        dict_settings['parcela_circular'] = self.parcela_circular
         dict_settings['consulta_multiple'] = self.consulta_multiple
-        dict_settings['buscar_esp_modelo'] = self.buscar_esp_modelo
+        dict_settings['buscar_modelo_regresion'] = self.buscar_modelo_regresion
+        dict_settings['buscar_esp_mfe'] = self.buscar_esp_mfe
         dict_settings['autocarga_lasfiles'] = self.autocarga_lasfiles
         dict_settings['autocarga_escala_maxima'] = self.autocarga_escala_maxima
         # dict_settings['autocarga_mostrar_lasfiles_en_leyenda'] = self.autocarga_mostrar_lasfiles_en_leyenda
@@ -3382,9 +3692,10 @@ class Dasoraster:
             # Actualizo los valores de la clase con los nuevos valores
             settings = QSettings()
             self.radio_parcela = settings.value('dasoraster/radio_parcela', type=float)
-            self.consultar_circulo = settings.value('dasoraster/consultar_circulo', type=bool)
+            self.parcela_circular = settings.value('dasoraster/parcela_circular', type=bool)
             self.consulta_multiple = settings.value('dasoraster/consulta_multiple', type=bool)
-            self.buscar_esp_modelo = settings.value('dasoraster/buscar_esp_modelo', type=bool)
+            self.buscar_modelo_regresion = settings.value('dasoraster/buscar_modelo_regresion', type=bool)
+            self.buscar_esp_mfe = settings.value('dasoraster/buscar_esp_mfe', type=bool)
             self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)  #  Se inicia siempre en False
             self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', type=int)
             # self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', type=bool)
@@ -3471,7 +3782,7 @@ class Dasoraster:
 
 # ==============================================================================
 class CustomMapTool(QgsMapToolEmitPoint):
-    def __init__(self, canvas, radio_parcela, consultar_circulo, consulta_multiple):
+    def __init__(self, canvas, radio_parcela, parcela_circular, consulta_multiple):
         super().__init__(canvas)
         self.canvas = canvas
         self.rubber_band = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
@@ -3479,7 +3790,7 @@ class CustomMapTool(QgsMapToolEmitPoint):
         self.rubber_band.setWidth(1)
         self.setCursor()
         self.radio_parcela = radio_parcela
-        self.consultar_circulo = consultar_circulo
+        self.parcela_circular = parcela_circular
         self.consulta_multiple = consulta_multiple
 
     def setCursor(self):
@@ -3496,7 +3807,7 @@ class CustomMapTool(QgsMapToolEmitPoint):
     def canvasMoveEvent(self, event):
         punto_move = self.toMapCoordinates(event.pos())
         self.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
-        if self.consultar_circulo:
+        if self.parcela_circular:
             self.draw_circle(punto_move)
         else:
             self.draw_square(punto_move)
@@ -3626,9 +3937,10 @@ class SettingsDialog(QDialog):
         super(SettingsDialog, self).__init__(parent)
 
         radio_parcela = dict_settings['radio_parcela']
-        consultar_circulo = dict_settings['consultar_circulo']
+        parcela_circular = dict_settings['parcela_circular']
         consulta_multiple = dict_settings['consulta_multiple']
-        buscar_esp_modelo = dict_settings['buscar_esp_modelo']
+        buscar_modelo_regresion = dict_settings['buscar_modelo_regresion']
+        buscar_esp_mfe = dict_settings['buscar_esp_mfe']
         autocarga_lasfiles = dict_settings['autocarga_lasfiles']
         autocarga_escala_maxima = dict_settings['autocarga_escala_maxima']
         # autocarga_mostrar_lasfiles_en_leyenda = dict_settings['autocarga_mostrar_lasfiles_en_leyenda']
@@ -3642,12 +3954,14 @@ class SettingsDialog(QDialog):
         # Creo los widgets
         self.radio_parcela_input = QLineEdit()
         self.radio_parcela_input.setText(str(radio_parcela))
-        self.consultar_circulo_input = QCheckBox()
-        self.consultar_circulo_input.setChecked(consultar_circulo)
+        self.parcela_circular_input = QCheckBox()
+        self.parcela_circular_input.setChecked(parcela_circular)
         self.consulta_multiple_input = QCheckBox()
         self.consulta_multiple_input.setChecked(consulta_multiple)
-        self.buscar_esp_modelo_input = QCheckBox()
-        self.buscar_esp_modelo_input.setChecked(buscar_esp_modelo)
+        self.buscar_modelo_regresion_input = QCheckBox()
+        self.buscar_modelo_regresion_input.setChecked(buscar_modelo_regresion)
+        self.buscar_esp_mfe_input = QCheckBox()
+        self.buscar_esp_mfe_input.setChecked(buscar_esp_mfe)
         self.autocarga_lasfiles_input = QCheckBox()
         self.autocarga_escala_maxima_input = QLineEdit()
         # self.autocarga_mostrar_lasfiles_en_leyenda_input = QCheckBox()
@@ -3670,9 +3984,10 @@ class SettingsDialog(QDialog):
 
         # Añado widgets al form layout
         form_layout.addRow('Radio parcela (m):', self.radio_parcela_input)
-        form_layout.addRow('Parcela circular:', self.consultar_circulo_input)
+        form_layout.addRow('Parcela circular:', self.parcela_circular_input)
         form_layout.addRow('Consulta multi-parcela:', self.consulta_multiple_input)
-        form_layout.addRow('Buscar especie y modelo:', self.buscar_esp_modelo_input)
+        form_layout.addRow('Buscar modelo regresion Lidar:', self.buscar_modelo_regresion_input)
+        form_layout.addRow('Buscar especie mfe25:', self.buscar_esp_mfe_input)
         form_layout.addRow('Activar carga automática lasfiles:', self.autocarga_lasfiles_input)
         form_layout.addRow('Escala maxima en carga automática:', self.autocarga_escala_maxima_input)
         # form_layout.addRow('Mostrar lasfiles en leyenda:', self.autocarga_mostrar_lasfiles_en_leyenda_input)
@@ -3703,9 +4018,10 @@ class SettingsDialog(QDialog):
         # Guardo los valores en QSettings
         settings = QSettings()
         settings.setValue('dasoraster/radio_parcela', float(self.radio_parcela_input.text()))
-        settings.setValue('dasoraster/consultar_circulo', self.consultar_circulo_input.isChecked())
+        settings.setValue('dasoraster/parcela_circular', self.parcela_circular_input.isChecked())
         settings.setValue('dasoraster/consulta_multiple', self.consulta_multiple_input.isChecked())
-        settings.setValue('dasoraster/buscar_esp_modelo', self.buscar_esp_modelo_input.isChecked())
+        settings.setValue('dasoraster/buscar_modelo_regresion', self.buscar_modelo_regresion_input.isChecked())
+        settings.setValue('dasoraster/buscar_esp_mmfe', self.buscar_esp_mfe_input.isChecked())
         settings.setValue('dasoraster/autocarga_lasfiles', self.autocarga_lasfiles_input.isChecked())
         if int(self.autocarga_escala_maxima_input.text()) > AUTOCARGA_ESCALA_MAXIMA_PERMITIDA:
             self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_PERMITIDA))

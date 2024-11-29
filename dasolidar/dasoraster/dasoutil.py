@@ -67,7 +67,7 @@ def calcular_valor_medio_parcela_rodal(
         x_consulta,
         y_consulta,
         radio_parcela=15,
-        consultar_circulo=True,
+        parcela_circular=True,
         rodal_consulta=False,
         rodal_geom=None,
     ):
@@ -79,7 +79,7 @@ def calcular_valor_medio_parcela_rodal(
     if rodal_consulta:
         consulta_geom = rodal_geom
     else:
-        if consultar_circulo:
+        if parcela_circular:
             consulta_geom = consulta_circulo_geom
         else:
             consulta_geom = consulta_cuadrado_geom
@@ -120,7 +120,7 @@ def calcular_valor_medio_parcela_rodal(
             x_pixel = x_orig_explora_pixels + (j + 0.5) * raster_layer.rasterUnitsPerPixelX()
             y_pixel = y_orig_explora_pixels - (i + 0.5) * raster_layer.rasterUnitsPerPixelY()
             punto_pixel = QgsPointXY(x_pixel, y_pixel)
-            if consultar_circulo:
+            if parcela_circular:
                 if consulta_geom.contains(QgsGeometry.fromPointXY(punto_pixel)):
                     valor = rodal_block.value(i, j)
                     if valor != provider.sourceNoDataValue(1):  # Ignorar valores NoData
