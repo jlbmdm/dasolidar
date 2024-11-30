@@ -179,9 +179,42 @@ from PyQt5.QtGui import QDoubleValidator
 #   Puedes intentar limpiar la caché de complementos de QGIS. Esto se puede hacer cerrando QGIS, y luego eliminando el contenido de la carpeta de caché de complementos (normalmente en C:\Users\<tu_usuario>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\__pycache__).
 # ==============================================================================
                                                                                                                                                                      
-
-__version__ = '0.1.1'  #  La versión oficial de cara a Qgis va en metadata.txt
 PLUGIN_DIR = os.path.dirname(__file__)
+
+ruta_codelists_local1 = PLUGIN_DIR
+ruta_codelists_local2 = os.path.join(PLUGIN_DIR, 'dasoraster')
+metadata_filepath = os.path.join(ruta_codelists_local1, 'metadata.txt')
+if not os.path.exists(metadata_filepath):
+    print(f'betaraster-> No se encuentra: {metadata_filepath}')
+    metadata_filepath = os.path.join(ruta_codelists_local2, 'metadata.txt')
+__version__ = '0.0.0'
+if os.path.exists(metadata_filepath):
+    metadatos_leidos = False
+    try:
+        with open(metadata_filepath, mode='r', encoding='utf-8') as my_list:
+            lista_metadata = my_list.readlines()
+        metadatos_leidos = True
+    except:
+        print(f'betaraster-> Error al leer los metadatos 1: {metadata_filepath}')
+        try:
+            with open(metadata_filepath, mode='r', encoding='cp1252') as my_list:
+                lista_metadata = my_list.readlines()
+            metadatos_leidos = True
+        except:
+            print(f'betaraster-> Error al leer los metadatos 2: {metadata_filepath}')
+    if metadatos_leidos:
+        try:
+            for mi_sp in lista_metadata:
+                list_sp = (mi_sp.rstrip('\n')).split('=')
+                if list_sp[0] == 'version':
+                    __version__ = list_sp[1]
+                    print(f'betaraster-> Metadatos leidos ok. Version dasoraster: {__version__}')
+                    break
+        except:
+            print(f'betaraster-> Error al leer los metadatos 3: {lista_metadata}')
+else:
+    print(f'betaraster-> No se encuentra: {metadata_filepath}')
+
 # print(f'betaraster-> plugin_dir: {PLUGIN_DIR}')
 try:
     mi_PYTHONPATH = os.environ['PYTHONPATH']
@@ -189,7 +222,6 @@ except:
     mi_PYTHONPATH = 'No disponible'
 if PLUGIN_DIR not in sys.path:
     sys.path.append(PLUGIN_DIR)
-print(f'betaraster-> dl_version: {__version__}')
 print(f'betaraster-> PYTHONPATH: {mi_PYTHONPATH}')
 print(f'betaraster-> sys.path:   {sys.path}')
 
@@ -286,7 +318,12 @@ else:
 clave_uso_version = f'dasolidar/uso_dasoraster_v.{__version__}'
 mi_config = QgsSettings()
 
-mfe25cyl_sp = os.path.join(PLUGIN_DIR, 'mfe25cyl_sp.csv')
+ruta_codelists_local1 = os.path.join(PLUGIN_DIR, 'resources/data/codelist')
+ruta_codelists_local2 = os.path.join(PLUGIN_DIR, 'dasoraster/resources/data/codelist')
+mfe25cyl_sp = os.path.join(ruta_codelists_local1, 'mfe25cyl_sp.csv')
+if not os.path.exists(mfe25cyl_sp):
+    print(f'betaraster-> No se encuentra: {mfe25cyl_sp}')
+    mfe25cyl_sp = os.path.join(ruta_codelists_local2, 'mfe25cyl_sp.csv')
 dict_spp_mfe25cyl = {}
 if os.path.exists(mfe25cyl_sp):
     try:
@@ -294,10 +331,14 @@ if os.path.exists(mfe25cyl_sp):
             lista_spp_mfe25cyl = my_list.readlines()
         lista_spp_num = [int(mi_sp.split(separador_dasolistas)[0]) for mi_sp in lista_spp_mfe25cyl]
         for mi_sp in lista_spp_mfe25cyl:
-            list_sp = mi_sp.split(separador_dasolistas)
+            list_sp = (mi_sp.rstrip('\n')).split(separador_dasolistas)
             dict_spp_mfe25cyl[int(list_sp[0])] = list_sp[1:]
+        print(f'betaraster-> Lista de especies leida ok: {mfe25cyl_sp}')
+        print(f'\tRebollo: {dict_spp_mfe25cyl[43]}')
     except:
         print(f'betaraster-> Error al leer la lista de especies: {mfe25cyl_sp}')
+else:
+    print(f'betaraster-> No se encuentra: {mfe25cyl_sp}')
 
 class Configuracion():
     def __init__(self):
@@ -336,7 +377,7 @@ dict_especies = {
     'Fs': 'Fagus sylvatica',
     'Lq': 'Populus spp de produccion',
     'Xx': 'Otra especie',
-    # 'Lg': 'Populus nigra',
+    'Lg': 'Populus nigra',
     # 'La': 'Populus alba',
     # 'Jt': 'Juniperus thurifera',
     # 'Jo': 'Juniperus oxycedrus',
@@ -964,27 +1005,34 @@ def identifica_especie(self_punto_click, capa_mfe_sp1_encontrada, capa_mfe_sp1_r
                 cod_num_mfe_ok = True
             except:
                 cod_num_mfe_sp_ = 0  #  'noNumero'
+                print(f'betaraster-> cod_num_mfe_sp_ error 1 ({type(result_mfe_sp1.results())}): {result_mfe_sp1.results()}')
         else:
             cod_num_mfe_sp_ = 0  #  'noValida'
+            print(f'betaraster-> cod_num_mfe_sp_ error 2 ({type(result_mfe_sp1)}): {result_mfe_sp1}')
     else:
         cod_num_mfe_sp_ = 0  #  'noCapa'
+        print(f'betaraster-> cod_num_mfe_sp_ error 3 capa_mfe_sp1_encontrada: {capa_mfe_sp1_encontrada}')
 
     if cod_num_mfe_ok and cod_num_mfe_sp_ in dict_spp_mfe25cyl.keys():
         try:
             cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][0]
             nombre_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][1]
             dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][2]
+            cod_num_txt_asimilada_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][3]
+            print(f'betaraster-> cod_sp ok ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_} -> Asimilada: ({type(cod_num_txt_asimilada_sp_)}): {cod_num_txt_asimilada_sp_}')
         except:
             print(f'betaraster-> cod_sp error 1 ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_}')
             cod_2L_sp_ = 'Xx'
             nombre_sp_ = 'Especie desconocida'
             dasolidar_sp_ = 'NO'
+            cod_num_txt_asimilada_sp_ = '00'
     else:
         print(f'betaraster-> cod_sp error 2 ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_}')
         cod_2L_sp_ = 'Xx'
         nombre_sp_ = 'Especie desconocida'
         dasolidar_sp_ = 'NO'
-    return (cod_num_mfe_sp_, cod_2L_sp_, nombre_sp_, dasolidar_sp_)
+        cod_num_txt_asimilada_sp_ = '00'
+    return (cod_num_mfe_sp_, cod_2L_sp_, nombre_sp_, dasolidar_sp_, cod_num_txt_asimilada_sp_)
 
 def leer_raster_float(self_punto_click, capa_raster_float_encontrada, capa_raster_float_ok):
     valor_raster_ok = False
@@ -1807,15 +1855,15 @@ class PDFViewer(QMainWindow):
 def pedir_datos_parcela_rodal(
         tipo_consulta,
         cod_variable_explicada,
-        cod_especie_asimilada_num,
+        cod_num_asimilada_sp_,
     ):
 
-    if cod_especie_asimilada_num in dict_nSP_cod2L.keys():
-        cod_2L_especie = dict_nSP_cod2L[cod_especie_asimilada_num]
+    if cod_num_asimilada_sp_ in dict_nSP_cod2L.keys():
+        cod_2L_especie = dict_nSP_cod2L[cod_num_asimilada_sp_]
     else:
         cod_2L_especie = 'Xx'
 
-    # print(f'betaraster-> cod_especie_asimilada_num: {cod_especie_asimilada_num}')
+    # print(f'betaraster-> cod_num_asimilada_sp_: {cod_num_asimilada_sp_}')
     # print(f'betaraster-> cod_2L_especie: {cod_2L_especie}')
 
     num_especie_preseleccionada = 0
@@ -2107,7 +2155,7 @@ def guardar_enviar_resultado(
     cod_2L_especie,
     cod_modelo_txt,
     cod_variable_explicada,
-    cod_especie_asimilada_num,
+    cod_num_asimilada_sp_,
     cod_estratozona_txt,
     rodal_feat=None,
     layer_crs=None,
@@ -2146,7 +2194,7 @@ def guardar_enviar_resultado(
     (enviar_ok, datos_recibidos) = pedir_datos_parcela_rodal(
         tipo_consulta,
         cod_variable_explicada,
-        cod_especie_asimilada_num,
+        cod_num_asimilada_sp_,
     )
     if enviar_ok:
         [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado, publicar_datos] = datos_recibidos
@@ -2218,7 +2266,7 @@ def mostrar_resultado(
         cod_2L_especie,
         cod_modelo_txt,
         cod_variable_explicada,
-        cod_especie_asimilada_num,
+        cod_num_asimilada_sp_,
         cod_estratozona_txt,
         rodal_feat=None,
         layer_crs=None,
@@ -2263,7 +2311,7 @@ def mostrar_resultado(
                 cod_2L_especie,
                 cod_modelo_txt,
                 cod_variable_explicada,
-                cod_especie_asimilada_num,
+                cod_num_asimilada_sp_,
                 cod_estratozona_txt,
                 rodal_feat=rodal_feat,
                 layer_crs=layer_crs,
@@ -3097,15 +3145,17 @@ class Dasoraster:
                 capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok, capa_nombre_mfe_spx,
             ) = self.buscar_raster_mfe()
             (
-                cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1
+                cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1, cod_num_txt_asimilada_sp1
             ) = identifica_especie(self.punto_click, capa_mfe_sp1_encontrada, capa_mfe_sp1_raster_ok)
             (
-                cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2
+                cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2, cod_num_txt_asimilada_sp2
             ) = identifica_especie(self.punto_click, capa_mfe_sp2_encontrada, capa_mfe_sp2_raster_ok)
 
             (
                 valor_raster_float, valor_raster_ok
             ) = leer_raster_float(self.punto_click, capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok)
+            (capa_MFE_encontrada, cod_num_especie, cod_2L_especie, nombre_especie) = (False, 0, 'Xx', 'Especie desconocida')
+
         else:
             capa_MFE_encontrada, capa_MFE_vector_ok, capa_MFE_ok = self.buscar_vector_especies()
             # layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
@@ -3147,8 +3197,8 @@ class Dasoraster:
                 nombre_especie = 'Especie desconocida'
             print(f'betaraster-> cod_num_especie: {cod_num_especie}; cod_2L_especie: {cod_2L_especie}; {cod_2L_especie_}; nombre_especie: {nombre_especie}')
         return (
-            (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1),
-            (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2),
+            (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1, cod_num_txt_asimilada_sp1),
+            (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2, cod_num_txt_asimilada_sp2),
             (valor_raster_float, valor_raster_ok),
             (capa_MFE_encontrada, cod_num_especie, cod_2L_especie, nombre_especie),
         )
@@ -3180,18 +3230,22 @@ class Dasoraster:
         if cod_num_txt_modeloDL in dict_cod_modelo.keys():
             cod_modelo_txt = dict_cod_modelo[cod_num_txt_modeloDL][0]
             cod_variable_explicada = dict_cod_modelo[cod_num_txt_modeloDL][1]
-            try:
-                cod_especie_asimilada_num = int(dict_cod_modelo[cod_num_txt_modeloDL][2])
-            except:
-                print(f'betaraster-> cod_especie_asimilada_num ({type(cod_especie_asimilada_num)}): {cod_especie_asimilada_num}')
-                cod_especie_asimilada_num = 0
+            if cod_num_txt_modeloDL in dict_cod_modelo:
+                try:
+                    cod_num_txt_asimilada_sp_ = int(dict_cod_modelo[cod_num_txt_modeloDL][2])
+                except:
+                    print(f'betaraster-> cod_num_txt_modeloDL ({type(cod_num_txt_modeloDL)}): {cod_num_txt_modeloDL}')
+                    cod_num_txt_asimilada_sp_ = 0
+            else:
+                print(f'betaraster-> cod_num_txt_modeloDL ({type(cod_num_txt_modeloDL)}): {cod_num_txt_modeloDL}')
+                cod_num_txt_asimilada_sp_ = 0
             cod_estratozona_txt = dict_cod_modelo[cod_num_txt_modeloDL][3]
         else:
             print(f'betaraster-> cod_num_txt_modeloDL ({type(cod_num_txt_modeloDL)}): {cod_num_txt_modeloDL}')
             print(f'betaraster-> dict_cod_modelo.keys(): {dict_cod_modelo.keys()}')
             cod_modelo_txt = ''
             cod_variable_explicada = 'Xx'
-            cod_especie_asimilada_num = 0
+            cod_num_txt_asimilada_sp_ = 0
             cod_estratozona_txt = 'x'
 
         return (
@@ -3200,43 +3254,55 @@ class Dasoraster:
             cod_num_txt_modeloDL,
             cod_modelo_txt,
             cod_variable_explicada,
-            cod_especie_asimilada_num,
+            cod_num_txt_asimilada_sp_,
             cod_estratozona_txt,
         )
 
-    def mostrar_modelo(
+    def mostrar_especie(
             self,
             resultado_msg,
             capa_MFE_encontrada,
             cod_num_especie,
             cod_2L_especie,
             nombre_especie,
-            cod_especie_asimilada_num,
+            cod_num_asimilada_sp_,
+        ):
+        if capa_MFE_encontrada:
+            resultado_msg += f'\n    Especie: {cod_num_especie} -> {cod_2L_especie} ({nombre_especie})'
+            if int(cod_num_asimilada_sp_) != cod_num_especie:
+                resultado_msg += f'\n    Esp. asimilada: {cod_num_asimilada_sp_}'
+        else:
+            resultado_msg += f'\n    Capa MFE25 no disponible en el proyecto (MFE25CyL.gpkg).'
+
+        return resultado_msg
+
+    def mostrar_modelo(
+            self,
+            resultado_msg,
+            capa_MFE_encontrada,
+            cod_num_especie,
+            mod_num_asimilada_sp_,
             capa_MDL_encontrada,
             capa_nombre_MDL,
             cod_num_txt_modeloDL,
             cod_estratozona_txt,
             cod_modelo_txt,
         ):
-        resultado_msg += f'\n\nInformación del punto clickeado:'
-        if self.buscar_modelo_regresion:
-            if type(cod_estratozona_txt) == str:
-                cod_estratozona_txt_sinExtras = cod_estratozona_txt.replace('&sinHoja', '').replace('&sinUso', '')
-                if cod_estratozona_txt_sinExtras in dict_zonas.keys():
-                    cod_estratozona_nombre = dict_zonas[cod_estratozona_txt_sinExtras][0]
-                else:
-                    cod_estratozona_nombre = 'Zona desconocida'
-            else:
-                print(f'betaraster-> cod_estratozona_txt ({type(cod_estratozona_txt)}), {cod_estratozona_txt}')
-                cod_estratozona_txt_sinExtras = '-'
-                cod_estratozona_nombre = 'Zona desconocida'
-
         if capa_MFE_encontrada:
-            resultado_msg += f'\n    Especie: {cod_2L_especie} ({nombre_especie})'
-            if cod_num_especie != cod_especie_asimilada_num and capa_MDL_encontrada and not cod_num_txt_modeloDL.startswith('no'):
-                resultado_msg += f'\n      Especie con cod IFN {cod_num_especie} no modelizada; se asimila a la {cod_especie_asimilada_num}'
+            if cod_num_especie != mod_num_asimilada_sp_ and capa_MDL_encontrada and not cod_num_txt_modeloDL.startswith('no'):
+                resultado_msg += f'\n      Especie con cod IFN {cod_num_especie} no modelizada; se asimila a la {mod_num_asimilada_sp_}'
+
+        if type(cod_estratozona_txt) == str:
+            cod_estratozona_txt_sinExtras = cod_estratozona_txt.replace('&sinHoja', '').replace('&sinUso', '')
+            if cod_estratozona_txt_sinExtras in dict_zonas.keys():
+                cod_estratozona_nombre = dict_zonas[cod_estratozona_txt_sinExtras][0]
+            else:
+                cod_estratozona_nombre = 'Zona desconocida'
         else:
-            resultado_msg += f'\n    Capa MFE25 no disponible en el proyecto (MFE25CyL.gpkg).'
+            print(f'betaraster-> cod_estratozona_txt ({type(cod_estratozona_txt)}), {cod_estratozona_txt}')
+            cod_estratozona_txt_sinExtras = '-'
+            cod_estratozona_nombre = 'Zona desconocida'
+
         if capa_MDL_encontrada and not cod_num_txt_modeloDL.startswith('no'):
             resultado_msg += f'\n    Zona:     {cod_estratozona_txt_sinExtras}'
             resultado_msg += f'\n                  {cod_estratozona_nombre}'
@@ -3316,8 +3382,8 @@ class Dasoraster:
             if self.buscar_esp_mfe:
                 usar_mfe_raster = True
                 (
-                    (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1),
-                    (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2),
+                    (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1, cod_num_txt_asimilada_sp1),
+                    (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2, cod_num_txt_asimilada_sp2),
                     (valor_raster_float, valor_raster_ok),
                     (capa_MFE_encontrada, cod_num_especie, cod_2L_especie, nombre_especie),
                 ) = self.identifica_esp_mfe(usar_mfe_raster=usar_mfe_raster)
@@ -3326,6 +3392,7 @@ class Dasoraster:
                     cod_num_especie = cod_num_mfe_sp1
                     cod_2L_especie = cod_2L_sp1
                     nombre_especie = nombre_sp1
+                cod_num_asimilada_sp_ = int(cod_num_txt_asimilada_sp1)
             else:
                 # Fuente: capa vectorial:
                 capa_MFE_encontrada = False
@@ -3333,9 +3400,10 @@ class Dasoraster:
                 cod_2L_especie = 'Xx'
                 nombre_especie = 'Especie desconocida'
                 # Fuente: capas raster:
-                (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1) = (False, 0, 'Xx', 'Especie desconocida', 'NO')
-                (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2) = (False, 0, 'Xx', 'Especie desconocida', 'NO')
+                (capa_mfe_sp1_encontrada, cod_num_mfe_sp1, cod_2L_sp1, nombre_sp1, dasolidar_sp1, cod_num_txt_asimilada_sp1) = (False, 0, 'Xx', 'Especie desconocida', 'NO', 0)
+                (capa_mfe_sp2_encontrada, cod_num_mfe_sp2, cod_2L_sp2, nombre_sp2, dasolidar_sp2, cod_num_txt_asimilada_sp2) = (False, 0, 'Xx', 'Especie desconocida', 'NO', 0)
                 (valor_raster_float, valor_raster_ok) = (0.0, False)
+                cod_num_asimilada_sp_ = int(cod_num_txt_asimilada_sp1)
 
             if self.buscar_modelo_regresion:
                 (
@@ -3344,7 +3412,7 @@ class Dasoraster:
                     cod_num_txt_modeloDL,
                     cod_modelo_txt,
                     cod_variable_explicada,
-                    cod_especie_asimilada_num,
+                    mod_num_asimilada_sp_,
                     cod_estratozona_txt,
                 ) = self.identifica_modelo()
             else:
@@ -3353,8 +3421,13 @@ class Dasoraster:
                 cod_num_txt_modeloDL = ''
                 cod_modelo_txt = ''
                 cod_variable_explicada = 'Xx'
-                cod_especie_asimilada_num = 0
+                mod_num_asimilada_sp_ = 0
                 cod_estratozona_txt = 'x'
+
+            if self.buscar_modelo_regresion:
+                _od_num_asimilada_sp_ = mod_num_asimilada_sp_
+            else:
+                _od_num_asimilada_sp_ = cod_num_asimilada_sp_
 
             x_consulta = self.punto_click.x()
             y_consulta = self.punto_click.y()
@@ -3467,14 +3540,23 @@ class Dasoraster:
                     rodal_hectareas = 0
                     resultado_msg = f'Parcela de radio: {self.radio_parcela} m'
                     resultado_msg += f'\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}'
-                    if self.buscar_modelo_regresion:
-                        resultado_msg = self.mostrar_modelo(
+                    if self.buscar_esp_mfe or self.buscar_modelo_regresion:
+                        resultado_msg += f'\n\nInformación del punto clickeado:'
+                    if self.buscar_esp_mfe:
+                        resultado_msg = self.mostrar_especie(
                             resultado_msg,
                             capa_MFE_encontrada,
                             cod_num_especie,
                             cod_2L_especie,
                             nombre_especie,
-                            cod_especie_asimilada_num,
+                            cod_num_asimilada_sp_,
+                        )
+                    if self.buscar_modelo_regresion:
+                        resultado_msg = self.mostrar_modelo(
+                            resultado_msg,
+                            capa_MFE_encontrada,
+                            cod_num_especie,
+                            mod_num_asimilada_sp_,
                             capa_MDL_encontrada,
                             capa_nombre_MDL,
                             cod_num_txt_modeloDL,
@@ -3496,14 +3578,23 @@ class Dasoraster:
                     resultado_msg += f'Información del polígono (rodal o lote):'
                     resultado_msg += f'\n    Id: {rodal_fid}'
                     resultado_msg += f'\n    Superficie: {rodal_hectareas:0.2f} ha'
-                    if self.buscar_modelo_regresion:
-                        resultado_msg = self.mostrar_modelo(
+                    if self.buscar_esp_mfe or self.buscar_modelo_regresion:
+                        resultado_msg += f'\n\nInformación del punto clickeado:'
+                    if self.buscar_esp_mfe:
+                        resultado_msg = self.mostrar_especie(
                             resultado_msg,
                             capa_MFE_encontrada,
                             cod_num_especie,
                             cod_2L_especie,
                             nombre_especie,
-                            cod_especie_asimilada_num,
+                            cod_num_asimilada_sp_,
+                        )
+                    if self.buscar_modelo_regresion:
+                        resultado_msg = self.mostrar_modelo(
+                            resultado_msg,
+                            capa_MFE_encontrada,
+                            cod_num_especie,
+                            mod_num_asimilada_sp_,
                             capa_MDL_encontrada,
                             capa_nombre_MDL,
                             cod_num_txt_modeloDL,
@@ -3518,7 +3609,6 @@ class Dasoraster:
                     else:
                         resultado_msg += f'\n\nValor medio de la variable:'
                         resultado_msg += f'\n    {variable_dasolidar}: {valor_medio} {unidad_dasolidar}'
-
 
                     if usuario_alfa:
                         resultado_msg += f'\n\nNúmero de pixeles: {num_pixeles}'
@@ -3541,7 +3631,7 @@ class Dasoraster:
                     cod_2L_especie,
                     cod_modelo_txt,
                     cod_variable_explicada,
-                    cod_especie_asimilada_num,
+                    _od_num_asimilada_sp_,
                     cod_estratozona_txt,
                     rodal_feat=rodal_feat,
                     layer_crs=self.layer_crs,
