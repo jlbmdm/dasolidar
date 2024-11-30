@@ -177,7 +177,7 @@ from PyQt5.QtGui import QDoubleValidator
 # Limpiar la caché de complementos:
 #   Puedes intentar limpiar la caché de complementos de QGIS. Esto se puede hacer cerrando QGIS, y luego eliminando el contenido de la carpeta de caché de complementos (normalmente en C:\Users\<tu_usuario>\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\__pycache__).
 # ==============================================================================
-                                                                                                                                                                     
+
 PLUGIN_DIR = os.path.dirname(__file__)
 
 ruta_codelists_local1 = PLUGIN_DIR
@@ -1897,7 +1897,8 @@ def enviar_mail_datos_parcela_rodal_consulta(
         if publicar_datos:
             texto_dasonet = f'Podrás ver tu {motivo} en dasonet en uno o dos minutos.\n'\
                 'Por el momento, dasonet son dos capas ubicadas\n'\
-                'en el grupo de capas "dasonet" del proyecto lidarQgis.'
+                'en el grupo de capas "dasonet" del proyecto lidarQgis.\n'\
+                'El grupo "dasonet", a su vez, está dentro del grupo CartoRef.'
         else:
             texto_dasonet = ''
         QMessageBox.information(
@@ -2033,18 +2034,23 @@ def pedir_guardar_enviar_data(
         layer_dasonet = QgsProject.instance().mapLayersByName('dasonet_puntos')[0]
         def refrescar_canvas():
             """Función para refrescar el canvas."""
+            print("Refrescando el canvas...")
+            iface.mapCanvas().setLayers(iface.mapCanvas().layers())  # Forzar el refresco de las capas
             iface.mapCanvas().refresh()  # Refresca el canvas
         # Conectar la señal de la capa a un slot
         # La conexión hay que hacerla en el constructor de tu clase o en la inicialización del plugin.
         # Puedo hacerlo solo cuando se ha enviado un polígono
-        print(f'betaraster-> Se refrescará el canvas cuando cambie la capa dasonet_puntos -> layer_dasonet: {layer_dasonet}')
         layer_dasonet.featureAdded.connect(refrescar_canvas)
-    except:
-        pass
+        print(f'betaraster-> Se refrescará el canvas cuando cambie la capa dasonet_puntos')
+        print(f'-> layer_dasonet: {layer_dasonet}')
+    except Exception as mi_error:
+        print(f'betaraster-> Error en la señal de refrescar canvas:')
+        print(f'layer_dasonet: {QgsProject.instance().mapLayersByName("dasonet_puntos")}')
+        print(mi_error)
 
 
 
-def mostrar_resultado(
+def mostrar_resultado_pedir_datos(
         tipo_consulta,
         resultado_msg,
         x_consulta,
@@ -2823,7 +2829,7 @@ class Dasoraster:
                             text=f'La capa activa es ráster pero no es una variable dasométrica ni es la altura dominanteLidar. Se usa la capa ráster de volúmenes {layer_raster_VCC_selec_layer}',
                             # showMore=f'',
                             duration=20,
-                            level=Qgis.Info,
+                            level=Qgis.Warning,
                         )
                         layer_raster_XXX_find_bool = True
                         layer_raster_XXX_selec_layer = layer_raster_VCC_selec_layer
@@ -2845,7 +2851,7 @@ class Dasoraster:
                             text=f'La capa activa es ráster pero no es una variable dasométrica ni es la altura dominanteLidar\ny no se ha encontrado el ráster de volúmenes {layer_raster_VCC_name_txt}. Activa una capa ráster con una variable dasométrica para poder hacer consultas.',
                             # showMore=f'',
                             duration=20,
-                            level=Qgis.Info,
+                            level=Qgis.Warning,
                         )
             else:
                 if layer_activo.type() == QgsMapLayer.VectorLayer:
@@ -2945,6 +2951,8 @@ class Dasoraster:
             dict_spp_mfe_1={},
             dict_spp_mfe_2={},
         ):
+        cod_num_esp_pral = cod_num_especie
+        # cod_num_esp_asim = cod_num_asimilada_sp_
         if capa_MFE_encontrada:
             resultado_msg += f'\n\nEspecie en el punto (click):'
             if cod_num_especie == 0:
@@ -2956,18 +2964,28 @@ class Dasoraster:
         else:
             resultado_msg += f'\nCapa MFE25 no disponible en el proyecto (MFE25CyL.gpkg).'
         if dict_spp_mfe_1:
-            top_especies = sorted(dict_spp_mfe_1.items(), key=lambda item: item[1], reverse=True)[:2]
-            resultado_msg += f'\n\nEspecies principales en {tipo_consulta}:'
-            for cod_num_mfe_sp_, num_pixeles in top_especies[:3]:
+            top_especies = sorted(dict_spp_mfe_1.items(), key=lambda item: item[1], reverse=True)
+            cod_num_esp_pral = top_especies[0][0]
+            if tipo_consulta == 'parcela':
+                resultado_msg += f'\n\nEspecies principales en la parcela:'
+            else:
+                resultado_msg += f'\n\nEspecies principales en el {tipo_consulta}:'
+            for cod_num_mfe_sp_, num_pixeles in top_especies[:4]:
                 if cod_num_mfe_sp_ in dict_spp_mfe25cyl.keys():
                     cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][0]
                     nombre_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][1]
                     # dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][2]
                     # cod_num_txt_asimilada_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][3]
-                    resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {num_pixeles} pixeles'
+                    if tipo_consulta == 'parcela':
+                        resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {int(round(num_pixeles * 100, 0))} m2'
+                    else:
+                        resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {round(num_pixeles / 100, 1)} hectáreas'
             if 0 in dict_spp_mfe_1.keys():
                 print(f'betaraster-> dict_spp_mfe_1.keys(): {dict_spp_mfe_1.keys()} -> {0 in dict_spp_mfe_1.keys()}')
-                resultado_msg += f'\n    Píxeles en teselas no arboladas: {dict_spp_mfe_1[0]}'
+                if tipo_consulta == 'parcela':
+                    resultado_msg += f'\n    Píxeles en teselas no arboladas: {int(round(dict_spp_mfe_1[0] * 100, 0))} m2'
+                else:
+                    resultado_msg += f'\n    Píxeles en teselas no arboladas: {round(dict_spp_mfe_1[0] / 100, 1)} hectáreas'
             if -1 in dict_spp_mfe_1.keys():
                 print(f'betaraster-> dict_spp_mfe_1.keys(): {dict_spp_mfe_1.keys()} -> {-1 in dict_spp_mfe_1.keys()}')
                 resultado_msg += f'\n    Pixeles erróneos (revisar): {dict_spp_mfe_1[-1]}'
@@ -2977,20 +2995,27 @@ class Dasoraster:
                 if cod_num_mfe_sp_ != 0:
                     hay_especies_secundarias = True
             if hay_especies_secundarias:
-                top_especies = sorted(dict_spp_mfe_2.items(), key=lambda item: item[1], reverse=True)[:2]
-                resultado_msg += f'\n\nEspecies secundarias en el polígono:'
+                top_especies = sorted(dict_spp_mfe_2.items(), key=lambda item: item[1], reverse=True)
+                if tipo_consulta == 'parcela':
+                    resultado_msg += f'\n\nEspecies secundarias en la parcela:'
+                else:
+                    resultado_msg += f'\n\nEspecies secundarias en el {tipo_consulta}:'
                 for cod_num_mfe_sp_, num_pixeles in top_especies[:3]:
                     if cod_num_mfe_sp_ in dict_spp_mfe25cyl.keys():
                         cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][0]
                         nombre_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][1]
                         # dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][2]
                         # cod_num_txt_asimilada_sp_ = dict_spp_mfe25cyl[cod_num_mfe_sp_][3]
-                        resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {num_pixeles} pixeles'
+                        if tipo_consulta == 'parcela':
+                            resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {int(round(num_pixeles * 100, 0))} m2'
+                        else:
+                            resultado_msg += f'\n    {cod_num_mfe_sp_} -> {cod_2L_sp_} ({nombre_sp_}): {round(num_pixeles / 100, 1)} hectáreas'
                 # if 0 in dict_spp_mfe_2.keys():
                 #     resultado_msg += f'\n    Numero de pixeles en teselas no arboladas: {dict_spp_mfe_2[0]}'
                 if -1 in dict_spp_mfe_2.keys():
                     resultado_msg += f'\n    Numero de pixeles erróneos (revisar): {dict_spp_mfe_2[-1]}'
-        return resultado_msg
+
+        return resultado_msg, cod_num_esp_pral
 
     def mostrar_modelo(
             self,
@@ -3094,11 +3119,32 @@ class Dasoraster:
                 # se consulta u rodal y se aportan datos para mandar por mail
                 self.layer_crs = self.layer_raster_XXX_selec_layer.crs()
                 print(f'betaraster-> self.layer_crs ({type(self.layer_crs)}): {self.layer_crs}')
+                if not self.layer_raster_XXX_find_bool:
+                    iface.messageBar().pushMessage(
+                        title='dasoraster',
+                        text=f'La capa activa no es ráster y no se ha encontrado la capa de volúmenes (este complemento está diseñado para trabajar con el proyecto lidarQgis).',
+                        # showMore=f'',
+                        duration=30,
+                        level=Qgis.Warning,
+                    )
+                    return
             else:
                 self.layer_raster_XXX_find_bool = layer_raster_VCC_find_bool
                 self.layer_raster_XXX_name_txt = layer_raster_VCC_name_txt
                 self.layer_raster_XXX_selec_layer = layer_raster_VCC_selec_layer
-            print(f'betaraster-> self.layer_raster_XXX_selec_layer ({type(self.layer_raster_XXX_selec_layer)}: {self.layer_raster_XXX_selec_layer.name()})')
+                if not layer_raster_VCC_find_bool:
+                    iface.messageBar().pushMessage(
+                        title='dasoraster',
+                        text=f'No se ha encontrado la capa de volúmenes (este complemento está diseñado para trabajar con el proyecto lidarQgis).',
+                        # showMore=f'',
+                        duration=30,
+                        level=Qgis.Warning,
+                    )
+                    return
+            if self.layer_raster_XXX_selec_layer is None:
+                print(f'betaraster-> self.layer_raster_XXX_selec_layer ({type(self.layer_raster_XXX_selec_layer)}: {self.layer_raster_XXX_selec_layer})')
+            else:
+                print(f'betaraster-> self.layer_raster_XXX_selec_layer ({type(self.layer_raster_XXX_selec_layer)}: {self.layer_raster_XXX_selec_layer.name()})')
 
             usar_mfe_raster = True
             if self.buscar_esp_mfe:
@@ -3144,11 +3190,6 @@ class Dasoraster:
                 cod_variable_explicada = 'Xx'
                 mod_num_asimilada_sp_ = 0
                 cod_estratozona_txt = 'x'
-
-            if self.buscar_modelo_regresion:
-                _od_num_asimilada_sp_ = mod_num_asimilada_sp_
-            else:
-                _od_num_asimilada_sp_ = cod_num_asimilada_sp_
 
             x_consulta = self.punto_click.x()
             y_consulta = self.punto_click.y()
@@ -3261,6 +3302,14 @@ class Dasoraster:
                     f'Parcela de r={self.radio_parcela} m\nCentro parcela: {x_consulta:0.1f}, {y_consulta:0.1f}\nValor en capa {self.layer_raster_XXX_name_txt}: No hay pixeles con valores válidos'
                 )
             else:
+                # Esto no va a ser lo habitual pero lo dejo por si acaso; lo normal es que
+                # se use la especie más abundante en la parcela o rodal (leyendo todos los pixeles)
+                #   Asino por defecto la especie asociada al modelo en el punto click
+                if self.buscar_modelo_regresion:
+                    _od_num_asimilada_sp_ = mod_num_asimilada_sp_
+                else:
+                    _od_num_asimilada_sp_ = cod_num_asimilada_sp_
+
                 if tipo_consulta == 'parcela':
                     rodal_hectareas = 0
                     resultado_msg = f'Parcela de radio: {self.radio_parcela} m'
@@ -3268,7 +3317,7 @@ class Dasoraster:
                     # if self.buscar_esp_mfe or self.buscar_modelo_regresion:
                     #     resultado_msg += f'\n\nInformación del punto clickeado:'
                     if self.buscar_esp_mfe:
-                        resultado_msg = self.mostrar_especie(
+                        resultado_msg, cod_num_esp_pral = self.mostrar_especie(
                             tipo_consulta,
                             resultado_msg,
                             capa_MFE_encontrada,
@@ -3279,6 +3328,15 @@ class Dasoraster:
                             dict_spp_mfe_1=dict_spp_mfe_1,
                             dict_spp_mfe_2=dict_spp_mfe_2,
                         )
+                        try:
+                            cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][0]
+                            nombre_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][1]
+                            dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][2]
+                            cod_num_txt_asimilada_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][3]
+                            _od_num_asimilada_sp_ = int(cod_num_txt_asimilada_sp_)
+                            # print(f'betaraster-> cod_sp ok ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_} -> Asimilada: ({type(cod_num_txt_asimilada_sp_)}): {cod_num_txt_asimilada_sp_}')
+                        except:
+                            pass
                     if self.buscar_modelo_regresion:
                         resultado_msg = self.mostrar_modelo(
                             resultado_msg,
@@ -3309,7 +3367,7 @@ class Dasoraster:
                     # if self.buscar_esp_mfe or self.buscar_modelo_regresion:
                     #     resultado_msg += f'\n\nInformación del punto clickeado:'
                     if self.buscar_esp_mfe:
-                        resultado_msg = self.mostrar_especie(
+                        resultado_msg, cod_num_esp_pral = self.mostrar_especie(
                             tipo_consulta,
                             resultado_msg,
                             capa_MFE_encontrada,
@@ -3320,6 +3378,15 @@ class Dasoraster:
                             dict_spp_mfe_1=dict_spp_mfe_1,
                             dict_spp_mfe_2=dict_spp_mfe_2,
                         )
+                        try:
+                            cod_2L_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][0]
+                            nombre_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][1]
+                            dasolidar_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][2]
+                            cod_num_txt_asimilada_sp_ = dict_spp_mfe25cyl[cod_num_esp_pral][3]
+                            _od_num_asimilada_sp_ = int(cod_num_txt_asimilada_sp_)
+                            # print(f'betaraster-> cod_sp ok ({type(cod_num_mfe_sp_)}): {cod_num_mfe_sp_} -> Asimilada: ({type(cod_num_txt_asimilada_sp_)}): {cod_num_txt_asimilada_sp_}')
+                        except:
+                            pass
                     if self.buscar_modelo_regresion:
                         resultado_msg = self.mostrar_modelo(
                             resultado_msg,
@@ -3347,7 +3414,7 @@ class Dasoraster:
                     print(f'betaraster-> Atención: revisar código')
 
                 print(f'betaraster-> Se van a mostrar los resultados de la consulta')
-                mostrar_resultado(
+                mostrar_resultado_pedir_datos(
                     tipo_consulta,
                     resultado_msg,
                     x_consulta,

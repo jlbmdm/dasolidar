@@ -487,6 +487,7 @@ def calcular_valor_medio_parcela_rodal(
     print(f'betaraster-> calcular_valor_medio_parcela---> consulta_bbox:  {type(consulta_bbox)}')
     print(f'betaraster-> calcular_valor_medio_parcela---> Coord:          {consulta_bbox.xMinimum()} - {consulta_bbox.yMaximum()}')
     print(f'betaraster-> calcular_valor_medio_parcela---> Dimension:      {consulta_bbox.height()} x {consulta_bbox.width()}')
+    print(f'betaraster-> calcular_valor_medio_parcela---> raster_layer:   {type(raster_layer)}')
 
     # Recorro los pixeles que tocan el rectángulo (extent_explora_pixels) incluye, con seguridad (los excede),
     # los píxeles cuyo centro está dentro de la geometría de consuilta (círculo o cuadrado)
@@ -517,12 +518,15 @@ def calcular_valor_medio_parcela_rodal(
             capa_mfe_sp2_encontrada, capa_mfe_sp2_raster_ok, capa_nombre_mfe_sp2,
             capa_mfe_spx_encontrada, capa_mfe_spx_raster_ok, capa_nombre_mfe_spx,
         ) = buscar_raster_mfe()
-        raster_mfe_sp1_provider = capa_mfe_sp1_raster_ok.dataProvider()
-        raster_mfe_sp2_provider = capa_mfe_sp2_raster_ok.dataProvider()
-        raster_mfe_spx_provider = capa_mfe_spx_raster_ok.dataProvider()
-        raster_mfe_sp1_block = raster_mfe_sp1_provider.block(1, extent_explora_pixels, cols, rows)
-        raster_mfe_sp2_block = raster_mfe_sp2_provider.block(1, extent_explora_pixels, cols, rows)
-        raster_mfe_spx_block = raster_mfe_spx_provider.block(1, extent_explora_pixels, cols, rows)
+        if not capa_mfe_sp1_raster_ok is None:
+            raster_mfe_sp1_provider = capa_mfe_sp1_raster_ok.dataProvider()
+            raster_mfe_sp1_block = raster_mfe_sp1_provider.block(1, extent_explora_pixels, cols, rows)
+        if not capa_mfe_sp2_raster_ok is None:
+            raster_mfe_sp2_provider = capa_mfe_sp2_raster_ok.dataProvider()
+            raster_mfe_sp2_block = raster_mfe_sp2_provider.block(1, extent_explora_pixels, cols, rows)
+        if not capa_mfe_spx_raster_ok is None:
+            raster_mfe_spx_provider = capa_mfe_spx_raster_ok.dataProvider()
+            raster_mfe_spx_block = raster_mfe_spx_provider.block(1, extent_explora_pixels, cols, rows)
 
     # Extraer los valores de los píxeles dentro del círculo
     valores_selec = []
@@ -552,39 +556,39 @@ def calcular_valor_medio_parcela_rodal(
 
             # print(f'betaraster-> punto_click_pixel 2: ({type(punto_click_pixel)}): {punto_click_pixel}')  #  (<class 'qgis._core.QgsPointXY'>): <QgsPointXY: POINT(520173 2)>
             if recorte_previo:
-                raster_mfe_sp1_block
-                raster_mfe_sp2_block
-                raster_mfe_spx_block
-
-                valor_mfe_sp1 = raster_mfe_sp1_block.value(i, j)
-                # print(f'betaraster-> valor_mfe_sp1 ({type(valor_mfe_sp1)}): {valor_mfe_sp1} [noData: {raster_mfe_sp1_provider.sourceNoDataValue(1)}]')
-                if valor_mfe_sp1 == raster_mfe_sp1_provider.sourceNoDataValue(1):
-                    cod_num_mfe_sp1 = 0
-                else:
-                    try:
-                        cod_num_mfe_sp1 = int(raster_mfe_sp1_block.value(i, j))
-                    except:
-                        cod_num_mfe_sp1 = -1
-                valor_mfe_sp2 = raster_mfe_sp2_block.value(i, j)
-                if valor_mfe_sp2 == raster_mfe_sp2_provider.sourceNoDataValue(1):
-                    cod_num_mfe_sp2 = 0
-                else:
-                    try:
-                        cod_num_mfe_sp2 = int(raster_mfe_sp2_block.value(i, j))
-                    except:
+                if not capa_mfe_sp1_raster_ok is None:
+                    valor_mfe_sp1 = raster_mfe_sp1_block.value(i, j)
+                    # print(f'betaraster-> valor_mfe_sp1 ({type(valor_mfe_sp1)}): {valor_mfe_sp1} [noData: {raster_mfe_sp1_provider.sourceNoDataValue(1)}]')
+                    if valor_mfe_sp1 == raster_mfe_sp1_provider.sourceNoDataValue(1):
+                        cod_num_mfe_sp1 = 0
+                    else:
+                        try:
+                            cod_num_mfe_sp1 = int(raster_mfe_sp1_block.value(i, j))
+                        except:
+                            cod_num_mfe_sp1 = -1
+                    if not capa_mfe_sp2_raster_ok is None:
+                        valor_mfe_sp2 = raster_mfe_sp2_block.value(i, j)
+                        if valor_mfe_sp2 == raster_mfe_sp2_provider.sourceNoDataValue(1):
+                            cod_num_mfe_sp2 = 0
+                        else:
+                            try:
+                                cod_num_mfe_sp2 = int(raster_mfe_sp2_block.value(i, j))
+                            except:
+                                cod_num_mfe_sp2 = -1
+                    else:
                         cod_num_mfe_sp2 = -1
-                try:
-                    mfe_spx_valor = raster_mfe_spx_block.value(i, j)
-                except:
-                    mfe_spx_valor = 0.0
-                if cod_num_mfe_sp1 in dict_spp_mfe_sp1.keys():
-                    dict_spp_mfe_sp1[cod_num_mfe_sp1] += 1
-                else:
-                    dict_spp_mfe_sp1[cod_num_mfe_sp1] = 1
-                if cod_num_mfe_sp2 in dict_spp_mfe_sp2.keys():
-                    dict_spp_mfe_sp2[cod_num_mfe_sp2] += 1
-                else:
-                    dict_spp_mfe_sp2[cod_num_mfe_sp2] = 1
+                    try:
+                        mfe_spx_valor = raster_mfe_spx_block.value(i, j)
+                    except:
+                        mfe_spx_valor = 0.0
+                    if cod_num_mfe_sp1 in dict_spp_mfe_sp1.keys():
+                        dict_spp_mfe_sp1[cod_num_mfe_sp1] += 1
+                    else:
+                        dict_spp_mfe_sp1[cod_num_mfe_sp1] = 1
+                    if cod_num_mfe_sp2 in dict_spp_mfe_sp2.keys():
+                        dict_spp_mfe_sp2[cod_num_mfe_sp2] += 1
+                    else:
+                        dict_spp_mfe_sp2[cod_num_mfe_sp2] = 1
             else:
                 if num_puntos_leidos < 100:
                     if buscar_esp_mfe:
