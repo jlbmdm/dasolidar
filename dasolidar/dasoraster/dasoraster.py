@@ -425,61 +425,128 @@ def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15,
             level=mi_level,
         )
 
-def capa_malla_lasfiles():
-    layer_selec = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')
-    if not layer_selec:
-        print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" no está cargada en el proyecto.')
-        iface.messageBar().pushMessage(
-            title='dasoraster',
-            text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto. Pulsa el botón [mostrar más] y vuelve a intentarlo.',
-            showMore=f'Este complemento está preparado para trabajar con el proyecto LidarQgis.\n'\
-                'Si estás trabajando con un proyecto tuyo es posible que éste no tenga la capa cargar_nubeDePuntos_LidarPNOA2 (malla para descarga de fichero lidar).\n'\
-                'A continuacón se va a intentar cargar esa capa desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\n'\
-                'Para eso necesitas tener acceso a esa ubicación de red, para lo cual debes estar dado de alta en la lista de usuarios dasolidar.\n'\
-                'Para saber si estás dado de alta puedes enviar esta consulta con el botón "Consultas & IA" de este complemento dasoraster.\n'
-                'Si tiene éxito la carga automática esa capa en el proyecto; una vez hecho vuelve a intentar la carga del fichero lidar (nube de puntos)',
-            duration=20,
-            level=Qgis.Warning,
-        )
 
+def capa_malla_lasfiles():
+    aux_path = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux'
+    malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2'
+    malla_lazfiles_filename = 'lidar_copc.gpkg'
+    malla_lazfiles_layername = f'{malla_lazfiles_filename}|layername=copc'
+    malla_lazfiles_filepath = os.path.join(aux_path, malla_lazfiles_filename)
+    malla_lazfiles_layerpath = os.path.join(aux_path, malla_lazfiles_layername)
+
+    layer_malla_lazfiles_projlayerlist = QgsProject.instance().mapLayersByName(malla_lazfiles_tocname)
+    print(f'betaraster-> 0 layer_malla_lazfiles_projlayerlist ({type(layer_malla_lazfiles_projlayerlist)}): {layer_malla_lazfiles_projlayerlist}')  #  <class 'list'>
+    if layer_malla_lazfiles_projlayerlist:
+        layer_malla_lazfiles_projvectorlayer = layer_malla_lazfiles_projlayerlist[0]
+    else:
+        print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" no está cargada en el proyecto.')
+        # iface.messageBar().pushMessage(
+        #     title='dasoraster',
+        #     text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto. Pulsa el botón [mostrar más] y vuelve a intentarlo.',
+        #     showMore=f'Este complemento está preparado para trabajar con el proyecto LidarQgis.\n'\
+        #         'Si estás trabajando con un proyecto tuyo es posible que éste no tenga la capa cargar_nubeDePuntos_LidarPNOA2 (malla para descarga de fichero lidar).\n'\
+        #         'A continuacón se va a intentar cargar esa capa desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\n'\
+        #         'Para eso necesitas tener acceso a esa ubicación de red, para lo cual debes estar dado de alta en la lista de usuarios dasolidar.\n'\
+        #         'Para saber si estás dado de alta puedes enviar esta consulta con el botón "Consultas & IA" de este complemento dasoraster.\n'
+        #         'Si tiene éxito la carga automática esa capa en el proyecto; una vez hecho vuelve a intentar la carga del fichero lidar (nube de puntos)',
+        #     duration=20,
+        #     level=Qgis.Warning,
+        # )
         # Ruta al archivo de la capa
-        aux_path = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux'
         if not os.path.isdir(aux_path):
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos ({aux_path}).'\
-                     '\nEs posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
-                showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
+                text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Pulsa el botón [mostrar más] ---->',
+                showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
+                    f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                    'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
+                    'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
+                    'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
+                    'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
                 duration=30,
                 level=Qgis.Warning,
             )
             return False, None
-        file_path = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc'
-        # Creo la capa
-        layer_selec = QgsVectorLayer(file_path, 'cargar_nubeDePuntos_LidarPNOA2', 'ogr')
-        # Verifico si la capa es válida y la agrego al proyecto
-        if layer_selec.isValid():
-            QgsProject.instance().addMapLayer(layer_selec)
-            print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" ha sido cargada.')
-            iface.messageBar().pushMessage(
-                'Capa cargar_nubeDePuntos_LidarPNOA2 cargada ok en el proyecto. Ahora debería funcionar la carga de ficheros Lidar.',
-                duration=10,
-                level=Qgis.Info,
-            )
+        if os.path.exists(malla_lazfiles_filepath):
+            # Creo el objeto layer y verifico si es válido; en caso afirmativo lo añado al proyecto
+            layer_malla_lazfiles_filelayer = QgsVectorLayer(malla_lazfiles_layerpath, malla_lazfiles_tocname, 'ogr')
+            print(f'betaraster-> layer_malla_lazfiles_filelayer ({type(layer_malla_lazfiles_filelayer)}): {layer_malla_lazfiles_filelayer}')  #  <class 'qgis._core.QgsVectorLayer'>
+            if layer_malla_lazfiles_filelayer.isValid():
+                QgsProject.instance().addMapLayer(layer_malla_lazfiles_filelayer)
+
+                # layer_tree_layer = QgsProject.instance().layerTreeRoot().findLayer(layer_malla_lazfiles_filelayer.id())
+                # print(f'betaraster-> layer_tree_layer ({type(layer_tree_layer)}): {layer_tree_layer}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
+                # if layer_tree_layer:
+                #     # Inserto la capa en la parte superior (posición 0)
+                #     QgsProject.instance().layerTreeRoot().insertLayer(0, layer_tree_layer)
+                # QgsProject.instance().layerTreeRoot().insertLayer(0, layer_malla_lazfiles_filelayer)  #  La pongo en la parte superior (posición 0)
+
+                # all_layers = QgsProject.instance().layerTreeRoot().children()
+                # for layer in all_layers:
+                #     if isinstance(layer, QgsLayerTreeLayer):
+                #         print(f'Layer: {layer.layer().name()}-> {layer.layer().name() == malla_lazfiles_tocname}')
+                #         if layer.layer().name() == malla_lazfiles_tocname:
+                #             layer_malla_lazfiles_projtreelayer = layer
+                #             print(f'layer_malla_lazfiles_projtreelayer   : {type(layer_malla_lazfiles_projtreelayer)}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
+                #             layer_malla_lazfiles_projvectorlayer = layer.layer()
+                #             print(f'layer_malla_lazfiles_projvectorlayer: {type(layer_malla_lazfiles_projvectorlayer)}')  #  <class 'qgis._core.QgsVectorLayer'>
+                #             try:
+                #                 layer_malla_lazfiles_projtreelayer.setVisible(False)
+                #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
+                #             except:
+                #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                #             break
+                #     elif isinstance(layer, QgsLayerTreeGroup):
+                #         print(f'Grupo: {layer.name()}')  # Imprime el nombre del grupo
+                #     else:
+                #         print('Elemento desconocido')
+
+                # if layer_malla_lazfiles_projlayerlist and isinstance(layer_malla_lazfiles_projlayerlist, QgsLayerTreeLayer):
+                #     try:
+                #         layer_malla_lazfiles_projlayerlist[0].setVisible(False)
+                #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
+                #     except:
+                #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                # else:
+                #     print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                iface.messageBar().pushMessage(
+                    f'Se ha cargado la capa {malla_lazfiles_tocname} en el proyecto. Esta capa es necesaria para descargar ficheros lidar (nubes de puntos = lazFiles).',
+                    duration=15,
+                    level=Qgis.Info,
+                )
+                return True, layer_malla_lazfiles_filelayer  #  layer_malla_lazfiles_projvectorlayer
+            else:
+                print(f'betaraster-> No se pudo cargar la capa {malla_lazfiles_tocname}.')
+                iface.messageBar().pushMessage(
+                    title='dasoraster',
+                    text=f'Parece que este PC tiene dificultades para leer y cargar la capa {malla_lazfiles_tocname} ({malla_lazfiles_layerpath}). Pulsa el botón [mostrar más] ---->',
+                    showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
+                        f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                        'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
+                        'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
+                        'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
+                        'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+                    duration=30,
+                    level=Qgis.Warning,
+                )
+                return False, None
         else:
-            print(f'betaraster-> No se pudo cargar la capa "cargar_nubeDePuntos_LidarPNOA2".')
+            print(f'betaraster-> No se encuentra la capa {malla_lazfiles_filepath}.')
             iface.messageBar().pushMessage(
                 title='dasoraster',
-                text='Parece que este PC tiene dificultades para leer la capa {cargar_nubeDePuntos_LidarPNOA2}. Comprueba que está en el proyecto.'\
-                    '\nPuede seer debido a que no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Es posible que no se esté ejecutando dentro de la JCyL o el usuario no esté dado de alta.',
-                showMore=f'Si eres técnico de medio ambiente de la Junta de Castilla y León y estás trabajando con un PC dentro de la Junta y quieres tener acceso a este recurso\nEnvía un correo electrónico siguiendo las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta.',
+                text=f'No se encuentra la capa {malla_lazfiles_tocname} ({malla_lazfiles_layerpath}). Pulsa el botón [mostrar más] ---->',
+                showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
+                    f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                    'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
+                    'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
+                    'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
+                    'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
                 duration=30,
                 level=Qgis.Warning,
             )
             return False, None
-    else:
-        layer_selec = layer_selec[0]
-    return True, layer_selec
+    print(f'betaraster-> ok 1 layer_malla_lazfiles_projvectorlayer ({type(layer_malla_lazfiles_projvectorlayer)}): {layer_malla_lazfiles_projvectorlayer}')  #  <class 'qgis._core.QgsVectorLayer'>
+    return True, layer_malla_lazfiles_projvectorlayer
 
 
 def ajustar_escala_lasfile(punto_elegido):
@@ -1707,7 +1774,6 @@ def pedir_datos_parcela_rodal(
     publicar_en_red_social_checkbox = QCheckBox('Publicar los datos aportados en dasonet')
     publicar_en_red_social_checkbox.setChecked(True)
     layout.addWidget(publicar_en_red_social_checkbox)
-# ç
 
     # Cuadro de texto (varias líneas)
     texto_multilinea_label = QLabel('Comentarios adicionales:')
@@ -2029,25 +2095,33 @@ def pedir_guardar_enviar_data(
             f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
         )
 
-    # Refrescar aqui? No me funciona el refresco
-    try:
-        layer_dasonet = QgsProject.instance().mapLayersByName('dasonet_puntos')[0]
-        def refrescar_canvas():
-            """Función para refrescar el canvas."""
-            print("Refrescando el canvas...")
-            iface.mapCanvas().setLayers(iface.mapCanvas().layers())  # Forzar el refresco de las capas
-            iface.mapCanvas().refresh()  # Refresca el canvas
-        # Conectar la señal de la capa a un slot
-        # La conexión hay que hacerla en el constructor de tu clase o en la inicialización del plugin.
-        # Puedo hacerlo solo cuando se ha enviado un polígono
-        layer_dasonet.featureAdded.connect(refrescar_canvas)
-        print(f'betaraster-> Se refrescará el canvas cuando cambie la capa dasonet_puntos')
-        print(f'-> layer_dasonet: {layer_dasonet}')
-    except Exception as mi_error:
-        print(f'betaraster-> Error en la señal de refrescar canvas:')
-        print(f'layer_dasonet: {QgsProject.instance().mapLayersByName("dasonet_puntos")}')
-        print(mi_error)
+    # def refrescar_canvas():
+    #     """Función para refrescar el canvas."""
+    #     print("Refrescando el canvas...")
+    #     iface.mapCanvas().setLayers(iface.mapCanvas().layers())  # Forzar el refresco de las capas
+    #     iface.mapCanvas().refresh()  # Refresca el canvas
 
+    # # Creo un QTimer para que refresque el canvas a las 2 minutos
+    # timer = QTimer()
+    # timer.setSingleShot(True)
+    # # timer.timeout.connect(lambda: iface.mapCanvas().refresh())
+    # timer.timeout.connect(refrescar_canvas)
+    # timer.start(2 * 60 * 1000)  # 1000 ms = 1 segundo
+
+
+    # # Refrescar aqui? No me funciona el refresco
+    # try:
+    #     layer_dasonet = QgsProject.instance().mapLayersByName('dasonet_puntos')[0]
+    #     # Conectar la señal de la capa a un slot
+    #     # La conexión hay que hacerla en el constructor de tu clase o en la inicialización del plugin.
+    #     # Puedo hacerlo solo cuando se ha enviado un polígono
+    #     layer_dasonet.featureAdded.connect(refrescar_canvas)
+    #     print(f'betaraster-> Se refrescará el canvas cuando cambie la capa dasonet_puntos')
+    #     print(f'-> layer_dasonet: {layer_dasonet}')
+    # except Exception as mi_error:
+    #     print(f'betaraster-> Error en la señal de refrescar canvas:')
+    #     print(f'layer_dasonet: {QgsProject.instance().mapLayersByName("dasonet_puntos")}')
+    #     print(mi_error)
 
 
 def mostrar_resultado_pedir_datos(
@@ -2143,7 +2217,7 @@ class Dasoraster:
         self.canvas = iface.mapCanvas()
         self.tool_parcela = None
         self.autoCargaLasFileObj = None
-# ç
+
         settings = QSettings()
         self.radio_parcela = settings.value('dasoraster/radio_parcela', 15, type=float)
         self.parcela_circular = settings.value('dasoraster/parcela_circular', True, type=bool)
@@ -2176,6 +2250,8 @@ class Dasoraster:
         # TODO: We are going to let the user set this up in a future iteration  #  #new (mensaje de Plugin builder)
         self.toolbar = self.iface.addToolBar(u'dasoraster')  #  #new
         self.toolbar.setObjectName(u'dasoraster')  #  #new
+        # Establecer un tooltip para la barra de herramientas
+        self.toolbar.setToolTip('Herramientas dasoraster: utilidades del proyecto dasolidar')
 
         self.pluginIsActive = False  #  #new
         # Check if plugin was started the first time in current QGIS session
@@ -2355,7 +2431,7 @@ class Dasoraster:
         icon_path = ':/plugins/dasoraster/resources/images/icon_star.png'
         self.action7 = self.add_action(
             icon_path,
-            text=self.tr(u'dasoraster\nConsultas & IA'),
+            text=self.tr(u'  dasoraster\nConsultas & IA'),
             callback=self.dasolidar_IA,
             parent=self.iface.mainWindow(),
         )
@@ -2585,6 +2661,18 @@ class Dasoraster:
 
     def cargar_lasfile(self):
         print(f'betaraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
+        self.malla_disponible, self.layer_selec = capa_malla_lasfiles()
+        if not self.malla_disponible:  #  or self.layer_selec is None:
+            self.action1.setEnabled(False)
+            # iface.messageBar().pushMessage(
+            #     title='dasoraster',
+            #     text=f'La descarga automática de ficheros Lidar no está disponible en este proyecto o ubicación',
+            #     # showMore=f'',
+            #     duration=15,
+            #     level=Qgis.Warning,
+            # )
+            return
+
         if self.action2.isChecked():
             self.action2.setChecked(False)
         if self.action3.isChecked():
@@ -3085,12 +3173,12 @@ class Dasoraster:
                 # Elimino el círculo después de hacer clic
                 self.tool_parcela.rubber_band.reset(QgsWkbTypes.PolygonGeometry)
             elif tipo_consulta == 'rodal':
-                # Crear un QTimer para eliminar el resaltado después de cierto tiempo
+                # Creo un QTimer para que desaparezca el resaltado a los 5 segundos
                 timer = QTimer()
                 timer.setSingleShot(True)
                 timer.timeout.connect(lambda: self.tool_rodal.rubberBand.reset(QgsWkbTypes.PolygonGeometry))
-                timer.start(3000)  # 1000 ms = 1 segundo
-# ç
+                timer.start(5000)  # 1000 ms = 1 segundo
+
             # Busco la capa ráster que tiene los volúmemens para:
             #  Consultar rodal -> Siempre se consulta volumen xq la capa activa es la de rodales/lotes/polígonos
             #  Consultar parcela -> Se consulta la capa raster activa salvo que no sea raster en cuy caso se busca la de volúmenes

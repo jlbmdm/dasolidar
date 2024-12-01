@@ -24,17 +24,17 @@ IFN4: https://www.miteco.gob.es/es/biodiversidad/temas/inventarios-nacionales/in
 
 ------------
 ¿Qué es el dasoLidar?
-Es una iniciativa para poner a disposición de los técnicos, productos y
-herramientas Lidar destinados a la gestión del medio natural.
+Es una iniciativa para generar productos y herramientas Lidar destinados a la gestión
+del medio natural y ponerlos a disposición de los usuarios desde Qgis.
+
+¿Está disponible para todos?
+Está disponible para el personal técnico de la Junta de Castilla y León que esté dado de alta en la lista de usuarios dasoLidar
 
 ¿Por dónde empiezo?
 Cargando el proyecto LidarQgis.
 
 ¿Dónde está el proyecto?
-Se accede mediante un enlace directo que está en el escritorio 
-
-¿Está disponible para todos?
-Está disponible para los técnicos de la Junta de Castilla y León que están en la lista de usuarios dasoLidar
+Se accede mediante un enlace directo que está en el escritorio de los usuarios dasolidar
 
 
 Uso
