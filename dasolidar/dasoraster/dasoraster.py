@@ -432,7 +432,7 @@ def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15,
             level=mi_level,
         )
 
-# ç
+
 def capa_malla_lasfiles(old=False):
     aux_path = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux'
     if old:
@@ -1877,8 +1877,8 @@ def guardar_datos_parcela_rodal_en_V(
         cuerpo='',
         motivo='consulta',
     ):
-    unidad_V_disponible = chequear_unidad_V(unidad_v_path, mensajes_path)
-    msg_filename = os.path.join(mensajes_path, f'{motivo}s.dsl')
+    unidad_V_disponible = chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH)
+    msg_filename = os.path.join(MENSAJES_PATH, f'{motivo}s.dsl')
     msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
     msg_guardado_ok = False
     if msg_obj:
@@ -2002,9 +2002,9 @@ def pedir_guardar_enviar_data(
     ahora_H_M_SS = datetime.fromtimestamp(time.time()).strftime('%H%M%S')
     if tipo_consulta == 'rodal':
         print(f'Rodal consultado: se guarda su geometría.')
-        unidad_V_disponible = chequear_unidad_V(unidad_v_path, mensajes_path)
+        unidad_V_disponible = chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH)
         if unidad_V_disponible:
-            geojson_filepath = os.path.join(mensajes_path, f'dsld_{tipo_consulta}_{usuario_actual}')
+            geojson_filepath = os.path.join(MENSAJES_PATH, f'dsld_{tipo_consulta}_{usuario_actual}')
             geojson_filename = f'RODAL_{tipo_consulta}_{usuario_actual}_{hoy_AAAAMMDD}_{ahora_H_M_SS}.geojson'
             if not os.path.exists(geojson_filepath):
                 os.makedirs(geojson_filepath) 
@@ -2020,7 +2020,7 @@ def pedir_guardar_enviar_data(
             del writer
             print(f'La geometría se ha guardado en: {geojson_pathname}')
         else:
-            print(f'Unidad V no disponible: {mensajes_path}')
+            print(f'Unidad V no disponible: {MENSAJES_PATH}')
             geojson_pathname = ''
     else:
         geojson_pathname = ''
