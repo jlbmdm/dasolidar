@@ -86,8 +86,8 @@ def leer_csv_codigos1():
             for mi_sp in lista_spp_mfe25cyl:
                 list_sp = (mi_sp.rstrip('\n')).split(SEP_CSV_DSLD)
                 dict_spp_mfe25cyl[int(list_sp[0])] = list_sp[1:]
-            print(f'betaraster-> Lista de especies leida ok: {mfe25cyl_sp}')
-            print(f'\tRebollo: {dict_spp_mfe25cyl[43]}')
+            # print(f'betaraster-> Lista de especies leida ok: {mfe25cyl_sp}')
+            # print(f'\tRebollo: {dict_spp_mfe25cyl[43]}')
         except:
             print(f'betaraster-> Error al leer la lista de especies: {mfe25cyl_sp}')
     else:

@@ -23,6 +23,7 @@
 '''
 
 import os
+import shutil
 import sys
 import math
 import time
@@ -33,6 +34,7 @@ import pandas as pd
 
 import numpy as np
 import win32com.client
+import pythoncom
 # from osgeo import gdal
 # import psutil
 
@@ -277,6 +279,7 @@ except:
     usuario_actual = 'anonimo'
 print(f'betaraster-> usuario_actual: {usuario_actual}')
 
+CARGAR_MALLA_LIDAR_EN_PROYECTO = False
 GRUPO_LIDAR_DESCARGADO = 'lidarDescargado'
 DIMENSION_BLOQUE = 2000
 AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA = 10000
@@ -287,6 +290,10 @@ SEP_CSV_INPUT = '\t'
 SEP_CSV_OUT = '\t'
 SEP_CSV_DSLD = '\t'
 VERBOSE = False
+
+UNIDAD_V_PATH = 'V:/MA_SCAYLE_VueloLidar'
+MENSAJES_PATH = os.path.join(UNIDAD_V_PATH, 'dasoraster')
+
 
 aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
 scripts_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\scripts'
@@ -405,7 +412,7 @@ for key, variable_dasometrica in dict_cod_variables_dasometricas.items():
     mis_variables_nombre.append(variable_dasometrica[0])
     mis_variables_unidad.append(variable_dasometrica[1])
 mis_variables_unidad.append('Otra')
-print('mis_variables_unidad', mis_variables_unidad)
+# print(f'betaraster-> mis_variables_unidad: {mis_variables_unidad}')
 
 
 def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15, mi_level=Qgis.Info):
@@ -425,136 +432,135 @@ def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15,
             level=mi_level,
         )
 
-
-def capa_malla_lasfiles():
+# ç
+def capa_malla_lasfiles(old=False):
     aux_path = r'\\repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux'
-    malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2'
-    malla_lazfiles_filename = 'lidar_copc.gpkg'
+    if old:
+        malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2'
+        malla_lazfiles_filename = 'lidar_copc.gpkg'
+    else:
+        malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2_02'
+        malla_lazfiles_filename = 'lidar_copc_02.gpkg'
     malla_lazfiles_layername = f'{malla_lazfiles_filename}|layername=copc'
     malla_lazfiles_filepath = os.path.join(aux_path, malla_lazfiles_filename)
     malla_lazfiles_layerpath = os.path.join(aux_path, malla_lazfiles_layername)
 
-    layer_malla_lazfiles_projlayerlist = QgsProject.instance().mapLayersByName(malla_lazfiles_tocname)
-    print(f'betaraster-> 0 layer_malla_lazfiles_projlayerlist ({type(layer_malla_lazfiles_projlayerlist)}): {layer_malla_lazfiles_projlayerlist}')  #  <class 'list'>
-    if layer_malla_lazfiles_projlayerlist:
-        layer_malla_lazfiles_projvectorlayer = layer_malla_lazfiles_projlayerlist[0]
+    layer_malla_lazfiles_projlist = QgsProject.instance().mapLayersByName(malla_lazfiles_tocname)
+    print(f'betaraster-> 0 layer_malla_lazfiles_projlist ({type(layer_malla_lazfiles_projlist)}): {layer_malla_lazfiles_projlist}')  #  <class 'list'>
+    if layer_malla_lazfiles_projlist:
+        layer_malla_lazfiles_projvectorlayer = layer_malla_lazfiles_projlist[0]
+        print(f'betaraster-> ok 1 layer_malla_lazfiles_projvectorlayer ({type(layer_malla_lazfiles_projvectorlayer)}): {layer_malla_lazfiles_projvectorlayer}')  #  <class 'qgis._core.QgsVectorLayer'>
+        return True, layer_malla_lazfiles_projvectorlayer
     else:
         print(f'betaraster-> La capa "cargar_nubeDePuntos_LidarPNOA2" no está cargada en el proyecto.')
-        # iface.messageBar().pushMessage(
-        #     title='dasoraster',
-        #     text='Para hacer la descarga de ficheros lidar de nubes de puntos (lasFiles) se requiere que la capa cargar_nubeDePuntos_LidarPNOA2 esté cargada en el proyecto. Pulsa el botón [mostrar más] y vuelve a intentarlo.',
-        #     showMore=f'Este complemento está preparado para trabajar con el proyecto LidarQgis.\n'\
-        #         'Si estás trabajando con un proyecto tuyo es posible que éste no tenga la capa cargar_nubeDePuntos_LidarPNOA2 (malla para descarga de fichero lidar).\n'\
-        #         'A continuacón se va a intentar cargar esa capa desde la ubicación de red: //repoarchivohm.jcyl.red/MADGMNSVPI_SCAYLEVueloLIDAR$/PNOA2/.aux/lidar_copc.gpkg|layername=copc.\n'\
-        #         'Para eso necesitas tener acceso a esa ubicación de red, para lo cual debes estar dado de alta en la lista de usuarios dasolidar.\n'\
-        #         'Para saber si estás dado de alta puedes enviar esta consulta con el botón "Consultas & IA" de este complemento dasoraster.\n'
-        #         'Si tiene éxito la carga automática esa capa en el proyecto; una vez hecho vuelve a intentar la carga del fichero lidar (nube de puntos)',
-        #     duration=20,
-        #     level=Qgis.Warning,
-        # )
         # Ruta al archivo de la capa
         if not os.path.isdir(aux_path):
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text='Parece que este PC no tiene acceso a la ubicación de red con la información de descarga de nubes de puntos. Pulsa el botón [mostrar más] ---->',
-                showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
-                    f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                showMore=f'Esto puede deberse a que ahora no hay acceso a la red de la JCyL o a que no estás dado de alta en dasolidar.\n'\
+                    f'Ambas cosas son necesarias para tener la funcionalidad completa de dasoraster.\n'\
                     'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
                     'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
-                    'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
-                    'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+                    'puedes solicitar el alta enviando un correo electrónico a los responsables del proyecto.\n'\
+                    'Sigue las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta de dasolidar.',
                 duration=30,
                 level=Qgis.Warning,
             )
             return False, None
         if os.path.exists(malla_lazfiles_filepath):
             # Creo el objeto layer y verifico si es válido; en caso afirmativo lo añado al proyecto
-            layer_malla_lazfiles_filelayer = QgsVectorLayer(malla_lazfiles_layerpath, malla_lazfiles_tocname, 'ogr')
-            print(f'betaraster-> layer_malla_lazfiles_filelayer ({type(layer_malla_lazfiles_filelayer)}): {layer_malla_lazfiles_filelayer}')  #  <class 'qgis._core.QgsVectorLayer'>
-            if layer_malla_lazfiles_filelayer.isValid():
-                QgsProject.instance().addMapLayer(layer_malla_lazfiles_filelayer)
+            layer_malla_lazfiles_filevectorlayer = QgsVectorLayer(malla_lazfiles_layerpath, malla_lazfiles_tocname, 'ogr')
+            print(f'betaraster-> layer_malla_lazfiles_filevectorlayer ({type(layer_malla_lazfiles_filevectorlayer)}): {layer_malla_lazfiles_filevectorlayer}')  #  <class 'qgis._core.QgsVectorLayer'>
+            if layer_malla_lazfiles_filevectorlayer.isValid():
+                if CARGAR_MALLA_LIDAR_EN_PROYECTO:
+                    QgsProject.instance().addMapLayer(layer_malla_lazfiles_filevectorlayer)
+                    # layer_tree_layer = QgsProject.instance().layerTreeRoot().findLayer(layer_malla_lazfiles_filevectorlayer.id())
+                    # print(f'betaraster-> layer_tree_layer ({type(layer_tree_layer)}): {layer_tree_layer}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
+                    # if layer_tree_layer:
+                    #     # Inserto la capa en la parte superior (posición 0)
+                    #     QgsProject.instance().layerTreeRoot().insertLayer(0, layer_tree_layer)
+                    # QgsProject.instance().layerTreeRoot().insertLayer(0, layer_malla_lazfiles_filevectorlayer)  #  La pongo en la parte superior (posición 0)
 
-                # layer_tree_layer = QgsProject.instance().layerTreeRoot().findLayer(layer_malla_lazfiles_filelayer.id())
-                # print(f'betaraster-> layer_tree_layer ({type(layer_tree_layer)}): {layer_tree_layer}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
-                # if layer_tree_layer:
-                #     # Inserto la capa en la parte superior (posición 0)
-                #     QgsProject.instance().layerTreeRoot().insertLayer(0, layer_tree_layer)
-                # QgsProject.instance().layerTreeRoot().insertLayer(0, layer_malla_lazfiles_filelayer)  #  La pongo en la parte superior (posición 0)
+                    # all_layers = QgsProject.instance().layerTreeRoot().children()
+                    # for layer in all_layers:
+                    #     if isinstance(layer, QgsLayerTreeLayer):
+                    #         print(f'Layer: {layer.layer().name()}-> {layer.layer().name() == malla_lazfiles_tocname}')
+                    #         if layer.layer().name() == malla_lazfiles_tocname:
+                    #             layer_malla_lazfiles_projtreelayer = layer
+                    #             print(f'layer_malla_lazfiles_projtreelayer   : {type(layer_malla_lazfiles_projtreelayer)}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
+                    #             layer_malla_lazfiles_projvectorlayer = layer.layer()
+                    #             print(f'layer_malla_lazfiles_projvectorlayer: {type(layer_malla_lazfiles_projvectorlayer)}')  #  <class 'qgis._core.QgsVectorLayer'>
+                    #             try:
+                    #                 layer_malla_lazfiles_projtreelayer.setVisible(False)
+                    #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
+                    #             except:
+                    #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                    #             break
+                    #     elif isinstance(layer, QgsLayerTreeGroup):
+                    #         print(f'Grupo: {layer.name()}')  # Imprime el nombre del grupo
+                    #     else:
+                    #         print('Elemento desconocido')
 
-                # all_layers = QgsProject.instance().layerTreeRoot().children()
-                # for layer in all_layers:
-                #     if isinstance(layer, QgsLayerTreeLayer):
-                #         print(f'Layer: {layer.layer().name()}-> {layer.layer().name() == malla_lazfiles_tocname}')
-                #         if layer.layer().name() == malla_lazfiles_tocname:
-                #             layer_malla_lazfiles_projtreelayer = layer
-                #             print(f'layer_malla_lazfiles_projtreelayer   : {type(layer_malla_lazfiles_projtreelayer)}')  #  <class 'qgis._core.QgsLayerTreeLayer'>
-                #             layer_malla_lazfiles_projvectorlayer = layer.layer()
-                #             print(f'layer_malla_lazfiles_projvectorlayer: {type(layer_malla_lazfiles_projvectorlayer)}')  #  <class 'qgis._core.QgsVectorLayer'>
-                #             try:
-                #                 layer_malla_lazfiles_projtreelayer.setVisible(False)
-                #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
-                #             except:
-                #                 print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
-                #             break
-                #     elif isinstance(layer, QgsLayerTreeGroup):
-                #         print(f'Grupo: {layer.name()}')  # Imprime el nombre del grupo
-                #     else:
-                #         print('Elemento desconocido')
-
-                # if layer_malla_lazfiles_projlayerlist and isinstance(layer_malla_lazfiles_projlayerlist, QgsLayerTreeLayer):
-                #     try:
-                #         layer_malla_lazfiles_projlayerlist[0].setVisible(False)
-                #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
-                #     except:
-                #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
-                # else:
-                #     print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
-                iface.messageBar().pushMessage(
-                    f'Se ha cargado la capa {malla_lazfiles_tocname} en el proyecto. Esta capa es necesaria para descargar ficheros lidar (nubes de puntos = lazFiles).',
-                    duration=15,
-                    level=Qgis.Info,
-                )
-                return True, layer_malla_lazfiles_filelayer  #  layer_malla_lazfiles_projvectorlayer
+                    # if layer_malla_lazfiles_projlist and isinstance(layer_malla_lazfiles_projlist, QgsLayerTreeLayer):
+                    #     try:
+                    #         layer_malla_lazfiles_projlist[0].setVisible(False)
+                    #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (no visible).')
+                    #     except:
+                    #         print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                    # else:
+                    #     print(f'betaraster-> La capa {malla_lazfiles_tocname} ha sido cargada (si visible).')
+                    iface.messageBar().pushMessage(
+                        f'Se ha cargado la capa {malla_lazfiles_tocname} en el proyecto. Esta capa es necesaria para descargar ficheros lidar (nubes de puntos = lazFiles).',
+                        duration=15,
+                        level=Qgis.Info,
+                    )
+                return True, layer_malla_lazfiles_filevectorlayer  #  layer_malla_lazfiles_projvectorlayer
             else:
                 print(f'betaraster-> No se pudo cargar la capa {malla_lazfiles_tocname}.')
                 iface.messageBar().pushMessage(
                     title='dasoraster',
                     text=f'Parece que este PC tiene dificultades para leer y cargar la capa {malla_lazfiles_tocname} ({malla_lazfiles_layerpath}). Pulsa el botón [mostrar más] ---->',
-                    showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
-                        f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                    showMore=f'Esto puede deberse a que ahora no hay acceso a la red de la JCyL o a que no estás dado de alta en dasolidar.\n'\
+                        'Esta capa es necesariaa para descargar ficheros lidar con las nubes de puntos (lazfiles).\n'\
                         'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
                         'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
-                        'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
-                        'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+                        'puedes solicitar el alta enviando un correo electrónico a los responsables del proyecto.\n'\
+                        'Sigue las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta de dasolidar.',
                     duration=30,
                     level=Qgis.Warning,
                 )
+                layer_malla_lazfiles_filevectorlayer = None
                 return False, None
         else:
             print(f'betaraster-> No se encuentra la capa {malla_lazfiles_filepath}.')
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text=f'No se encuentra la capa {malla_lazfiles_tocname} ({malla_lazfiles_layerpath}). Pulsa el botón [mostrar más] ---->',
-                showMore=f'Es posible que no tengas acceso a la red de la JCyL o no estés dado de alta en dasolidar.\n'\
-                    f'Ambas cosas son necesarias para acceder a dasolidar: {aux_path}\n'\
+                showMore=f'Esto puede deberse a que ahora no hay acceso a la red de la JCyL o a que no estás dado de alta en dasolidar.\n'\
+                    'Esta capa es necesariaa para descargar ficheros lidar con las nubes de puntos (lazfiles).\n'\
                     'Si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
                     'estás en un PC con acceso a la red de la Junta y quieres usar dasolidar,\n'\
-                    'envía un correo electrónico siguiendo las instrucciones que figuran\n'\
-                    'en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+                    'puedes solicitar el alta enviando un correo electrónico a los responsables del proyecto.\n'\
+                    'Sigue las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta de dasolidar.',
                 duration=30,
                 level=Qgis.Warning,
             )
+            layer_malla_lazfiles_filevectorlayer = None
             return False, None
-    print(f'betaraster-> ok 1 layer_malla_lazfiles_projvectorlayer ({type(layer_malla_lazfiles_projvectorlayer)}): {layer_malla_lazfiles_projvectorlayer}')  #  <class 'qgis._core.QgsVectorLayer'>
-    return True, layer_malla_lazfiles_projvectorlayer
+    layer_malla_lazfiles_filevectorlayer = None
+    return False, None
 
 
-def ajustar_escala_lasfile(punto_elegido):
+def ajustar_escala_lasfile(
+        punto_elegido,
+        escala_deseada=20000,
+    ):
     canvas = iface.mapCanvas()
     escala_actual = canvas.scale()
     print(f'betaraster-> La escala actual del canvas es: 1:{round(escala_actual)}')
 
-    if escala_actual > 50000:
+    if escala_deseada and escala_actual > escala_deseada * 2:
         iface.messageBar().pushMessage(
             title='dasoraster',
             text='Se amplia la escala para la carga de fichero Lidar de nubes de puntos (lasFiles).',
@@ -563,12 +569,11 @@ def ajustar_escala_lasfile(punto_elegido):
             level=Qgis.Info,
         )
         canvas.setCenter(punto_elegido)
-        escala_deseada = 20000
         # canvas.setScale(escala_deseada)
         # canvas.zoomToScale(escala_deseada)
         # Suponiendo que el tamaño del canvas es de 800x600 píxeles
-        width = 300  # Ancho del canvas en píxeles
-        height = 200  # Alto del canvas en píxeles
+        width = 400  # Ancho del canvas en píxeles
+        height = 300  # Alto del canvas en píxeles
         # Calcular la extensión en unidades del sistema de referencia de coordenadas (CRS)
         # Esto puede variar dependiendo de tu CRS, aquí se asume que es en metros
         extent_deseado = QgsRectangle(
@@ -849,21 +854,22 @@ def cargar_nube_de_puntos(
                     duration=10
                 )
         carga_ok = -2
-    try:
-        mi_capa = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')[0]
-        iface.setActiveLayer(mi_capa)
-    except:
-        iface.messageBar().pushMessage(
-            f'Aviso, se ha renombrado la capa cargar_nubeDePuntos_LidarPNOA2 -> Revisa código de esta acción para cambiarlo tb aqui.',
-            level=Qgis.Warning,
-            duration=10
-        )
+    if CARGAR_MALLA_LIDAR_EN_PROYECTO:
+        try:
+            mi_capa = QgsProject.instance().mapLayersByName('cargar_nubeDePuntos_LidarPNOA2')[0]
+            iface.setActiveLayer(mi_capa)
+        except:
+            iface.messageBar().pushMessage(
+                f'Aviso, se ha renombrado la capa cargar_nubeDePuntos_LidarPNOA2 -> Revisa código de esta acción para cambiarlo tb aqui.',
+                level=Qgis.Warning,
+                duration=10
+            )
     # carga_ok-> 0: Algo falla; 1: Carga ok; 2: Ya cargado previamente; -1: No encontrado; -2: No hay bloque
     return (carga_ok, copcLazFile_path_name_ok)
 
 def capa_vector_activa():
-    # capa_activa_vector = False
-    layer_rodales = None
+    layer_rodal_projvectorlayer = None
+    capa_activa_vector = False
     layer_activo = iface.activeLayer()  # Usar la capa activa si es vectorial
     if layer_activo is None:
         print(f'betaraster-> No hay ninguna capa activa.')
@@ -883,16 +889,17 @@ def capa_vector_activa():
             else:
                 mensaje(f'Se consulta el polígono en el que se ha hecho click en la capa activa: {nombre_capa_activa}.')
                 # capa_activa_vector = True
-                layer_rodales = layer_activo
+                layer_rodal_projvectorlayer = layer_activo
+                capa_activa_vector = True
         else:
             print(f'betaraster-> La capa activa no es ni raster ni vectorial.')
             mensaje(f'La capa activa no es vectorial. Activa una capa vectorial para poder hacer consultas.', mi_level = Qgis.Warning)
-    layer_rodales = layer_activo
-    return layer_rodales
+    layer_rodal_projvectorlayer = layer_activo
+    return capa_activa_vector, layer_rodal_projvectorlayer
 
 
 class VentanaBienvenidaGuiaRapida(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, intro_dasolidar_html_filepath=''):
         super().__init__(parent)
         self.ok = True
 
@@ -901,32 +908,6 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         # self.setGeometry(100, 100, 700, 400)
         self.resize(950, 700)  # Ancho y alto en píxeles
         self.center()
-
-        # ======================================================================
-        print(f'betaraster-> Se va a mostrar la guia rápida')
-        ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
-        ruta_ayudas_local = os.path.join(PLUGIN_DIR, 'resources/docs')
-        rutas_ayudas = [ruta_ayudas_red, ruta_ayudas_local]
-        for ruta_ayudas in rutas_ayudas:
-            intro_dasolidar_png_filepath = os.path.join(ruta_ayudas, 'GuiaDasoLidar.png')
-            if os.path.exists(intro_dasolidar_png_filepath):
-                if intro_dasolidar_png_filepath.startswith(r'\\'):
-                    intro_dasolidar_html_filename = 'dasolidar_intro.html'
-                else:
-                    intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
-                intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
-                if os.path.exists(intro_dasolidar_html_filepath):
-                    break
-        if not os.path.exists(intro_dasolidar_png_filepath) or not os.path.exists(intro_dasolidar_html_filepath):
-            iface.messageBar().pushMessage(
-                title='dasoraster',
-                text='Guia rápida no disponible. Puede que no estés trabajando dentro de la intranet de la JCyL o no estés dado de alta en el proyecto dasolidar',
-                duration=20,
-                level=Qgis.Warning,
-            )
-            self.ok = False
-            return
-
         intro_dasolidar_html_obj = open(intro_dasolidar_html_filepath)
         intro_dasolidar_html_read = intro_dasolidar_html_obj.read()
         print(f'betaraster-> Ruta de la guia rápida: {intro_dasolidar_html_filepath}')
@@ -955,21 +936,36 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-def chekear_unidad_V(unidad_v_path, mensajes_path):
-    if os.path.isdir(unidad_v_path):
-        if os.path.isdir(mensajes_path):
+def chequear_outlook():
+    try:
+        pythoncom.CoInitialize()
+        outlook_disponible = True
+        # Intentar acceder a Outlook
+        outlook = win32com.client.Dispatch('Outlook.Application')
+        if outlook is None:
+            print("Outlook no está disponible.")
+            outlook_disponible = False
+    except Exception as mi_error:
+        print(f'betaraster-> Error cheando si outlook está disponible. mi_error: {mi_error}')
+        outlook_disponible = False
+    return outlook_disponible
+
+
+def chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH):
+    if os.path.isdir(UNIDAD_V_PATH):
+        if os.path.isdir(MENSAJES_PATH):
             unidad_V_disponible = True
         else:
             try:
-                os.mkdir(mensajes_path)
+                os.mkdir(MENSAJES_PATH)
                 unidad_V_disponible = True
             except FileExistsError:
                 # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
                 unidad_V_disponible = False
-                print(f'betaraster-> El directorio "{mensajes_path}" ya existe.')
+                print(f'betaraster-> El directorio "{MENSAJES_PATH}" ya existe.')
             except Exception as e:
                 unidad_V_disponible = False
-                print(f'betaraster-> Error al crear el directorio: {mensajes_path}')
+                print(f'betaraster-> Error al crear el directorio: {MENSAJES_PATH}')
                 print(f'betaraster-> Error: {e}')
     else:
         unidad_V_disponible = False
@@ -1100,7 +1096,7 @@ class VentanaAsistente(QDialog):
         if botones_disponibles == 'sugerencia_consulta_bengi':
             self.setWindowTitle('Aquí puedes escribir sugerencias y consultas.')
         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
-            self.setWindowTitle('Aquí puedes hacer sugerencias, consultas o peticiones. Próximamente podrás pedir que se ejecute una acción.')
+            self.setWindowTitle('Aquí puedes hacer sugerencias y consultas. Próximamente podrás pedir que se ejecute una acción.')
         else:
             self.setWindowTitle('Disponible próximamente.')
         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
@@ -1312,10 +1308,8 @@ class VentanaAsistente(QDialog):
 
         hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
         ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-        unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-        mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-        unidad_V_disponible = chekear_unidad_V(unidad_v_path, mensajes_path)
-        msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
+        unidad_V_disponible = chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH)
+        msg_filename = os.path.join(MENSAJES_PATH, f'{clase_consulta}s.dsl')
         msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
         msg_guardado_ok = False
         if msg_obj:
@@ -1482,8 +1476,8 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
         # self.setCursor(QgsApplication.getThemeCursor(QgsApplication.Cursor.CrossHair))
 
         # Obtener la capa de nube de puntos
-        self.malla_disponible, self.layer_selec = capa_malla_lasfiles()
-        if not self.malla_disponible or self.layer_selec is None:
+        self.malla_disponible, self.layer_malla_yyyyvectorlayer = capa_malla_lasfiles(old=True)
+        if not self.malla_disponible or self.layer_malla_yyyyvectorlayer is None:
             iface.messageBar().pushMessage(
                 title='dasoraster',
                 text=f'La descarga automática de ficheros Lidar no está disponible en este proyecto o ubicación',
@@ -1544,7 +1538,7 @@ class AutoCargaLasFile(QgsMapToolEmitPoint):
                     esquina_sup_izda_bloque = QgsPointXY(x_bloque, y_bloque)
                     selected_features = seleccionar_bloques(
                         esquina_sup_izda_bloque,
-                        self.layer_selec,
+                        self.layer_malla_yyyyvectorlayer,
                         desplazamiento_dcha_abajo=1,
                     )
                     if selected_features:
@@ -1883,9 +1877,7 @@ def guardar_datos_parcela_rodal_en_V(
         cuerpo='',
         motivo='consulta',
     ):
-    unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-    mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-    unidad_V_disponible = chekear_unidad_V(unidad_v_path, mensajes_path)
+    unidad_V_disponible = chequear_unidad_V(unidad_v_path, mensajes_path)
     msg_filename = os.path.join(mensajes_path, f'{motivo}s.dsl')
     msg_obj = abrir_fichero_almacen(unidad_V_disponible, msg_filename)
     msg_guardado_ok = False
@@ -2010,9 +2002,7 @@ def pedir_guardar_enviar_data(
     ahora_H_M_SS = datetime.fromtimestamp(time.time()).strftime('%H%M%S')
     if tipo_consulta == 'rodal':
         print(f'Rodal consultado: se guarda su geometría.')
-        unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-        mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-        unidad_V_disponible = chekear_unidad_V(unidad_v_path, mensajes_path)
+        unidad_V_disponible = chequear_unidad_V(unidad_v_path, mensajes_path)
         if unidad_V_disponible:
             geojson_filepath = os.path.join(mensajes_path, f'dsld_{tipo_consulta}_{usuario_actual}')
             geojson_filename = f'RODAL_{tipo_consulta}_{usuario_actual}_{hoy_AAAAMMDD}_{ahora_H_M_SS}.geojson'
@@ -2224,6 +2214,7 @@ class Dasoraster:
         self.consulta_multiple = settings.value('dasoraster/consulta_multiple', True, type=bool)
         self.buscar_modelo_regresion = settings.value('dasoraster/buscar_modelo_regresion', False, type=bool)
         self.buscar_esp_mfe = settings.value('dasoraster/buscar_esp_mfe', True, type=bool)
+        self.escala_deseada = settings.value('dasoraster/escala_deseada', 0, type=int)
         # self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)
         self.autocarga_lasfiles = False
         self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', AUTOCARGA_ESCALA_MAXIMA_RECOMENDADA, type=int)
@@ -2519,37 +2510,46 @@ class Dasoraster:
         # Podría usar el parametro boton_click para diferenciar entre diferentes tipos de clics si fuera necesario
 
         if tipo_consulta == 'lasfile':
-            # Obtener la capa de nube de puntos
-            self.malla_disponible, self.layer_selec = capa_malla_lasfiles()
-            if not self.malla_disponible or self.layer_selec is None:
-                iface.messageBar().pushMessage(
-                    title='dasoraster',
-                    text=f'La descarga manual de ficheros Lidar no está disponible en este proyecto o ubicación',
-                    # showMore=f'',
-                    duration=15,
-                    level=Qgis.Warning,
-                )
-                return False
+            # Obtengo la capa de nube de puntos (layer_malla_yyyyvectorlayer)
+            self.malla_disponible, self.layer_xxxxx_yyyyvectorlayer = capa_malla_lasfiles()
+            if not self.malla_disponible or self.layer_xxxxx_yyyyvectorlayer is None:
+                # Ya se ma mostrado un messageBar específico de cada caso en capa_malla_lasfiles<>
+                self.layer_xxxxx_yyyyvectorlayer = None
+                return None
         elif tipo_consulta == 'rodal':
-            self.layer_selec = capa_vector_activa()
-        if not self.layer_selec:
-            return False
+            # Obtengo la capa de rodales (layer_rodal_yyyyvectorlayer)
+            self.capa_activa_vector, self.layer_xxxxx_yyyyvectorlayer = capa_vector_activa()
+            if not self.capa_activa_vector or self.layer_xxxxx_yyyyvectorlayer is None:
+                # Ya se ma mostrado un messageBar específico de cada caso en capa_vector_activa<>
+                self.layer_xxxxx_yyyyvectorlayer = None
+                return None
+        else:
+            # Este mensaje no debería de salir ya que solo llamo a manejar_clic_canvas<> con tipo_consulta = lasfile o rodal
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text=f'Antes de hacer click en el canvas haz click en el botón que desees usar (descargar un lazfile o consultar un rodal).',
+                # showMore=f'',
+                duration=10,
+                level=Qgis.Info,
+            )
+            self.layer_xxxxx_yyyyvectorlayer = None
+            return None
 
-        print(f'betaraster-> layer identificado: {self.layer_selec}')
+        print(f'betaraster-> layer identificado: {self.layer_xxxxx_yyyyvectorlayer}')
 
-        # Compruebo el CRS del self.layer_selec
-        self.layer_crs = self.layer_selec.crs()
-        print(f'betaraster-> CRS del self.layer_selec: {self.layer_crs.authid()}')
+        # Compruebo el CRS del self.layer_xxxxx_yyyyvectorlayer
+        self.layer_crs = self.layer_xxxxx_yyyyvectorlayer.crs()
+        print(f'betaraster-> CRS del self.layer_xxxxx_yyyyvectorlayer: {self.layer_crs.authid()}')
         # Defino el CRS del punto (EPSG:25830)
         point_crs = QgsCoordinateReferenceSystem('EPSG:25830')
         if self.layer_crs != point_crs:
-            # Transformar el punto al CRS del self.layer_selec
+            # Transformar el punto al CRS del self.layer_xxxxx_yyyyvectorlayer
             if self.layer_crs.authid() in ['EPSG:25829', 'EPSG:25830']:
                 transform = QgsCoordinateTransform(point_crs, self.layer_crs, QgsProject.instance())
                 transformed_punto_click = transform.transform(punto_click)
                 print(f'betaraster-> Punto transformado: {transformed_punto_click.x()}, {transformed_punto_click.y()}')
             else:
-                print(f'betaraster-> El self.layer_selec no está en EPSG:25829 ni EPSG:25830: {self.layer_crs}.')
+                print(f'betaraster-> El self.layer_xxxxx_yyyyvectorlayer no está en EPSG:25829 ni EPSG:25830: {self.layer_crs}.')
                 transformed_punto_click = punto_click
                 iface.messageBar().pushMessage(
                     title='dasoraster',
@@ -2558,7 +2558,7 @@ class Dasoraster:
                     duration=10,
                     level=Qgis.Info,
                 )
-                # return False
+                # return None
             # punto_click = QgsPointXY(X, Y)
             print(f'betaraster-> Se han convertido las coordenadas del punto (EPSG:25830) al crs del layer vectorial:')
             print(f'betaraster-> punto_click original {point_crs.authid()}-> {punto_click}')
@@ -2566,11 +2566,18 @@ class Dasoraster:
         else:
             transformed_punto_click = punto_click
 
-        if self.layer_selec and self.layer_selec.type() == QgsMapLayer.VectorLayer:
-            ajustar_escala_lasfile(transformed_punto_click)
+        if self.layer_xxxxx_yyyyvectorlayer and self.layer_xxxxx_yyyyvectorlayer.type() == QgsMapLayer.VectorLayer:
+            if self.escala_deseada:
+                ajustar_escala_lasfile(
+                    transformed_punto_click,
+                    escala_deseada=self.escala_deseada,
+                )
+                print(f'betaraster-> self.escala_deseada si: {self.escala_deseada}')
+            else:
+                print(f'betaraster-> self.escala_deseada no: {self.escala_deseada}')
             selected_features = seleccionar_bloques(
                 transformed_punto_click,
-                self.layer_selec,
+                self.layer_xxxxx_yyyyvectorlayer,
             )
         else:
             selected_features = None
@@ -2582,7 +2589,7 @@ class Dasoraster:
             num_features = len(features_list)
             print(f'betaraster-> Número de poligonos seleccionados-> {num_features}')
             if num_features == 0:
-                resultado_msg = f'La capa consultada ({self.layer_selec.name()}) no tiene ningún polígono en ese punto'
+                resultado_msg = f'La capa consultada ({self.layer_xxxxx_yyyyvectorlayer.name()}) no tiene ningún polígono en ese punto'
                 QMessageBox.information(
                     self.iface.mainWindow(),
                     f'Consulta dasolidar: {tipo_consulta}',
@@ -2640,7 +2647,7 @@ class Dasoraster:
                 elif tipo_consulta == 'rodal':
                     print(f'betaraster-> Feature id: {feature.id()}')
                     self.rodal_feat = feature
-                    self.tool_rodal.rubberBand.setToGeometry(self.rodal_feat.geometry(), self.layer_selec)
+                    self.tool_rodal.rubberBand.setToGeometry(self.rodal_feat.geometry(), self.layer_xxxxx_yyyyvectorlayer)
                     self.tool_rodal.rubberBand.setColor(QColor(255, 0, 0, 100))  # Color rojo con transparencia
                     self.tool_rodal.rubberBand.setWidth(2)
 
@@ -2658,11 +2665,14 @@ class Dasoraster:
         else:
             print(f'betaraster-> No se encontró ningún polígono que contenga el punto (o la capa es ráster).')
 
+        self.layer_xxxxx_yyyyvectorlayer = None
+        return None
+
 
     def cargar_lasfile(self):
         print(f'betaraster-> self.action1.isChecked() 1: {self.action1.isChecked()}')
-        self.malla_disponible, self.layer_selec = capa_malla_lasfiles()
-        if not self.malla_disponible:  #  or self.layer_selec is None:
+        self.malla_disponible, self.layer_malla_yyyyvectorlayer = capa_malla_lasfiles()
+        if not self.malla_disponible:  #  or self.layer_malla_yyyyvectorlayer is None:
             self.action1.setEnabled(False)
             # iface.messageBar().pushMessage(
             #     title='dasoraster',
@@ -2671,7 +2681,9 @@ class Dasoraster:
             #     duration=15,
             #     level=Qgis.Warning,
             # )
+            self.layer_malla_yyyyvectorlayer = None
             return
+        self.layer_malla_yyyyvectorlayer = None
 
         if self.action2.isChecked():
             self.action2.setChecked(False)
@@ -3570,33 +3582,85 @@ class Dasoraster:
 
     def guia_rapida_dasolidar(self):
         global config_class
-        print(f'betaraster-> Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
-        dialog = VentanaBienvenidaGuiaRapida()
-        if dialog.ok:
-            rpta_ok = dialog.exec_()
-        # Esto no lo uso. La opción de mostrar ventana de bienvenida la dejo para el script de arranque
-        if rpta_ok == QDialog.Accepted and False:
-            if dialog.mostrar_checkbox.isChecked():
-                print(f'betaraster-> Seguir mostrando la ventana de bienvenida')
-                config_class.dl_mostrar_ventana_bienvenida = True
-                config_class.dl_mostrar_message_bienvenida = True
-            else:
-                print(f'betaraster-> No mostrar la ventana de bienvenida')
-                config_class.dl_mostrar_ventana_bienvenida = False
-                config_class.dl_mostrar_message_bienvenida = True
-            mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
-            mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
+
+        print(f'betaraster-> Se va a mostrar la guia rápida')
+        ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        ruta_ayudas_local = os.path.join(PLUGIN_DIR, 'resources/docs')
+        rutas_ayudas = [ruta_ayudas_red, ruta_ayudas_local]
+        red_disponible = False
+        intro_dasolidar_html_filepath = ''
+        for ruta_ayudas in rutas_ayudas:
+            intro_dasolidar_png_filepath = os.path.join(ruta_ayudas, 'GuiaDasoLidar.png')
+            if os.path.exists(intro_dasolidar_png_filepath):
+                if intro_dasolidar_png_filepath.startswith(r'\\'):
+                    intro_dasolidar_html_filename = 'dasolidar_intro.html'
+                    red_disponible = True
+                else:
+                    intro_dasolidar_html_filename = 'dasolidar_intro_local.html'
+                intro_dasolidar_html_filepath = os.path.join(ruta_ayudas, intro_dasolidar_html_filename)
+                if os.path.exists(intro_dasolidar_html_filepath):
+                    break
+        if (
+            not intro_dasolidar_html_filepath
+            or not os.path.exists(intro_dasolidar_png_filepath)
+            or not os.path.exists(intro_dasolidar_html_filepath)
+        ):
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text='Guia rápida no disponible. Puede que no estés trabajando dentro de la intranet de la JCyL o no estés dado de alta en el proyecto dasolidar',
+                duration=20,
+                level=Qgis.Warning,
+            )
+            self.ok = False
+            return
+        if red_disponible:
+            print(f'betaraster-> Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
+            dialog = VentanaBienvenidaGuiaRapida(intro_dasolidar_html_filepath=intro_dasolidar_html_filepath)
+            if dialog.ok:
+                rpta_ok = dialog.exec_()
+            # Esto no lo uso. La opción de mostrar ventana de bienvenida la dejo para el script de arranque
+            if rpta_ok == QDialog.Accepted and False:
+                if dialog.mostrar_checkbox.isChecked():
+                    print(f'betaraster-> Seguir mostrando la ventana de bienvenida')
+                    config_class.dl_mostrar_ventana_bienvenida = True
+                    config_class.dl_mostrar_message_bienvenida = True
+                else:
+                    print(f'betaraster-> No mostrar la ventana de bienvenida')
+                    config_class.dl_mostrar_ventana_bienvenida = False
+                    config_class.dl_mostrar_message_bienvenida = True
+                mi_config.setValue('dasolidar/mostrar_ventana_bienvenida', config_class.dl_mostrar_ventana_bienvenida)
+                mi_config.setValue('dasolidar/mostrar_message_bienvenida', config_class.dl_mostrar_message_bienvenida)
+        else:
+            if platform.system() == 'Windows':
+                os.startfile(intro_dasolidar_html_filepath)
 
     def manual_dasolidar(self):
-        ruta_manual_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
-        ruta_manual_local = os.path.join(PLUGIN_DIR, 'resources/docs')
-        rutas_manual = [ruta_manual_red, ruta_manual_local]
-        for ruta_manual in rutas_manual:
-            manual_dasolidar_pdf_filepath = os.path.join(ruta_manual, 'manualDasoLidar.pdf')
+        manual_filename = 'manualDasoLidar02.pdf'
+        manual_path_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        manual_path_local = os.path.join(PLUGIN_DIR, 'resources/docs')
+        rutas_manual = [manual_path_red, manual_path_local]
+        for manual_path in rutas_manual:
+            manual_dasolidar_pdf_filepath = os.path.join(manual_path, manual_filename)
             if os.path.exists(manual_dasolidar_pdf_filepath):
-                print(f'betaraster-> manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
-                if self.lector_pdf_windows:
-                    if platform.system() == 'Windows':
+                if self.lector_pdf_windows and platform.system() == 'Windows':
+                    print(f'betaraster-> manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
+                    if manual_path == manual_path_red:
+                        dasoraster_temp_path = os.path.join(os.environ['TEMP'], 'dasoraster')
+                        manual_dasolidar_pdf_temppath = os.path.join(dasoraster_temp_path, manual_filename)
+                        try:
+                            if not os.path.exists(dasoraster_temp_path):
+                                os.makedirs(dasoraster_temp_path) 
+                            print(f'betaraster-> manual_dasolidar_pdf_filepath_ok: {manual_dasolidar_pdf_filepath}')
+                            shutil.copy2(manual_dasolidar_pdf_filepath, manual_dasolidar_pdf_temppath)
+                            print(f'betaraster-> manual_dasolidar_pdf_temppath:     {manual_dasolidar_pdf_temppath}')
+                            if os.path.exists(manual_dasolidar_pdf_temppath):
+                                os.startfile(manual_dasolidar_pdf_temppath)
+                            else:
+                                os.startfile(manual_dasolidar_pdf_filepath)
+                        except:
+                            os.startfile(manual_dasolidar_pdf_filepath)
+                        break
+                    else:
                         os.startfile(manual_dasolidar_pdf_filepath)
                 else:
                     try:
@@ -3633,6 +3697,47 @@ class Dasoraster:
             return
 
     def dasolidar_IA(self):
+        unidad_V_disponible = chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH)
+        outlook_disponible =  chequear_outlook()
+        if not unidad_V_disponible and not outlook_disponible:
+            QMessageBox.warning(
+                iface.mainWindow(),
+                f'Aviso dasolidar',
+                f'No es posible registrar ni enviar tus consultas o sugerencias con dasoraster.\n'\
+                f'Este complemento está desarrollado exclusivamente para su uso\n'\
+                f'dentro de la intranet de la Junta de Castilla y León.\n'\
+                f'Si quieres hacer una consulta o sugerencia al equipo dasolidar\n'\
+                f'puedes enviar un correo electrónico a {EMAIL_DASOLIDAR1}'
+            )
+            return
+        elif not outlook_disponible:
+            QMessageBox.warning(
+                iface.mainWindow(),
+                f'Aviso dasolidar',
+                f'No es posible enviar tus consultas o sugerencias por mail al equipo dasolidar.\n'\
+                f'Es posible que se deba a que no tienes outlook en ejecución.\n'\
+                f'Puedes cancelar el envío en la siguiente ventana, iniciar outlook y probar de nuevo.\n\n'\
+                f'En todo caso, aunque no haya acceso a outlook, dasoraster también\n'\
+                f'registra la consulta o sugerencia y queda a disposición del equipo dasolidar.'
+                f'También puedes hacer consultas o sugerencias enviando\n'\
+                f'un correo electrónico a {EMAIL_DASOLIDAR1}\n\n'\
+                f'No obstante, el método más seguro para evitar que las comuncaciones pasen desapercibidas\n'\
+                f'es usar el asistente de dasoraster con outlook en ejecución.\n'\
+            )
+        elif not unidad_V_disponible:
+            iface.messageBar().pushMessage(
+                title='dasoraster',
+                text='Parece que este PC no tiene acceso a las unidades de red del proyecto dasolidar. Pulsa el botón [mostrar más] ---->',
+                showMore=f'Esto puede deberse a que ahora no hay acceso a la red de la JCyL o a que no estás dado de alta en dasolidar.\n'\
+                    f'Ambas cosas son necesarias para tener la funcionalidad completa de dasoraster.\n'\
+                    'No obstante, sin dicho acceso, este asistente te permite enviar sugerencia o consultas al equipo dasoraster.\n\n'\
+                    'En todo caso, si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
+                    'estás en un PC con acceso a la red de la Junta y quieres usar todas las funcionalidades de dasolidar,\n'\
+                    'puedes solicitar el alta enviando un correo electrónico a los responsables del proyecto.\n'\
+                    'Sigue las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+                duration=20,
+                level=Qgis.Warning,
+            )
         try:
             dialog = VentanaAsistente(
                 parent=None,
@@ -3658,7 +3763,7 @@ class Dasoraster:
         dict_settings['consulta_multiple'] = self.consulta_multiple
         dict_settings['buscar_modelo_regresion'] = self.buscar_modelo_regresion
         dict_settings['buscar_esp_mfe'] = self.buscar_esp_mfe
-        print(f'betaraster-> self.buscar_esp_mfe 0: {self.buscar_esp_mfe}')
+        dict_settings['escala_deseada'] = self.escala_deseada
         dict_settings['autocarga_lasfiles'] = self.autocarga_lasfiles
         dict_settings['autocarga_escala_maxima'] = self.autocarga_escala_maxima
         # dict_settings['autocarga_mostrar_lasfiles_en_leyenda'] = self.autocarga_mostrar_lasfiles_en_leyenda
@@ -3673,7 +3778,7 @@ class Dasoraster:
             self.consulta_multiple = settings.value('dasoraster/consulta_multiple', type=bool)
             self.buscar_modelo_regresion = settings.value('dasoraster/buscar_modelo_regresion', type=bool)
             self.buscar_esp_mfe = settings.value('dasoraster/buscar_esp_mfe', type=bool)
-            print(f'betaraster-> self.buscar_esp_mfe 1: {self.buscar_esp_mfe}')
+            self.escala_deseada = settings.value('dasoraster/escala_deseada', type=int)
             self.autocarga_lasfiles = settings.value('dasoraster/autocarga_lasfiles', type=bool)  #  Se inicia siempre en False
             self.autocarga_escala_maxima = settings.value('dasoraster/autocarga_escala_maxima', type=int)
             # self.autocarga_mostrar_lasfiles_en_leyenda = settings.value('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', type=bool)
@@ -3919,7 +4024,7 @@ class SettingsDialog(QDialog):
         consulta_multiple = dict_settings['consulta_multiple']
         buscar_modelo_regresion = dict_settings['buscar_modelo_regresion']
         buscar_esp_mfe = dict_settings['buscar_esp_mfe']
-        print(f'betaraster-> self.buscar_esp_mfe 2: {buscar_esp_mfe}')
+        escala_deseada = dict_settings['escala_deseada']
         autocarga_lasfiles = dict_settings['autocarga_lasfiles']
         autocarga_escala_maxima = dict_settings['autocarga_escala_maxima']
         # autocarga_mostrar_lasfiles_en_leyenda = dict_settings['autocarga_mostrar_lasfiles_en_leyenda']
@@ -3941,7 +4046,8 @@ class SettingsDialog(QDialog):
         self.buscar_modelo_regresion_input.setChecked(buscar_modelo_regresion)
         self.buscar_esp_mfe_input = QCheckBox()
         self.buscar_esp_mfe_input.setChecked(buscar_esp_mfe)
-        print(f'betaraster-> self.buscar_esp_mfe 3: {buscar_esp_mfe}')
+        self.escala_deseada_input = QLineEdit()
+        self.escala_deseada_input.setText(str(escala_deseada))
         self.autocarga_lasfiles_input = QCheckBox()
         self.autocarga_escala_maxima_input = QLineEdit()
         # self.autocarga_mostrar_lasfiles_en_leyenda_input = QCheckBox()
@@ -3968,6 +4074,7 @@ class SettingsDialog(QDialog):
         form_layout.addRow('Consulta multi-parcela:', self.consulta_multiple_input)
         form_layout.addRow('Buscar modelo regresion Lidar:', self.buscar_modelo_regresion_input)
         form_layout.addRow('Buscar especie mfe25:', self.buscar_esp_mfe_input)
+        form_layout.addRow('Ampliar escala al consultar (0=no):', self.escala_deseada_input)
         form_layout.addRow('Activar carga automática lasfiles:', self.autocarga_lasfiles_input)
         form_layout.addRow('Escala maxima en carga automática:', self.autocarga_escala_maxima_input)
         # form_layout.addRow('Mostrar lasfiles en leyenda:', self.autocarga_mostrar_lasfiles_en_leyenda_input)
@@ -3997,21 +4104,41 @@ class SettingsDialog(QDialog):
     def accept(self):
         # Guardo los valores en QSettings
         settings = QSettings()
-        settings.setValue('dasoraster/radio_parcela', float(self.radio_parcela_input.text()))
+        if self.radio_parcela_input.text().isdigit():
+            try:
+                settings.setValue('dasoraster/radio_parcela', float(self.radio_parcela_input.text()))
+            except:
+                settings.setValue('dasoraster/radio_parcela', 15.0)
+        else:
+            settings.setValue('dasoraster/radio_parcela', 15.0)
+
         settings.setValue('dasoraster/parcela_circular', self.parcela_circular_input.isChecked())
         settings.setValue('dasoraster/consulta_multiple', self.consulta_multiple_input.isChecked())
         settings.setValue('dasoraster/buscar_modelo_regresion', self.buscar_modelo_regresion_input.isChecked())
         settings.setValue('dasoraster/buscar_esp_mfe', self.buscar_esp_mfe_input.isChecked())
-        print(f'betaraster-> self.buscar_esp_mfe 4: {self.buscar_esp_mfe_input.isChecked()}')
+        if self.escala_deseada_input.text().isdigit():
+            try:
+                settings.setValue('dasoraster/escala_deseada', int(self.escala_deseada_input.text()))
+            except:
+                settings.setValue('dasoraster/escala_deseada', 0)
+        else:
+            settings.setValue('dasoraster/escala_deseada', 0)
         settings.setValue('dasoraster/autocarga_lasfiles', self.autocarga_lasfiles_input.isChecked())
-        if int(self.autocarga_escala_maxima_input.text()) > AUTOCARGA_ESCALA_MAXIMA_PERMITIDA:
-            self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_PERMITIDA))
-            self.iface.messageBar().pushMessage(
-                f'No se admiten escalas inferiores a 1:30000 (denominador superior {AUTOCARGA_ESCALA_MAXIMA_PERMITIDA}).',
-                duration=5,
-                level=Qgis.Info,
-            )
-        settings.setValue('dasoraster/autocarga_escala_maxima', int(self.autocarga_escala_maxima_input.text()))
+        if self.autocarga_escala_maxima_input.text().isdigit():
+            try:
+                if int(self.autocarga_escala_maxima_input.text()) > AUTOCARGA_ESCALA_MAXIMA_PERMITIDA:
+                    self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_PERMITIDA))
+                    self.iface.messageBar().pushMessage(
+                        f'No se admiten escalas inferiores a 1:30000 (denominador superior {AUTOCARGA_ESCALA_MAXIMA_PERMITIDA}).',
+                        duration=5,
+                        level=Qgis.Info,
+                    )
+                settings.setValue('dasoraster/autocarga_escala_maxima', int(self.autocarga_escala_maxima_input.text()))
+            except:
+                settings.setValue('dasoraster/autocarga_escala_maxima', 10000)
+        else:
+            settings.setValue('dasoraster/autocarga_escala_maxima', 10000)
+
         # settings.setValue('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', self.autocarga_mostrar_lasfiles_en_leyenda_input.isChecked())
         settings.setValue('dasoraster/lector_pdf_windows', self.lector_pdf_windows_input.isChecked())
         # Llamo al método accept del QDialog
