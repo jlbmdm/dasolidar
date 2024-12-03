@@ -685,24 +685,53 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
             botones_layout_2 = QHBoxLayout()
             # Añadir botones
             # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-            self.infografia_button = QPushButton('Primeros pasos dasolidar')
-            self.manual_button = QPushButton('Manual de consulta dasolidar')
+            self.videoTip01 = QPushButton('VideoTip 1')
+            self.videoTip01.setToolTip('Descargar un fichero Lidar (nube de puntos, lasFile o lazfile)')
+            self.videoTip02 = QPushButton('VideoTip 2')
+            self.videoTip02.setToolTip('Cómo consultar datos de una parcela circular')
+            self.videoTip03 = QPushButton('VideoTip 3')
+            self.videoTip03.setToolTip('Cómo mostrar un perfil de la nube de puntos Lidar')
+            self.videoTip04 = QPushButton('VideoTip 4')
+            self.videoTip04.setToolTip('Fake: cómo hacer mediciones en un perfil de la nube de puntos Lidar')
             # self.ldata_button = QPushButton('Explorar LidarData')
             # self.asista_button = QPushButton('Asistente')
             # self.lasfile_button = QPushButton('cargar nube de puntos')
             # self.raster_button = QPushButton('Herramientas raster')
 
-            self.infografia_button.setStyleSheet('font-size: 14px; font-weight: bold;')
-            self.manual_button.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.videoTip01.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.videoTip02.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.videoTip03.setStyleSheet('font-size: 14px; font-weight: bold;')
+            self.videoTip04.setStyleSheet('font-size: 14px; font-weight: bold;')
             # self.ldata_button.setStyleSheet('font-size: 14px; font-weight: bold;')
             # self.asista_button.setStyleSheet('font-size: 14px; font-weight: bold;')
             # self.lasfile_button.setStyleSheet('font-size: 14px; font-weight: bold;')
             # self.raster_button.setStyleSheet('font-size: 14px; font-weight: bold;')
 
             # Conectar los botones a sus funciones
-            # self.infografia_button.clicked.connect(self.primeros_pasos)
-            self.infografia_button.clicked.connect(mostrar_ventana_bienvenida_primeros_pasos)
-            self.manual_button.clicked.connect(mostrar_manual_dasolidar)
+            # self.videoTip01.clicked.connect(self.primeros_pasos)
+            # self.videoTip01.clicked.connect(mostrar_ventana_bienvenida_primeros_pasos)
+            # self.videoTip01.clicked.connect(mostrarVideoTip)
+            self.videoTip01.clicked.connect(
+                lambda: mostrarVideoTip(
+                    videoTip_filename='VideoTip_descargaLazFiles.mp4'
+                )
+            )
+            self.videoTip02.clicked.connect(
+                lambda: mostrarVideoTip(
+                    videoTip_filename='VideoTip_consultaParcela.mp4'
+                )
+            )
+            self.videoTip03.clicked.connect(
+                lambda: mostrarVideoTip(
+                    videoTip_filename='Prueba1.mp4'
+                )
+            )
+            self.videoTip04.clicked.connect(
+                lambda: mostrarVideoTip(
+                    videoTip_filename='Prueba4.webm'
+                )
+            )
+
             # self.ldata_button.clicked.connect(self.mostrar_explorar_ldata)
             # self.asista_button.clicked.connect(
             #     # self.dasolidar_IA_consulta_ejecucion
@@ -716,8 +745,10 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
             # self.raster_button.clicked.connect(self.herramientas_raster)
 
             # Añadir los botones al layout horizontal
-            botones_layout_2.addWidget(self.infografia_button)
-            botones_layout_2.addWidget(self.manual_button)
+            botones_layout_2.addWidget(self.videoTip01)
+            botones_layout_2.addWidget(self.videoTip02)
+            botones_layout_2.addWidget(self.videoTip03)
+            botones_layout_2.addWidget(self.videoTip04)
             # botones_layout_2.addWidget(self.ldata_button)
             # botones_layout_2.addWidget(self.asista_button)
             # botones_layout_2.addWidget(self.lasfile_button)
@@ -749,376 +780,395 @@ class VentanaBienvenidaPrimerosPasos(QDialog):
 
 
 
-# Copia de la versión de dasoraster
+# # Copia de la versión de dasoraster
+# # ==============================================================================
+# class VentanaAsistente(QDialog):
+#     def __init__(self, parent=None, botones_disponibles='sugerencia_consulta_bengi'):
+#         print(f'betaraster-> Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
+#         super().__init__(parent)
+
+#         # botones_disponibles='consulta_bengi'
+#         # botones_disponibles='sugerencia_consulta_bengi'
+#         # botones_disponibles='sugerencia_consulta_bengi_vega'
+#         # botones_disponibles='sugerencia_consultas_ejecucion'
+
+#         print(f'betaraster-> botones_disponibles: {botones_disponibles}')
+#         if botones_disponibles == 'consulta_bengi':
+#             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+#         elif botones_disponibles == 'sugerencia_consulta_bengi':
+#             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
+#         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
+#             self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
+#         else:
+#             self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
+#         # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
+#         # self.setGeometry(100, 100, 700, 400)
+#         self.resize(600, 200)  #  Ancho y alto en píxeles
+#         self.center()
+
+#         # ======================================================================
+#         # Layout horizontal para el texto
+#         self.main_layout = QVBoxLayout()
+#         # Mensaje de texto
+#         self.mi_texto = QLabel('Escribe tu consulta o petición:')
+#         self.mi_texto.setAlignment(Qt.AlignLeft)
+#         self.main_layout.addWidget(self.mi_texto)
+
+#         # # Ventana de texto con tamaño fijo
+#         # self.text_input = QLineEdit(self)
+#         self.text_input = QTextEdit(self)
+#         self.text_input.setFixedSize(550, 100)  # Establece el tamaño (ancho, alto) en píxeles
+#         self.main_layout.addWidget(self.text_input)
+
+#         # ======================================================================
+#         # botones_layout = QHBoxLayout()
+#         # # Añadir botones
+#         # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
+#         # ======================================================================
+#         # Botones de Consulta, Acción y Cancelar
+#         self.buttonBox = QDialogButtonBox()
+#         # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
+#         # ======================================================================
+
+#         # ======================================================================
+#         if botones_disponibles == 'consulta_bengi':
+#             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+#             self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+#             self.consulta_bengi_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='bengi',
+#                 )
+#             )
+#             self.consulta_bengi_button.setEnabled(True)
+#         elif botones_disponibles.startswith('sugerencia_consulta_bengi'):
+#             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+#             self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
+#             self.sugerencia_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='sugerencia',
+#                 )
+#             )
+#             self.sugerencia_button.setEnabled(True)
+#             if botones_disponibles =='sugerencia_consulta_bengi':
+#                 self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+#                 self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+#                 self.consulta_bengi_button.clicked.connect(
+#                     lambda event: self.lanzar_sugerencia_consulta_accion(
+#                         mi_evento=event,
+#                         tipo_consulta='bengi',
+#                     )
+#                 )
+#             elif botones_disponibles == 'sugerencia_consulta_bengi_vega':
+#                 self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
+#                 self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+#                 self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
+#                 if usuario_beta:
+#                     self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+#                 else:
+#                     self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+#                 self.consulta_bengi_button.clicked.connect(
+#                     lambda event: self.lanzar_sugerencia_consulta_accion(
+#                         mi_evento=event,
+#                         tipo_consulta='bengi',
+#                     )
+#                 )
+#                 self.consulta_bengi_button.setEnabled(True)
+#                 self.consulta_vega_button.clicked.connect(
+#                     lambda event: self.lanzar_sugerencia_consulta_accion(
+#                         mi_evento=event,
+#                         tipo_consulta='vega',
+#                     )
+#                 )
+#                 if usuario_beta:
+#                     self.consulta_vega_button.setEnabled(True)
+#                 else:
+#                     self.consulta_vega_button.setEnabled(False)
+#             self.consulta_bengi_button.setEnabled(True)
+#         elif botones_disponibles == 'sugerencia_consultas_ejecucion':
+#             self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
+#             self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
+#             self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
+#             self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
+#             self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
+#             if usuario_beta:
+#                 self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
+#             else:
+#                 self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+#             self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
+#             if usuario_beta:
+#                 self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
+#             else:
+#                 self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
+#             self.sugerencia_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='sugerencia',
+#                 )
+#             )
+#             self.consulta_bengi_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='bengi',
+#                 )
+#             )
+#             self.consulta_vega_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='vega',
+#                 )
+#             )
+#             self.accion_button.clicked.connect(
+#                 # self.lanzar_accion
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='accion',
+#                 )
+
+#             )
+
+#             self.sugerencia_button.setEnabled(True)
+#             self.consulta_bengi_button.setEnabled(True)
+#             if usuario_beta:
+#                 self.consulta_vega_button.setEnabled(True)
+#                 self.accion_button.setEnabled(True)
+#             else:
+#                 self.consulta_vega_button.setEnabled(False)
+#                 self.accion_button.setEnabled(False)
+#         else:
+#             self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
+#             self.consulta_bengi_button.clicked.connect(
+#                 lambda event: self.lanzar_sugerencia_consulta_accion(
+#                     mi_evento=event,
+#                     tipo_consulta='bengi',
+#                 )
+#             )
+#             self.consulta_bengi_button.setEnabled(True)
+#         self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
+#         self.cancel_button.clicked.connect(self.reject)
+#         # ======================================================================
+
+#         # ======================================================================
+#         # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
+#         self.guardar_consulta_checkbox = QCheckBox('Guardar sugerencia, petición, consulta o ejecución en fichero de texto para que esté a disposición de todos los usuarios.')
+#         self.guardar_consulta_checkbox.setChecked(True)
+#         self.main_layout.addWidget(self.guardar_consulta_checkbox)
+#         # ======================================================================
+
+#         # Añadir el layout de botones al layout principal
+#         # self.main_layout.addLayout(botones_layout)
+#         self.main_layout.addWidget(self.buttonBox)
+
+#         # Establecer el layout principal
+#         self.setLayout(self.main_layout)
+
+#     def center(self):
+#         qr = self.frameGeometry()
+#         cp = self.screen().availableGeometry().center()
+#         qr.moveCenter(cp)
+#         self.move(qr.topLeft())
+
+#     def get_text(self):
+#         return self.text_input.toPlainText()
+
+#     def guardar_consulta(
+#             self,
+#             tipo_consulta,
+#         ):
+#         if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+#             clase_consulta = 'consulta'
+#         elif tipo_consulta == 'accion':
+#             clase_consulta = tipo_consulta
+#         else:
+#             clase_consulta = tipo_consulta
+
+#         unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
+#         mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
+#         if os.path.isdir(unidad_v_path):
+#             if os.path.isdir(mensajes_path):
+#                 unidad_V_disponible = True
+#             else:
+#                 try:
+#                     os.mkdir(mensajes_path)
+#                     unidad_V_disponible = True
+#                 except FileExistsError:
+#                     # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
+#                     unidad_V_disponible = False
+#                     print(f'betaraster-> El directorio "{mensajes_path}" ya existe.')
+#                 except Exception as e:
+#                     unidad_V_disponible = False
+#                     print(f'betaraster-> Error al crear el directorio: {mensajes_path}')
+#                     print(f'betaraster-> Error: {e}')
+#         else:
+#             unidad_V_disponible = False
+#         if unidad_V_disponible:
+#             hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+#             ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+#             msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
+#             try:
+#                 msg_obj = open(msg_filename, mode='a+')
+#                 msg_obj.seek(0)
+#                 msg_previo = msg_obj.readlines()
+#             except Exception as e:
+#                 print(f'betaraster-> Error al crear o abrir el fichero de mensajes: {msg_filename}')
+#                 print(f'betaraster-> Error: {e}')
+#                 msg_obj = None
+#                 msg_previo = []
+#         else:
+#             msg_obj = None
+#             msg_previo = []
+#         msg_guardado_ok = False
+#         if msg_obj:
+#             texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n'
+#             try:
+#                 msg_obj.write(texto_codificado_consulta)
+#                 msg_obj.close()
+#                 msg_guardado_ok = True
+#                 if (tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi') and False:
+#                     QMessageBox.information(
+#                         iface.mainWindow(),
+#                         f'{clase_consulta} dasolidar',
+#                         f'Muchas gracias por tu {clase_consulta}.'
+#                         f'\nIntentaremos responder lo antes posible.'
+#                         f'\nLo haremos preferentemente por correo electrónico.'
+#                         f'\nTu e-mail: {usuario_actual}@jcyl.es'
+#                     )
+#             except Exception as e:
+#                 print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
+#                 print(f'betaraster-> Error: {e}')
+#         print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
+#         if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
+#             if not msg_guardado_ok:
+#                 QMessageBox.information(
+#                     iface.mainWindow(),
+#                     f'{clase_consulta} dasolidar',
+#                     f'No ha sido posible registrar tu {clase_consulta}.'
+#                     f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+#                     f'\nSi quieres hacer una {clase_consulta} puedes enviar'
+#                     f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
+#                 )
+
+#     def enviar_consulta(
+#             self,
+#             tipo_consulta,
+#         ):
+#         if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+#             clase_consulta = 'consulta'
+#         else:
+#             clase_consulta = tipo_consulta
+#         hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+#         ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+#         try:
+#             outlook = win32com.client.Dispatch("Outlook.Application")
+#             mail = outlook.CreateItem(0)
+#             mail.To = EMAIL_DASOLIDAR1
+#             mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
+#             texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+#             mail.Body = texto_codificado_consulta
+#             mail.Send()
+#             print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR1}')
+#             mail = outlook.CreateItem(0)
+#             mail.To = EMAIL_DASOLIDAR2
+#             mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
+#             texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
+#             mail.Body = texto_codificado_consulta
+#             mail.Send()
+#             print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR2}')
+#             iface.messageBar().pushMessage(
+#                 title='dasoraster',
+#                 text=f'Se ha enviado un correo electrónico con tu {clase_consulta} a {EMAIL_DASOLIDAR1}',
+#                 # showMore=f'',
+#                 duration=5,
+#                 level=Qgis.Info,
+#             )
+#             if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
+#                 QMessageBox.information(
+#                     iface.mainWindow(),
+#                     f'{clase_consulta} dasolidar',
+#                     f'Muchas gracias por tu {clase_consulta}.'
+#                     f'\nIntentaremos responder lo antes posible.'
+#                     f'\nLo haremos preferentemente por correo electrónico.'
+#                     f'\nTu e-mail: {usuario_actual}@jcyl.es'
+#                 )
+
+#         except Exception as mi_error:
+#             print(f'betaraster-> Ocurrió un error al enviar el mail: {mi_error}')
+#             QMessageBox.information(
+#                 iface.mainWindow(),
+#                 f'{clase_consulta} dasolidar',
+#                 f'No ha sido posible registrar tu {clase_consulta}.'
+#                 f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
+#                 f'\nSi quieres hacer una {clase_consulta} puedes enviar'
+#                 f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
+#             )
+
+#     def lanzar_sugerencia_consulta_accion(
+#             self,
+#             mi_evento=None,
+#             mi_boton=None,
+#             tipo_consulta='bengi'
+#         ):
+#         if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+#             clase_consulta = 'consulta'
+#         else:
+#             clase_consulta = tipo_consulta
+#         print(f'betaraster-> lanzar_sugerencia_consulta_accion -> tipo_consulta {tipo_consulta}')
+#         self.button_pressed = f'consulta_{tipo_consulta}'
+#         self.accept()
+#         print(f'betaraster-> Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
+#         print(f'betaraster-> guardar_consulta_checkbox: {self.guardar_consulta_checkbox.isChecked()}')
+#         if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi' or tipo_consulta == 'vega':
+#             guardar_consultas_en_txt = True
+#             enviar_consultas_por_mail = True
+#             if self.guardar_consulta_checkbox.isChecked() and guardar_consultas_en_txt:
+#                 self.guardar_consulta(tipo_consulta)
+#             if enviar_consultas_por_mail and tipo_consulta != 'accion':
+#                 self.enviar_consulta(tipo_consulta)
+#         if tipo_consulta == 'vega':
+#             QMessageBox.information(
+#                 iface.mainWindow(),
+#                 f'Consulta dasolidar <{clase_consulta}>',
+#                 f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
+#             )
+#         if tipo_consulta == 'accion':
+#             QMessageBox.information(
+#                 iface.mainWindow(),
+#                 f'Acción dasolidar <{clase_consulta}>',
+#                 f'Esta utilidad estará disponible próximamente.'
+#             )
+#         # return (self.text_input.toPlainText(), 'consulta')
+
+#     # def lanzar_accion(self):
+#     #     print(f'betaraster-> lanzar_accion')
+#     #     self.button_pressed = 'accion'
+#     #     self.accept()
+#     #     print(self.text_input.toPlainText(), 'accion')
+#     #     QMessageBox.information(
+#     #         iface.mainWindow(),
+#     #         'Petición dasolidar',
+#     #         f'Gracias por la petición.\nEsta utilidad estará disponible próximamente'
+#     #     )
+#     #     # return (self.text_input.toPlainText(), 'accion')
+
+
+
 # ==============================================================================
-class VentanaAsistente(QDialog):
-    def __init__(self, parent=None, botones_disponibles='sugerencia_consulta_bengi'):
-        print(f'betaraster-> Instanciando VentanaAsistente con botones_disponibles = {botones_disponibles}')
-        super().__init__(parent)
+# ==============================================================================
+def mostrarVideoTip(
+        mi_evento=None,
+        mi_boton=None,
+        videoTip_filename=''
+    ):
+    videotips_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
+    videoTip_filepath = os.path.join(videotips_path, videoTip_filename)
+    if videoTip_filename and os.path.exists(videoTip_filepath):
+        os.startfile(videoTip_filepath)
 
-        # botones_disponibles='consulta_bengi'
-        # botones_disponibles='sugerencia_consulta_bengi'
-        # botones_disponibles='sugerencia_consulta_bengi_vega'
-        # botones_disponibles='sugerencia_consultas_ejecucion'
 
-        print(f'betaraster-> botones_disponibles: {botones_disponibles}')
-        if botones_disponibles == 'consulta_bengi':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
-        elif botones_disponibles == 'sugerencia_consulta_bengi':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas y sugerencias.')
-        elif botones_disponibles == 'sugerencia_consultas_ejecucion':
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir una consulta o pedir que se ejecute una acción')
-        else:
-            self.setWindowTitle('Disponible próximamente: aquí podrás escribir consultas.')
-        # self.setFixedSize(500, 200)  #  Dimensiones XX, YY
-        # self.setGeometry(100, 100, 700, 400)
-        self.resize(600, 200)  #  Ancho y alto en píxeles
-        self.center()
-
-        # ======================================================================
-        # Layout horizontal para el texto
-        self.main_layout = QVBoxLayout()
-        # Mensaje de texto
-        self.mi_texto = QLabel('Escribe tu consulta o petición:')
-        self.mi_texto.setAlignment(Qt.AlignLeft)
-        self.main_layout.addWidget(self.mi_texto)
-
-        # # Ventana de texto con tamaño fijo
-        # self.text_input = QLineEdit(self)
-        self.text_input = QTextEdit(self)
-        self.text_input.setFixedSize(550, 100)  # Establece el tamaño (ancho, alto) en píxeles
-        self.main_layout.addWidget(self.text_input)
-
-        # ======================================================================
-        # botones_layout = QHBoxLayout()
-        # # Añadir botones
-        # # https://doc.qt.io/qtforpython-5/PySide2/QtWidgets/QPushButton.html
-        # ======================================================================
-        # Botones de Consulta, Acción y Cancelar
-        self.buttonBox = QDialogButtonBox()
-        # self.send_button = self.buttonBox.addButton('Enviar', QDialogButtonBox.AcceptRole)
-        # ======================================================================
-
-        # ======================================================================
-        if botones_disponibles == 'consulta_bengi':
-            self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
-            self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='bengi',
-                )
-            )
-            self.consulta_bengi_button.setEnabled(True)
-        elif botones_disponibles.startswith('sugerencia_consulta_bengi'):
-            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
-            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
-            self.sugerencia_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='sugerencia',
-                )
-            )
-            self.sugerencia_button.setEnabled(True)
-            if botones_disponibles =='sugerencia_consulta_bengi':
-                self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
-                self.consulta_bengi_button.clicked.connect(
-                    lambda event: self.lanzar_sugerencia_consulta_accion(
-                        mi_evento=event,
-                        tipo_consulta='bengi',
-                    )
-                )
-            elif botones_disponibles == 'sugerencia_consulta_bengi_vega':
-                self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
-                self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
-                self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
-                if usuario_beta:
-                    self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
-                else:
-                    self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
-                self.consulta_bengi_button.clicked.connect(
-                    lambda event: self.lanzar_sugerencia_consulta_accion(
-                        mi_evento=event,
-                        tipo_consulta='bengi',
-                    )
-                )
-                self.consulta_bengi_button.setEnabled(True)
-                self.consulta_vega_button.clicked.connect(
-                    lambda event: self.lanzar_sugerencia_consulta_accion(
-                        mi_evento=event,
-                        tipo_consulta='vega',
-                    )
-                )
-                if usuario_beta:
-                    self.consulta_vega_button.setEnabled(True)
-                else:
-                    self.consulta_vega_button.setEnabled(False)
-            self.consulta_bengi_button.setEnabled(True)
-        elif botones_disponibles == 'sugerencia_consultas_ejecucion':
-            self.sugerencia_button = self.buttonBox.addButton('Enviar sugerencia', QDialogButtonBox.AcceptRole)
-            self.sugerencia_button.setToolTip("Haz clic aquí para enviar una sugerencia o petición al equipo dasolidar.")
-            self.consulta_bengi_button = self.buttonBox.addButton('Consultar a humanos', QDialogButtonBox.AcceptRole)
-            self.consulta_bengi_button.setToolTip("Haz clic aquí para enviar una consulta al equipo dasolidar.")
-            self.consulta_vega_button = self.buttonBox.addButton('Consultar a Vega', QDialogButtonBox.AcceptRole)
-            if usuario_beta:
-                self.consulta_vega_button.setToolTip("Haz clic aquí para enviar una consulta a Vega (IA).")
-            else:
-                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
-            self.accion_button = self.buttonBox.addButton('Ejecutar acción', QDialogButtonBox.AcceptRole)
-            if usuario_beta:
-                self.accion_button.setToolTip("Haz clic aquí para pedir a Vega que ejecute una acción. Pidelo con lenguaje natural, como lo harías a tu compañero de trabajo.")
-            else:
-                self.consulta_vega_button.setToolTip("Opción solo disponible para alfa testers.")
-            self.sugerencia_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='sugerencia',
-                )
-            )
-            self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='bengi',
-                )
-            )
-            self.consulta_vega_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='vega',
-                )
-            )
-            self.accion_button.clicked.connect(
-                # self.lanzar_accion
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='accion',
-                )
-
-            )
-
-            self.sugerencia_button.setEnabled(True)
-            self.consulta_bengi_button.setEnabled(True)
-            if usuario_beta:
-                self.consulta_vega_button.setEnabled(True)
-                self.accion_button.setEnabled(True)
-            else:
-                self.consulta_vega_button.setEnabled(False)
-                self.accion_button.setEnabled(False)
-        else:
-            self.consulta_bengi_button = self.buttonBox.addButton('Enviar consulta', QDialogButtonBox.AcceptRole)
-            self.consulta_bengi_button.clicked.connect(
-                lambda event: self.lanzar_sugerencia_consulta_accion(
-                    mi_evento=event,
-                    tipo_consulta='bengi',
-                )
-            )
-            self.consulta_bengi_button.setEnabled(True)
-        self.cancel_button = self.buttonBox.addButton(QDialogButtonBox.Cancel)
-        self.cancel_button.clicked.connect(self.reject)
-        # ======================================================================
-
-        # ======================================================================
-        # Checkbox por si pido autorización para guardar la conaulta o petición en la base de datos
-        self.guardar_consulta_checkbox = QCheckBox('Guardar sugerencia, petición, consulta o ejecución en fichero de texto para que esté a disposición de todos los usuarios.')
-        self.guardar_consulta_checkbox.setChecked(True)
-        self.main_layout.addWidget(self.guardar_consulta_checkbox)
-        # ======================================================================
-
-        # Añadir el layout de botones al layout principal
-        # self.main_layout.addLayout(botones_layout)
-        self.main_layout.addWidget(self.buttonBox)
-
-        # Establecer el layout principal
-        self.setLayout(self.main_layout)
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = self.screen().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def get_text(self):
-        return self.text_input.toPlainText()
-
-    def guardar_consulta(
-            self,
-            tipo_consulta,
-        ):
-        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
-            clase_consulta = 'consulta'
-        elif tipo_consulta == 'accion':
-            clase_consulta = tipo_consulta
-        else:
-            clase_consulta = tipo_consulta
-
-        unidad_v_path = 'V:/MA_SCAYLE_VueloLidar'
-        mensajes_path = os.path.join(unidad_v_path, 'dasoraster')
-        if os.path.isdir(unidad_v_path):
-            if os.path.isdir(mensajes_path):
-                unidad_V_disponible = True
-            else:
-                try:
-                    os.mkdir(mensajes_path)
-                    unidad_V_disponible = True
-                except FileExistsError:
-                    # Esto no debiera de pasar nunca, indica que algo falla al acceder a la ubicacion de red
-                    unidad_V_disponible = False
-                    print(f'betaraster-> El directorio "{mensajes_path}" ya existe.')
-                except Exception as e:
-                    unidad_V_disponible = False
-                    print(f'betaraster-> Error al crear el directorio: {mensajes_path}')
-                    print(f'betaraster-> Error: {e}')
-        else:
-            unidad_V_disponible = False
-        if unidad_V_disponible:
-            hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-            ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-            msg_filename = os.path.join(mensajes_path, f'{clase_consulta}s.dsl')
-            try:
-                msg_obj = open(msg_filename, mode='a+')
-                msg_obj.seek(0)
-                msg_previo = msg_obj.readlines()
-            except Exception as e:
-                print(f'betaraster-> Error al crear o abrir el fichero de mensajes: {msg_filename}')
-                print(f'betaraster-> Error: {e}')
-                msg_obj = None
-                msg_previo = []
-        else:
-            msg_obj = None
-            msg_previo = []
-        msg_guardado_ok = False
-        if msg_obj:
-            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\t{self.text_input.toPlainText()}\n'
-            try:
-                msg_obj.write(texto_codificado_consulta)
-                msg_obj.close()
-                msg_guardado_ok = True
-                if (tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi') and False:
-                    QMessageBox.information(
-                        iface.mainWindow(),
-                        f'{clase_consulta} dasolidar',
-                        f'Muchas gracias por tu {clase_consulta}.'
-                        f'\nIntentaremos responder lo antes posible.'
-                        f'\nLo haremos preferentemente por correo electrónico.'
-                        f'\nTu e-mail: {usuario_actual}@jcyl.es'
-                    )
-            except Exception as e:
-                print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
-                print(f'betaraster-> Error: {e}')
-        print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
-        if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
-            if not msg_guardado_ok:
-                QMessageBox.information(
-                    iface.mainWindow(),
-                    f'{clase_consulta} dasolidar',
-                    f'No ha sido posible registrar tu {clase_consulta}.'
-                    f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
-                    f'\nSi quieres hacer una {clase_consulta} puedes enviar'
-                    f'\nun correo electrónico a {EMAIL_DASOLIDAR2}'
-                )
-
-    def enviar_consulta(
-            self,
-            tipo_consulta,
-        ):
-        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
-            clase_consulta = 'consulta'
-        else:
-            clase_consulta = tipo_consulta
-        hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-        ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-        try:
-            outlook = win32com.client.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)
-            mail.To = EMAIL_DASOLIDAR1
-            mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
-            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
-            mail.Body = texto_codificado_consulta
-            mail.Send()
-            print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR1}')
-            mail = outlook.CreateItem(0)
-            mail.To = EMAIL_DASOLIDAR2
-            mail.Subject = f'dsld_{clase_consulta}_{usuario_actual}'
-            texto_codificado_consulta = f'COD332\t{usuario_actual}\t{hoy_AAAAMMDD}\t{ahora_HHMMSS}\n{self.text_input.toPlainText()}\n'
-            mail.Body = texto_codificado_consulta
-            mail.Send()
-            print(f'betaraster-> Mensaje enviado ok a {EMAIL_DASOLIDAR2}')
-            iface.messageBar().pushMessage(
-                title='dasoraster',
-                text=f'Se ha enviado un correo electrónico con tu {clase_consulta} a {EMAIL_DASOLIDAR1}',
-                # showMore=f'',
-                duration=5,
-                level=Qgis.Info,
-            )
-            if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
-                QMessageBox.information(
-                    iface.mainWindow(),
-                    f'{clase_consulta} dasolidar',
-                    f'Muchas gracias por tu {clase_consulta}.'
-                    f'\nIntentaremos responder lo antes posible.'
-                    f'\nLo haremos preferentemente por correo electrónico.'
-                    f'\nTu e-mail: {usuario_actual}@jcyl.es'
-                )
-
-        except Exception as mi_error:
-            print(f'betaraster-> Ocurrió un error al enviar el mail: {mi_error}')
-            QMessageBox.information(
-                iface.mainWindow(),
-                f'{clase_consulta} dasolidar',
-                f'No ha sido posible registrar tu {clase_consulta}.'
-                f'\nEsta utilidad solo funciona dentro de la intranet de la JCyL.'
-                f'\nSi quieres hacer una {clase_consulta} puedes enviar'
-                f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
-            )
-
-    def lanzar_sugerencia_consulta_accion(
-            self,
-            mi_evento=None,
-            mi_boton=None,
-            tipo_consulta='bengi'
-        ):
-        if tipo_consulta == 'bengi' or tipo_consulta == 'vega':
-            clase_consulta = 'consulta'
-        else:
-            clase_consulta = tipo_consulta
-        print(f'betaraster-> lanzar_sugerencia_consulta_accion -> tipo_consulta {tipo_consulta}')
-        self.button_pressed = f'consulta_{tipo_consulta}'
-        self.accept()
-        print(f'betaraster-> Botón presionado: {self.button_pressed}. Texto introducido: {self.text_input.toPlainText()}')
-        print(f'betaraster-> guardar_consulta_checkbox: {self.guardar_consulta_checkbox.isChecked()}')
-        if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi' or tipo_consulta == 'vega':
-            guardar_consultas_en_txt = True
-            enviar_consultas_por_mail = True
-            if self.guardar_consulta_checkbox.isChecked() and guardar_consultas_en_txt:
-                self.guardar_consulta(tipo_consulta)
-            if enviar_consultas_por_mail and tipo_consulta != 'accion':
-                self.enviar_consulta(tipo_consulta)
-        if tipo_consulta == 'vega':
-            QMessageBox.information(
-                iface.mainWindow(),
-                f'Consulta dasolidar <{clase_consulta}>',
-                f'Esta utilidad estará disponible próximamente\n\nGracias por la consulta.'
-            )
-        if tipo_consulta == 'accion':
-            QMessageBox.information(
-                iface.mainWindow(),
-                f'Acción dasolidar <{clase_consulta}>',
-                f'Esta utilidad estará disponible próximamente.'
-            )
-        # return (self.text_input.toPlainText(), 'consulta')
-
-    # def lanzar_accion(self):
-    #     print(f'betaraster-> lanzar_accion')
-    #     self.button_pressed = 'accion'
-    #     self.accept()
-    #     print(self.text_input.toPlainText(), 'accion')
-    #     QMessageBox.information(
-    #         iface.mainWindow(),
-    #         'Petición dasolidar',
-    #         f'Gracias por la petición.\nEsta utilidad estará disponible próximamente'
-    #     )
-    #     # return (self.text_input.toPlainText(), 'accion')
+            # self.videoTip01.clicked.connect('Prueba1.mp4')
+            # # self.videoTip02.clicked.connect(mostrar_manual_dasolidar)
+            # self.videoTip02.clicked.connect('Prueba4.webm')
 
 
 # ==============================================================================
@@ -1188,37 +1238,37 @@ def mostrar_explorar_ldata(
     print(f'betaraster-> Respuesta: {rpta_ok.returncode}')
 
 
-# ==============================================================================
-def dasolidar_IA_consulta_ejecucion(
-        mi_evento=None,
-        mi_boton=None,
-        # botones_disponibles='consulta_bengi',
-        # botones_disponibles='sugerencia_consulta_bengi',
-        botones_disponibles='sugerencia_consultas_ejecucion'
-    ):
-    print(f'betaraster-> dasolidar_IA_consulta_ejecucion ok 1. botones_disponibles: {type(botones_disponibles)} {botones_disponibles}')
-    rpta_ok = 0
-    try:
-        dialog = VentanaAsistente(parent=None, botones_disponibles=botones_disponibles)
-        rpta_ok = dialog.exec_()
-    except Exception as e:
-        print(f'betaraster-> Ocurrió un error al mostrar la ventana 1: {e}')
-        iface.messageBar().pushMessage(
-            title='dasoraster',
-            text=f'Ha ocurrido un error al lanzar el cuadro de diálogo del asistente. Contacta con benmarjo@jcyl.es para reportar este error.',
-            duration=30,
-            level=Qgis.Warning,
-        )
-        return
-    # Esto siguiente sobra; lo dejo just in case
-    print(f'betaraster-> Rpta de mostrar_asistente 1: {rpta_ok}')
-    if rpta_ok == QDialog.Accepted:
-        consulta_usuario = dialog.get_text()
-        boton_pulsado = dialog.button_pressed
-        print(f'betaraster-> Texto de consulta o petición (1):', consulta_usuario)
-        print(f'betaraster-> Botón pulsado:', boton_pulsado)
-    else:
-        print(f'betaraster-> Consulta o petición canceladas')
+# # ==============================================================================
+# def dasolidar_IA_consulta_ejecucion(
+#         mi_evento=None,
+#         mi_boton=None,
+#         # botones_disponibles='consulta_bengi',
+#         # botones_disponibles='sugerencia_consulta_bengi',
+#         botones_disponibles='sugerencia_consultas_ejecucion'
+#     ):
+#     print(f'betaraster-> dasolidar_IA_consulta_ejecucion ok 1. botones_disponibles: {type(botones_disponibles)} {botones_disponibles}')
+#     rpta_ok = 0
+#     try:
+#         dialog = VentanaAsistente(parent=None, botones_disponibles=botones_disponibles)
+#         rpta_ok = dialog.exec_()
+#     except Exception as e:
+#         print(f'betaraster-> Ocurrió un error al mostrar la ventana 1: {e}')
+#         iface.messageBar().pushMessage(
+#             title='dasoraster',
+#             text=f'Ha ocurrido un error al lanzar el cuadro de diálogo del asistente. Contacta con benmarjo@jcyl.es para reportar este error.',
+#             duration=30,
+#             level=Qgis.Warning,
+#         )
+#         return
+#     # Esto siguiente sobra; lo dejo just in case
+#     print(f'betaraster-> Rpta de mostrar_asistente 1: {rpta_ok}')
+#     if rpta_ok == QDialog.Accepted:
+#         consulta_usuario = dialog.get_text()
+#         boton_pulsado = dialog.button_pressed
+#         print(f'betaraster-> Texto de consulta o petición (1):', consulta_usuario)
+#         print(f'betaraster-> Botón pulsado:', boton_pulsado)
+#     else:
+#         print(f'betaraster-> Consulta o petición canceladas')
 
 
 # ==============================================================================
@@ -1272,13 +1322,13 @@ def mostrar_messagebar_bienvenida():
         mi_button1 = QPushButton(mi_widget)
         mi_button2 = QPushButton(mi_widget)
         mi_button3 = QPushButton(mi_widget)
-        mi_button4 = QPushButton(mi_widget)
+        # mi_button4 = QPushButton(mi_widget)
         mi_button5 = QPushButton(mi_widget)
         mi_button6 = QPushButton(mi_widget)
         mi_button1.setText('Primeros pasos con dasolidar')
         mi_button2.setText('Manual de consulta')
         mi_button3.setText('Explorar lidarData')
-        mi_button4.setText('Asistente dasolidar')
+        # mi_button4.setText('Asistente dasolidar')
         mi_button5.setText('Curso Lidar')
         mi_button6.setText('Seminario beta')
         # mi_button1.pressed.connect(mostrar_html_qt)
@@ -1292,13 +1342,13 @@ def mostrar_messagebar_bienvenida():
         )
         mi_button2.pressed.connect(mostrar_manual_dasolidar)
         mi_button3.pressed.connect(mostrar_explorar_ldata)
-        mi_button4.pressed.connect(
-            dasolidar_IA_consulta_ejecucion
-            # lambda event: dasolidar_IA_consulta_ejecucion(
-            #     mi_evento=event,
-            #     botones_disponibles='sugerencia_consultas_ejecucion'
-            # )
-        )
+        # mi_button4.pressed.connect(
+        #     dasolidar_IA_consulta_ejecucion
+        #     # lambda event: dasolidar_IA_consulta_ejecucion(
+        #     #     mi_evento=event,
+        #     #     botones_disponibles='sugerencia_consultas_ejecucion'
+        #     # )
+        # )
         mi_button5.pressed.connect(
             lambda: mostrar_explorar_ldata(
                 explorar_directorio=r'dasoLidar\varios\cursoLidar'
@@ -1313,7 +1363,7 @@ def mostrar_messagebar_bienvenida():
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
         mi_widget.layout().addWidget(mi_button3)
-        mi_widget.layout().addWidget(mi_button4)
+        # mi_widget.layout().addWidget(mi_button4)
         mi_widget.layout().addWidget(mi_button5)
         mi_widget.layout().addWidget(mi_button6)
         iface.messageBar().pushWidget(mi_widget, Qgis.Info)
