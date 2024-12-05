@@ -6,6 +6,66 @@ import pandas as pd
 # import sys
 # import subprocess
 
+
+# import win32com.client
+# import requests
+
+# def enviar_correo_graph(destinatario, asunto, cuerpo):
+#     url = 'https://graph.microsoft.com/v1.0/me/sendMail'
+#     headers = {
+#         'Authorization': 'Bearer YOUR_ACCESS_TOKEN',
+#         'Content-Type': 'application/json'
+#     }
+#     email_data = {
+#         "message": {
+#             "subject": asunto,
+#             "body": {
+#                 "contentType": "Text",
+#                 "content": cuerpo
+#             },
+#             "toRecipients": [
+#                 {
+#                     "emailAddress": {
+#                         "address": destinatario
+#                     }
+#                 }
+#             ]
+#         }
+#     }
+#     response = requests.post(url, headers=headers, json=email_data)
+#     if response.status_code == 202:
+#         print(f'Correo enviado a {destinatario}')
+#     else:
+#         print(f'Error al enviar el correo: {response.status_code} - {response.text}')
+
+
+# def enviar_correo(destinatario, asunto, cuerpo):
+#     try:
+#         outlook = win32com.client.Dispatch('Outlook.Application')
+#         mail = outlook.CreateItem(0)  # 0 representa un correo
+#         mail.To = destinatario
+#         mail.Subject = asunto
+#         mail.Body = cuerpo
+#         mail.Send()
+#         print(f'Correo enviado a {destinatario}')
+#     except Exception as e:
+#         print(f'Error al enviar el correo: {e}')
+
+# # Ejemplo de uso
+# try:
+#     enviar_correo('benmarjo@jcyl.es', 'Asunto del correo1', 'Cuerpo del correo1')
+# except:
+#     print(f'No funciona outlook clásico')
+#     enviar_correo_graph('benmarjo@jcyl.es', 'Asunto del correo2', 'Cuerpo del correo2')
+
+
+
+#    # Ejemplo de uso
+
+# quit()
+
+
+
 import numpy as np
 # from osgeo import gdal
 

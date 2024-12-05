@@ -1171,6 +1171,56 @@ def mostrarVideoTip(
             # self.videoTip02.clicked.connect('Prueba4.webm')
 
 
+
+def mostrar_videos():
+    pass
+# ==============================================================================
+def mostrar_videos_():
+    # Crear una ventana de diálogo
+    dialog = QDialog()
+    dialog.setWindowTitle("Selecciona un Video Tip")
+    
+    # Crear un layout vertical
+    main_layout = QVBoxLayout(dialog)
+
+    # Crear dos grupos de botones
+    group1_layout = QGridLayout()
+    group2_layout = QGridLayout()
+
+    # Nombres de los botones
+    video_names = [
+        'VideoTip 1', 'VideoTip 2', 'VideoTip 3', 'VideoTip 4',
+        'VideoTip 5', 'VideoTip 6', 'VideoTip 7', 'VideoTip 8',
+        'VideoTip 9', 'VideoTip 10', 'VideoTip 11', 'VideoTip 12'
+    ]
+
+    # Añadir botones al primer grupo (3 filas)
+    for i in range(3):
+        for j in range(4):
+            index = i * 4 + j
+            if index < len(video_names):
+                button = QPushButton(video_names[index])
+                button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+                group1_layout.addWidget(button, i, j)
+
+    # Añadir botones al segundo grupo (2 filas)
+    for i in range(2):
+        for j in range(4):
+            index = 12 + i * 4 + j
+            if index < len(video_names):
+                button = QPushButton(video_names[index])
+                button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+                group2_layout.addWidget(button, i, j)
+
+    # Añadir los grupos al layout principal
+    main_layout.addLayout(group1_layout)
+    main_layout.addLayout(group2_layout)
+
+    # Mostrar el diálogo
+    dialog.setLayout(main_layout)
+    dialog.exec_()
+# ==============================================================================
+
 # ==============================================================================
 # ==============================================================================
 def mostrar_ventana_bienvenida_primeros_pasos(
@@ -1319,20 +1369,23 @@ def mostrar_messagebar_bienvenida():
         )
         mi_widget.setLevel(Qgis.Info)
         # mi_widget.setDuration(30)
+        mi_button0 = QPushButton(mi_widget)
         mi_button1 = QPushButton(mi_widget)
         mi_button2 = QPushButton(mi_widget)
-        mi_button3 = QPushButton(mi_widget)
+        # mi_button3 = QPushButton(mi_widget)
         # mi_button4 = QPushButton(mi_widget)
         mi_button5 = QPushButton(mi_widget)
         mi_button6 = QPushButton(mi_widget)
+        mi_button0.setText('Video-tips')
         mi_button1.setText('Primeros pasos con dasolidar')
         mi_button2.setText('Manual de consulta')
-        mi_button3.setText('Explorar lidarData')
+        # mi_button3.setText('Explorar lidarData')
         # mi_button4.setText('Asistente dasolidar')
         mi_button5.setText('Curso Lidar')
         mi_button6.setText('Seminario beta')
         # mi_button1.pressed.connect(mostrar_html_qt)
         # mi_button1.pressed.connect(mostrar_html_qgs)
+        mi_button0.pressed.connect(mostrar_videos)
         mi_button1.pressed.connect(
             mostrar_ventana_bienvenida_primeros_pasos
             # lambda event: mostrar_ventana_bienvenida_primeros_pasos(
@@ -1341,7 +1394,7 @@ def mostrar_messagebar_bienvenida():
             # )
         )
         mi_button2.pressed.connect(mostrar_manual_dasolidar)
-        mi_button3.pressed.connect(mostrar_explorar_ldata)
+        # mi_button3.pressed.connect(mostrar_explorar_ldata)
         # mi_button4.pressed.connect(
         #     dasolidar_IA_consulta_ejecucion
         #     # lambda event: dasolidar_IA_consulta_ejecucion(
@@ -1362,7 +1415,7 @@ def mostrar_messagebar_bienvenida():
         # ==============================================================================
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
-        mi_widget.layout().addWidget(mi_button3)
+        # mi_widget.layout().addWidget(mi_button3)
         # mi_widget.layout().addWidget(mi_button4)
         mi_widget.layout().addWidget(mi_button5)
         mi_widget.layout().addWidget(mi_button6)

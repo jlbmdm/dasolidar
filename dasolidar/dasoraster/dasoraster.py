@@ -374,7 +374,7 @@ dict_especies = {
 }
 
 dict_cod_variables_dasometricas = {
-    'VCC': ['Volumen de madera (fustes)', 'm3/ha'],
+    'VCC': ['Volumen de madera (fustes) (por ha o totales)', 'm3/ha'],
     'DCM': ['Diámetro medio (cuadrático)', 'cm'],
     'Npies': ['Número de pies por hectárea (densidad)', 'pies/ha'],
     'Abas': ['Área basimétrica', 'm2/ha'],
@@ -382,6 +382,8 @@ dict_cod_variables_dasometricas = {
     'BA': ['Biomasa aérea', 't/ha'],
     'VLE': ['Volumen de leñas', 'm3/ha'],
     'Hdom': ['Altura dominante lidar (es una métrica lidar)', 'm'],
+    'VTT': ['Volumen de madera (fustes), m3 totales', 'm3'],
+    'otra': ['Otra variable (concretar en comentarios)', 'otra'],
 }
 dict_capas_variables_dasometricas = {
     'VolumenMadera_m3_ha': 'VCC',
@@ -411,7 +413,8 @@ for key, variable_dasometrica in dict_cod_variables_dasometricas.items():
     mis_variables_codigo.append(key)
     mis_variables_nombre.append(variable_dasometrica[0])
     mis_variables_unidad.append(variable_dasometrica[1])
-mis_variables_unidad.append('Otra')
+# mis_variables_unidad.append('m3')
+# mis_variables_unidad.append('Otra')
 # print(f'betaraster-> mis_variables_unidad: {mis_variables_unidad}')
 
 
@@ -897,7 +900,7 @@ def capa_vector_activa():
     layer_rodal_projvectorlayer = layer_activo
     return capa_activa_vector, layer_rodal_projvectorlayer
 
-
+# ç
 class VentanaBienvenidaGuiaRapida(QDialog):
     def __init__(self, parent=None, intro_dasolidar_html_filepath=''):
         super().__init__(parent)
@@ -935,6 +938,7 @@ class VentanaBienvenidaGuiaRapida(QDialog):
         cp = self.screen().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
 
 def chequear_outlook():
     try:
@@ -1692,6 +1696,65 @@ def pedir_datos_parcela_rodal(
         cod_num_asimilada_sp_,
     ):
 
+    iface.messageBar().pushMessage(
+        title='dasoraster',
+        text='Comprobando que dasoraster tiene acceso a las unidades de red y a outlook...',
+        duration=30,
+        level=Qgis.Info,
+    )
+    time.sleep(1)
+    unidad_V_disponible = chequear_unidad_V(UNIDAD_V_PATH, MENSAJES_PATH)
+    outlook_disponible =  chequear_outlook()
+    if not unidad_V_disponible and not outlook_disponible:
+        QMessageBox.warning(
+            iface.mainWindow(),
+            f'Aviso dasolidar',
+            f'No es posible registrar ni enviar tus datos al equipo dasolidar con dasoraster.\n'\
+            f'Este complemento está desarrollado para su uso dentro de la intranet de la Junta de Castilla y León\n'\
+            f'Para la comunicación con el usuario utilizamos unidades de red compartidas y el cliente de correo outlook.\n'\
+            f'Parece que dasoraster no puede usar ninguna de estas dos opciones:\n'\
+            f'\tNo tienes acceso a las unidades de red.\n'\
+            f'\tDasoraster no puede iniciar tu outlook.\n'\
+            f'Ésto último puede deberse a que no lo tienes en ejecución o a que usas el nuevo\n'\
+            f'outlook de microsoft365, que no permite enviar los correos como lo hace el outlook clásico.\n\n'\
+            f'Si quieres enviar datos de forma manual al equipo dasolidar\n'\
+            f'puedes ahcerlo enviando un correo electrónico a {EMAIL_DASOLIDAR1}\n'\
+            f'También puedes volver al outlook clásico e intentarlo de nuevo\n'\
+        )
+        return
+    elif not outlook_disponible:
+        QMessageBox.warning(
+            iface.mainWindow(),
+            f'Aviso dasolidar',
+            f'No es posible enviar tus datos al equipo dasolidar por correo\n'\
+            f'electrónico porque dasoraster no puede usar tu outlook.\n'\
+            f'Aunque no tenga acceso a outlook, dasoraster también registra tus datos en una\n'\
+            f'unidad compartida y éstos quedan a disposición del equipo dasolidar para su procesado.\n'\
+            f'No obstante, la gestión de esta información y nos llevará más tiempo.\n\n'\
+            f'Los problemas con outlook pueden deberse a que no lo tienes en ejecución\n'\
+            f'o a que usas el nuevo outlook de microsoft365, que no permite\n'\
+            f'enviar los correos como lo hace el outlook clásico.\n\n'\
+            f'Puedes:\n'\
+            f'    1. Registrar tu aportación tal cual, (sin email) en la siguiente ventana con el botón [enviar].\n'\
+            f'    2. Cancelar la aportación, iniciar outlook clásico y probar de nuevo.\n'\
+            f'    3. Cancelar la aportación, y enviarnos tus datos por correo electrónico a {EMAIL_DASOLIDAR1}'\
+        )
+    elif not unidad_V_disponible:
+        iface.messageBar().pushMessage(
+            title='dasoraster',
+            text='Parece que este PC no tiene acceso a las unidades de red del proyecto dasolidar. Pulsa el botón [mostrar más] ---->',
+            showMore=f'Esto puede deberse a que ahora no hay acceso a la red de la JCyL o a que no estás dado de alta en dasolidar.\n'\
+                f'Ambas cosas son necesarias para tener la funcionalidad completa de dasoraster.\n'\
+                'No obstante, sin dicho acceso, dasoraster envia tus datos al equipo dasoraster por correo electrónico.\n\n'\
+                'En todo caso, si eres técnico de medio ambiente de la Junta de Castilla y León,\n'\
+                'estás en un PC con acceso a la red de la Junta y quieres usar todas las funcionalidades de dasolidar,\n'\
+                'puedes solicitar el alta enviando un correo electrónico a los responsables del proyecto.\n'\
+                'Sigue las instrucciones que figuran en la guia de primeros pasos y en el manual de consulta de dasolidar.',
+            duration=20,
+            level=Qgis.Warning,
+        )
+    iface.messageBar().popWidget()
+
     if cod_num_asimilada_sp_ and cod_num_asimilada_sp_ in dict_spp_mfe25cyl.keys():
         cod_2L_especie = dict_spp_mfe25cyl[cod_num_asimilada_sp_][0]
     else:
@@ -1789,9 +1852,30 @@ def pedir_datos_parcela_rodal(
     def actualizar_unidades():
         unidad_combo.clear()  # Limpiar las unidades anteriores
         tipo_variable = tipo_variable_combo.currentText()
-        indice = mis_variables_nombre.index(tipo_variable)
-        mis_variables_unidad_reordenada = [mis_variables_unidad[indice]] + mis_variables_unidad[:indice] + mis_variables_unidad[indice + 1:]
-        unidad_combo.addItems(mis_variables_unidad_reordenada)
+        medicion_txt = (valor_input.text()).replace(',', '.').strip()
+        try:
+            medicion_float = float(medicion_txt)
+        except:
+            medicion_float = 0
+        print(f'betaraster-> actualizar unidades-> {tipo_variable}: {type(valor_input.text())} {valor_input.text()} -> {medicion_txt} {medicion_txt.isdigit()} -> float {medicion_float}')
+        if tipo_variable in dict_cod_variables_dasometricas_inverso.keys():
+            codigo_variable = dict_cod_variables_dasometricas_inverso[tipo_variable]
+        else:
+            codigo_variable = 'otra'
+        if codigo_variable == 'VCC' and medicion_float > 1000:
+            codigo_variable = 'VTT'
+            indice = mis_variables_codigo.index(codigo_variable)
+            # tipo_variable = dict_cod_variables_dasometricas[codigo_variable][0]
+            # indice = mis_variables_nombre.index(tipo_variable)
+            print(f'betaraster-> indice: {indice}')
+            mis_variables_unidad_reordenada = [mis_variables_unidad[indice]] + mis_variables_unidad[:indice] + mis_variables_unidad[indice + 1:]
+            unidad_combo.addItems(mis_variables_unidad_reordenada)
+            print(f'betaraster-> {indice} {mis_variables_unidad_reordenada}')
+        else:
+            indice = mis_variables_nombre.index(tipo_variable)
+            mis_variables_unidad_reordenada = [mis_variables_unidad[indice]] + mis_variables_unidad[:indice] + mis_variables_unidad[indice + 1:]
+            unidad_combo.addItems(mis_variables_unidad_reordenada)
+
 
     def revisar_unidad():
         global otra_unidad_global
@@ -1830,6 +1914,8 @@ def pedir_datos_parcela_rodal(
 
     # Conectar la señal de cambio de índice
     tipo_variable_combo.currentIndexChanged.connect(actualizar_unidades)
+    valor_input.textChanged.connect(actualizar_unidades)
+
     unidad_combo.currentIndexChanged.connect(revisar_unidad)
     # # Llamar a la función para inicializar las unidades al inicio
     # actualizar_unidades()
@@ -1867,8 +1953,8 @@ def pedir_datos_parcela_rodal(
 
         if unidad == 'otra':
             unidad = otra_unidad_global
-        print(f'Tipo: Especie: {especie}, tipo_variable: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {texto_adicional}')
-        return (True, [especie, tipo_variable, valor, unidad, texto_adicional_modificado, publicar_datos])
+        print(f'Tipo: Especie: {especie}, cod_variable: {cod_variable}, tipo_variable: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {texto_adicional}')
+        return (True, [especie, cod_variable, valor, unidad, texto_adicional_modificado, publicar_datos])
     else:
         return (False, [])
 
@@ -3614,7 +3700,7 @@ class Dasoraster:
             self.ok = False
             return
         if red_disponible:
-            print(f'betaraster-> Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
+            # print(f'betaraster-> Se va a instanciar VentanaBienvenidaPrimerosPasos desde mostrar_ventana_bienvenida_primeros_pasos')
             dialog = VentanaBienvenidaGuiaRapida(intro_dasolidar_html_filepath=intro_dasolidar_html_filepath)
             if dialog.ok:
                 rpta_ok = dialog.exec_()
@@ -4104,39 +4190,32 @@ class SettingsDialog(QDialog):
     def accept(self):
         # Guardo los valores en QSettings
         settings = QSettings()
-        if self.radio_parcela_input.text().isdigit():
-            try:
-                settings.setValue('dasoraster/radio_parcela', float(self.radio_parcela_input.text()))
-            except:
-                settings.setValue('dasoraster/radio_parcela', 15.0)
-        else:
+        try:
+            settings.setValue('dasoraster/radio_parcela', float(self.radio_parcela_input.text()))
+        except:
             settings.setValue('dasoraster/radio_parcela', 15.0)
 
         settings.setValue('dasoraster/parcela_circular', self.parcela_circular_input.isChecked())
         settings.setValue('dasoraster/consulta_multiple', self.consulta_multiple_input.isChecked())
         settings.setValue('dasoraster/buscar_modelo_regresion', self.buscar_modelo_regresion_input.isChecked())
         settings.setValue('dasoraster/buscar_esp_mfe', self.buscar_esp_mfe_input.isChecked())
-        if self.escala_deseada_input.text().isdigit():
-            try:
-                settings.setValue('dasoraster/escala_deseada', int(self.escala_deseada_input.text()))
-            except:
-                settings.setValue('dasoraster/escala_deseada', 0)
-        else:
+        # if self.escala_deseada_input.text().isdigit():
+        try:
+            settings.setValue('dasoraster/escala_deseada', int(self.escala_deseada_input.text()))
+        except:
             settings.setValue('dasoraster/escala_deseada', 0)
         settings.setValue('dasoraster/autocarga_lasfiles', self.autocarga_lasfiles_input.isChecked())
-        if self.autocarga_escala_maxima_input.text().isdigit():
-            try:
-                if int(self.autocarga_escala_maxima_input.text()) > AUTOCARGA_ESCALA_MAXIMA_PERMITIDA:
-                    self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_PERMITIDA))
-                    self.iface.messageBar().pushMessage(
-                        f'No se admiten escalas inferiores a 1:30000 (denominador superior {AUTOCARGA_ESCALA_MAXIMA_PERMITIDA}).',
-                        duration=5,
-                        level=Qgis.Info,
-                    )
-                settings.setValue('dasoraster/autocarga_escala_maxima', int(self.autocarga_escala_maxima_input.text()))
-            except:
-                settings.setValue('dasoraster/autocarga_escala_maxima', 10000)
-        else:
+        # if self.autocarga_escala_maxima_input.text().isdigit():
+        try:
+            if int(self.autocarga_escala_maxima_input.text()) > AUTOCARGA_ESCALA_MAXIMA_PERMITIDA:
+                self.autocarga_escala_maxima_input.setText(str(AUTOCARGA_ESCALA_MAXIMA_PERMITIDA))
+                self.iface.messageBar().pushMessage(
+                    f'No se admiten escalas inferiores a 1:30000 (denominador superior {AUTOCARGA_ESCALA_MAXIMA_PERMITIDA}).',
+                    duration=5,
+                    level=Qgis.Info,
+                )
+            settings.setValue('dasoraster/autocarga_escala_maxima', int(self.autocarga_escala_maxima_input.text()))
+        except:
             settings.setValue('dasoraster/autocarga_escala_maxima', 10000)
 
         # settings.setValue('dasoraster/autocarga_mostrar_lasfiles_en_leyenda', self.autocarga_mostrar_lasfiles_en_leyenda_input.isChecked())
