@@ -65,9 +65,12 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.PyQt.QtCore import Qt
 from qgis.analysis import QgsRasterCalculator, QgsRasterCalculatorEntry
-from PyQt5.QtCore import QSettings
-
-
+from PyQt5.QtCore import QSettings, QSize
+from PyQt5.QtWidgets import QGridLayout
+# Estas clases las uso from qgis.PyQt.QtWidgets
+# from PyQt5.QtWidgets import QWidget, QPushButton
+# from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 # from qgis.gui import QgsHtmlAnnotationItem
 # html_annotation = QgsHtmlAnnotationItem(QgsProject.instance().mapLayers().values())
 # html_annotation.setHtml(intro_dasolidar)
@@ -1172,49 +1175,83 @@ def mostrarVideoTip(
 
 
 
-def mostrar_videos():
+def mostrar_videos_():
     pass
 # ==============================================================================
-def mostrar_videos_():
+def mostrar_videos():
+    videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
     # Crear una ventana de diálogo
     dialog = QDialog()
     dialog.setWindowTitle("Selecciona un Video Tip")
-    
+
     # Crear un layout vertical
     main_layout = QVBoxLayout(dialog)
 
-    # Crear dos grupos de botones
-    group1_layout = QGridLayout()
-    group2_layout = QGridLayout()
+    # Crear un layout de cuadrícula
+    grid_layout = QGridLayout()
 
-    # Nombres de los botones
-    video_names = [
-        'VideoTip 1', 'VideoTip 2', 'VideoTip 3', 'VideoTip 4',
-        'VideoTip 5', 'VideoTip 6', 'VideoTip 7', 'VideoTip 8',
-        'VideoTip 9', 'VideoTip 10', 'VideoTip 11', 'VideoTip 12'
+    # Nombres de los botones y sus imágenes
+    video_data = [
+        ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video1.png'), 'Descargar una nube de puntos'),
+        ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video2.png'), 'Consultar una variable datométrica en una parcela'),
+        ('Prueba1.mp4', os.path.join(videos_path, 'video3.png'), 'Perfil de la nube de puntos (prueba en formato mp4)'),
+        ('Prueba4.webm', os.path.join(videos_path, 'video4.png'), 'Perfil de la nube de puntos (prueba en formato webm)'),
+        ('VideoTip 5', os.path.join(videos_path, 'video5.png'), 'Descripción del VideoTip 5'),
+        ('VideoTip 6', os.path.join(videos_path, 'video6.png'), 'Descripción del VideoTip 6'),
+        ('VideoTip 7', os.path.join(videos_path, 'video7.png'), 'Descripción del VideoTip 7'),
+        ('VideoTip 8', os.path.join(videos_path, 'video8.png'), 'Descripción del VideoTip 8'),
+        ('VideoTip 9', os.path.join(videos_path, 'video9.png'), 'Descripción del VideoTip 9'),
+        ('VideoTip 10', os.path.join(videos_path, 'video10.png'), 'Descripción del VideoTip 10'),
+        ('VideoTip 11', os.path.join(videos_path, 'video11.png'), 'Descripción del VideoTip 11'),
+        ('VideoTip 12', os.path.join(videos_path, 'video12.png'), 'Descripción del VideoTip 12'),
     ]
 
-    # Añadir botones al primer grupo (3 filas)
-    for i in range(3):
-        for j in range(4):
-            index = i * 4 + j
-            if index < len(video_names):
-                button = QPushButton(video_names[index])
-                button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
-                group1_layout.addWidget(button, i, j)
+    # Añadir botones al layout de cuadrícula
+    for index, (nombre, imagen, descripcion) in enumerate(video_data):
+        # button = QPushButton(nombre)
+        button = QPushButton()
+        button.setIcon(QIcon(imagen))  # Establecer la imagen del botón
+        button.setIconSize(QSize(100, 100))  # Ajustar el tamaño del icono
+        button.setFixedSize(120, 120)  # Ajustar el tamaño del botón
+        button.setToolTip(descripcion)  # Establecer el texto explicativo al pasar el cursor
+        button.clicked.connect(lambda _, name=nombre: mostrarVideoTip(videoTip_filename=name))
+        grid_layout.addWidget(button, index // 4, index % 4)  # Organizar en filas y columnas
 
-    # Añadir botones al segundo grupo (2 filas)
-    for i in range(2):
-        for j in range(4):
-            index = 12 + i * 4 + j
-            if index < len(video_names):
-                button = QPushButton(video_names[index])
-                button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
-                group2_layout.addWidget(button, i, j)
+    # Añadir el layout de cuadrícula al layout principal
+    main_layout.addLayout(grid_layout)
 
-    # Añadir los grupos al layout principal
-    main_layout.addLayout(group1_layout)
-    main_layout.addLayout(group2_layout)
+    # # Crear dos grupos de botones
+    # group1_layout = QGridLayout()
+    # group2_layout = QGridLayout()
+
+    # # Nombres de los botones
+    # video_names = [
+    #     'VideoTip_descargaLazFiles.mp4', 'VideoTip_descargaLazFiles.mp4', 'Prueba1.mp4', 'Prueba4.webm',
+    #     'VideoTip_5', 'VideoTip_6', 'VideoTip_7', 'VideoTip_8',
+    #     'VideoTip_9', 'VideoTip_10', 'VideoTip_11', 'VideoTip_12'
+    # ]
+
+    # # Añadir botones al primer grupo (3 filas)
+    # for i in range(3):
+    #     for j in range(4):
+    #         index = i * 4 + j
+    #         if index < len(video_names):
+    #             button = QPushButton(video_names[index])
+    #             button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+    #             group1_layout.addWidget(button, i, j)
+
+    # # Añadir botones al segundo grupo (2 filas)
+    # for i in range(2):
+    #     for j in range(4):
+    #         index = 12 + i * 4 + j
+    #         if index < len(video_names):
+    #             button = QPushButton(video_names[index])
+    #             button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+    #             group2_layout.addWidget(button, i, j)
+
+    # # Añadir los grupos al layout principal
+    # main_layout.addLayout(group1_layout)
+    # main_layout.addLayout(group2_layout)
 
     # Mostrar el diálogo
     dialog.setLayout(main_layout)
@@ -1413,6 +1450,7 @@ def mostrar_messagebar_bienvenida():
             )
         )
         # ==============================================================================
+        mi_widget.layout().addWidget(mi_button0)
         mi_widget.layout().addWidget(mi_button1)
         mi_widget.layout().addWidget(mi_button2)
         # mi_widget.layout().addWidget(mi_button3)

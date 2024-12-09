@@ -107,7 +107,7 @@ from qgis.PyQt.QtWidgets import (
     # QLineEdit,
     # QCheckBox,
     # QPushButton,
-    # QHBoxLayout,
+    QHBoxLayout,
     # QMainWindow,
     # QWidget,
 )
@@ -122,15 +122,20 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QMainWindow,
     QComboBox,
+    QGridLayout,
     # QWidget,
 )
 from PyQt5.QtCore import (
     QUrl,
     pyqtSignal,
     QTimer,
+    QSettings,
+    QSize,
     # QObject,
 )
-from PyQt5.QtGui import QDoubleValidator
+# Esta clase se importa de from qgis.PyQt.QtGui
+# from PyQt5.QtGui import QDoubleValidator, QIcon
+
 
 # imports para la descarga de lasFiles
 # from qgis.core import QgsMessageLog
@@ -2276,6 +2281,22 @@ def mostrar_resultado_pedir_datos(
     # Mostrar el diálogo
     dialog.exec_()
 
+# ==============================================================================
+def mostrarVideoTip(
+        mi_evento=None,
+        mi_boton=None,
+        videoTip_filename=''
+    ):
+    videotips_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
+    videoTip_filepath = os.path.join(videotips_path, videoTip_filename)
+    if videoTip_filename and os.path.exists(videoTip_filepath):
+        os.startfile(videoTip_filepath)
+
+
+            # self.videoTip01.clicked.connect('Prueba1.mp4')
+            # # self.videoTip02.clicked.connect(mostrar_manual_dasolidar)
+            # self.videoTip02.clicked.connect('Prueba4.webm')
+
 
 class Dasoraster:
     '''QGIS Plugin Implementation.'''
@@ -2481,37 +2502,39 @@ class Dasoraster:
             checkable=True,
         )
 
-        icon_path = ':/plugins/dasoraster/resources/images/icon_explorer.png'
+        icon_path = ':/plugins/dasoraster/resources/images/icon_star.png'
         self.action4 = self.add_action(
+            icon_path,
+            text=self.tr(u'  dasoraster\nConsultas & IA'),
+            callback=self.dasolidar_IA,
+            parent=self.iface.mainWindow(),
+        )
+
+        icon_path = ':/plugins/dasoraster/resources/images/icon_guiaRapida.png'
+        self.action_ayuda = self.add_action(
+            icon_path,
+            text=self.tr(u'dasoraster\nguia rápida'),
+            # callback=self.guia_rapida_dasolidar,
+            callback=self.ayudas_dasolidar,
+            parent=self.iface.mainWindow(),
+        )
+
+        # icon_path = ':/plugins/dasoraster/resources/images/icon_book.png'
+        # self.action6 = self.add_action(
+        #     icon_path,
+        #     text=self.tr(u'dasoraster\n   manual'),
+        #     callback=self.manual_dasolidar,
+        #     parent=self.iface.mainWindow(),
+        # )
+
+        icon_path = ':/plugins/dasoraster/resources/images/icon_explorer.png'
+        self.action_explorer = self.add_action(
             icon_path,
             text=self.tr(u'dasoraster\n lidarData'),
             callback=self.explorar_ldata,
             parent=self.iface.mainWindow(),
         )
 
-        icon_path = ':/plugins/dasoraster/resources/images/icon_guiaRapida.png'
-        self.action5 = self.add_action(
-            icon_path,
-            text=self.tr(u'dasoraster\nguia rápida'),
-            callback=self.guia_rapida_dasolidar,
-            parent=self.iface.mainWindow(),
-        )
-
-        icon_path = ':/plugins/dasoraster/resources/images/icon_book.png'
-        self.action6 = self.add_action(
-            icon_path,
-            text=self.tr(u'dasoraster\n   manual'),
-            callback=self.manual_dasolidar,
-            parent=self.iface.mainWindow(),
-        )
-
-        icon_path = ':/plugins/dasoraster/resources/images/icon_star.png'
-        self.action7 = self.add_action(
-            icon_path,
-            text=self.tr(u'  dasoraster\nConsultas & IA'),
-            callback=self.dasolidar_IA,
-            parent=self.iface.mainWindow(),
-        )
 
         icon_path = ':/plugins/dasoraster/resources/images/icon_config.png'
         self.action_settings = self.add_action(
@@ -3666,6 +3689,176 @@ class Dasoraster:
         print(f'betaraster-> Directorio explorado: {rpta_ok.args}')
         print(f'betaraster-> Respuesta: {rpta_ok.returncode}')
 
+    def ayudas_dasolidar(self):
+        videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
+        dialog = QDialog()
+        dialog.setWindowTitle("Ayudas Dasolidar")
+        
+        # Crear un layout vertical
+        layout = QHBoxLayout(dialog)
+
+        # Datos de los botones: (icono, texto del botón, pista)
+        botones_data = [
+            (os.path.join(videos_path, 'boton_videos.jpg'), 'Videos', 'Tutoriales en video.', self.mostrar_videos),
+            (os.path.join(videos_path, 'boton_ayudas.jpg'), 'Guia', 'Infograma con una guia rápida de primeros pasos.', self.guia_rapida_dasolidar),
+            (os.path.join(videos_path, 'boton_bombilla.webp'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
+            (os.path.join(videos_path, 'boton_manual.jpg'), 'Manual', 'Manual de consulta.', self.manual_dasolidar),
+        ]
+        # Crear y añadir botones al layout
+        for icono, texto, pista, funcion in botones_data:
+            # Crear un botón
+            button = QPushButton()
+            button.setIcon(QIcon(icono))  # Establecer el icono del botón
+            button.setIconSize(QSize(150, 150))  # Ajustar el tamaño del icono
+            button.setFixedSize(170, 170)  # Ajustar el tamaño del botón (ancho, alto)
+            button.setToolTip(pista)  # Establecer el texto explicativo al pasar el cursor
+            button.clicked.connect(funcion)  # Conectar el botón a la función correspondiente
+
+            # Crear un layout vertical para el botón y el texto
+            button_layout = QVBoxLayout()
+            button_layout.addWidget(button)  # Añadir el botón
+            label = QLabel(texto)  # Crear una etiqueta con el texto del botón
+            label.setAlignment(Qt.AlignCenter)  # Centrar el texto
+            button_layout.addWidget(label)  # Añadir la etiqueta al layout del botón
+
+            layout.addLayout(button_layout)  # Añadir el layout del botón al layout principal
+
+        # # Botón 1: Icono relacionado con los videos
+        # boton_videos = QPushButton("Videos")
+        # boton_videos.setIcon(QIcon(os.path.join(videos_path, 'boton_videos.jpg')))
+        # boton_videos.setIconSize(QSize(150, 150))
+        # boton_videos.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
+        # boton_videos.setToolTip('Tutoriales en video.')  # Establecer el texto explicativo al pasar el cursor
+        # boton_videos.clicked.connect(self.mostrar_videos)  # Conectar a la función mostrar_videos
+        # layout.addWidget(boton_videos)
+        # # Crear un layout vertical para el botón y el texto
+        # button_layout = QHBoxLayout()
+        # button_layout.addWidget(button_layout)  # Añadir el botón
+        # label = QLabel('Videos')  # Crear una etiqueta con el texto del botón
+        # label.setAlignment(Qt.AlignCenter)  # Centrar el texto
+        # button_layout.addWidget(label)  # Añadir la etiqueta al layout del botón
+        # layout.addLayout(button_layout)  # Añadir el layout del botón al layout principal
+
+        # # Botón 2: Otro botón (puedes personalizarlo)
+        # boton_ayuda = QPushButton("Guia rápida y consejos")
+        # boton_ayuda.setIcon(QIcon(os.path.join(videos_path, 'boton_bombilla2.webp')))
+        # boton_ayuda.setIconSize(QSize(150, 150))
+        # boton_ayuda.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
+        # boton_ayuda.setToolTip('Guía rápida dasolidar.')  # Establecer el texto explicativo al pasar el cursor
+        # boton_ayuda.clicked.connect(self.guia_rapida_dasolidar)  # Conectar a la función de ayuda general
+        # layout.addWidget(boton_ayuda)
+        # # Crear un layout vertical para el botón y el texto
+        # button_layout = QHBoxLayout()
+        # button_layout.addWidget(button_layout)  # Añadir el botón
+        # label = QLabel('Guia')  # Crear una etiqueta con el texto del botón
+        # label.setAlignment(Qt.AlignCenter)  # Centrar el texto
+        # button_layout.addWidget(label)  # Añadir la etiqueta al layout del botón
+        # layout.addLayout(button_layout)  # Añadir el layout del botón al layout principal
+
+        # # Botón 3: Otro botón (puedes personalizarlo)
+        # boton_manual = QPushButton("Manual de consulta")
+        # boton_manual.setIcon(QIcon(os.path.join(videos_path, 'boton_manual.jpg')))
+        # boton_manual.setIconSize(QSize(150, 150))
+        # boton_manual.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
+        # boton_manual.setToolTip('Manual de consulta.')  # Establecer el texto explicativo al pasar el cursor
+        # boton_manual.clicked.connect(self.manual_dasolidar)  # Conectar a la función para mostrar el manual
+        # layout.addWidget(boton_manual)
+        # # Crear un layout vertical para el botón y el texto
+        # button_layout = QHBoxLayout()
+        # button_layout.addWidget(button_layout)  # Añadir el botón
+        # label = QLabel('Manual')  # Crear una etiqueta con el texto del botón
+        # label.setAlignment(Qt.AlignCenter)  # Centrar el texto
+        # button_layout.addWidget(label)  # Añadir la etiqueta al layout del botón
+        # layout.addLayout(button_layout)  # Añadir el layout del botón al layout principal
+
+        # Establecer el layout en el diálogo
+        dialog.setLayout(layout)
+
+        # Mostrar el diálogo
+        dialog.exec_()
+
+
+    # ==============================================================================
+    def mostrar_videos(self):
+        videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
+        # Crear una ventana de diálogo
+        dialog = QDialog()
+        dialog.setWindowTitle("Selecciona un Video Tip")
+
+        # Crear un layout vertical
+        main_layout = QVBoxLayout(dialog)
+
+        # Crear un layout de cuadrícula
+        grid_layout = QGridLayout()
+
+        # Nombres de los botones y sus imágenes
+        video_data = [
+            ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video1.png'), 'Descargar una nube de puntos'),
+            ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video2.png'), 'Consultar una variable datométrica en una parcela'),
+            ('Prueba1.mp4', os.path.join(videos_path, 'video3.png'), 'Perfil de la nube de puntos (prueba en formato mp4)'),
+            ('Prueba4.webm', os.path.join(videos_path, 'video4.png'), 'Perfil de la nube de puntos (prueba en formato webm)'),
+            ('VideoTip 5', os.path.join(videos_path, 'video5.png'), 'Descripción del VideoTip 5'),
+            ('VideoTip 6', os.path.join(videos_path, 'video6.png'), 'Descripción del VideoTip 6'),
+            ('VideoTip 7', os.path.join(videos_path, 'video7.png'), 'Descripción del VideoTip 7'),
+            ('VideoTip 8', os.path.join(videos_path, 'video8.png'), 'Descripción del VideoTip 8'),
+            ('VideoTip 9', os.path.join(videos_path, 'video9.png'), 'Descripción del VideoTip 9'),
+            ('VideoTip 10', os.path.join(videos_path, 'video10.png'), 'Descripción del VideoTip 10'),
+            ('VideoTip 11', os.path.join(videos_path, 'video11.png'), 'Descripción del VideoTip 11'),
+            ('VideoTip 12', os.path.join(videos_path, 'video12.png'), 'Descripción del VideoTip 12'),
+        ]
+
+        # Añadir botones al layout de cuadrícula
+        for index, (nombre, imagen, descripcion) in enumerate(video_data):
+            # button = QPushButton(nombre)
+            button = QPushButton()
+            button.setIcon(QIcon(imagen))  # Establecer la imagen del botón
+            button.setIconSize(QSize(100, 100))  # Ajustar el tamaño del icono
+            button.setFixedSize(120, 120)  # Ajustar el tamaño del botón
+            button.setToolTip(descripcion)  # Establecer el texto explicativo al pasar el cursor
+            button.clicked.connect(lambda _, name=nombre: mostrarVideoTip(videoTip_filename=name))
+            grid_layout.addWidget(button, index // 4, index % 4)  # Organizar en filas y columnas
+
+        # Añadir el layout de cuadrícula al layout principal
+        main_layout.addLayout(grid_layout)
+
+        # # Crear dos grupos de botones
+        # group1_layout = QGridLayout()
+        # group2_layout = QGridLayout()
+
+        # # Nombres de los botones
+        # video_names = [
+        #     'VideoTip_descargaLazFiles.mp4', 'VideoTip_descargaLazFiles.mp4', 'Prueba1.mp4', 'Prueba4.webm',
+        #     'VideoTip_5', 'VideoTip_6', 'VideoTip_7', 'VideoTip_8',
+        #     'VideoTip_9', 'VideoTip_10', 'VideoTip_11', 'VideoTip_12'
+        # ]
+
+        # # Añadir botones al primer grupo (3 filas)
+        # for i in range(3):
+        #     for j in range(4):
+        #         index = i * 4 + j
+        #         if index < len(video_names):
+        #             button = QPushButton(video_names[index])
+        #             button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+        #             group1_layout.addWidget(button, i, j)
+
+        # # Añadir botones al segundo grupo (2 filas)
+        # for i in range(2):
+        #     for j in range(4):
+        #         index = 12 + i * 4 + j
+        #         if index < len(video_names):
+        #             button = QPushButton(video_names[index])
+        #             button.clicked.connect(lambda _, name=video_names[index]: mostrarVideoTip(videoTip_filename=name))
+        #             group2_layout.addWidget(button, i, j)
+
+        # # Añadir los grupos al layout principal
+        # main_layout.addLayout(group1_layout)
+        # main_layout.addLayout(group2_layout)
+
+        # Mostrar el diálogo
+        dialog.setLayout(main_layout)
+        dialog.exec_()
+
+    # ==============================================================================
     def guia_rapida_dasolidar(self):
         global config_class
 
@@ -3720,6 +3913,7 @@ class Dasoraster:
             if platform.system() == 'Windows':
                 os.startfile(intro_dasolidar_html_filepath)
 
+    # ==============================================================================
     def manual_dasolidar(self):
         manual_filename = 'manualDasoLidar02.pdf'
         manual_path_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
