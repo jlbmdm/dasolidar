@@ -98,6 +98,7 @@ from qgis.PyQt.QtWidgets import (
     QTextEdit,
     QAction,
     QMessageBox,
+    QGroupBox,
     # QFrame,
     # QSpacerItem,
     # QSizePolicy,
@@ -123,8 +124,10 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QComboBox,
     QGridLayout,
+    QRadioButton,
     # QWidget,
 )
+
 from PyQt5.QtCore import (
     QUrl,
     pyqtSignal,
@@ -133,8 +136,9 @@ from PyQt5.QtCore import (
     QSize,
     # QObject,
 )
+from PyQt5.QtGui import QDoubleValidator
 # Esta clase se importa de from qgis.PyQt.QtGui
-# from PyQt5.QtGui import QDoubleValidator, QIcon
+from PyQt5.QtGui import QIcon
 
 
 # imports para la descarga de lasFiles
@@ -235,6 +239,7 @@ try:
     from dasoutil import calcular_valor_medio_parcela_rodal, identifica_especies_mfe, leer_csv_codigos1, leer_csv_codigos3
     # from dasoutil import identifica_especie, leer_raster_float, leer_csv_codigos2
     # from dasoutil import identificar_usuario
+    from dasoutil_gpkg import guardar_parcela_en_gpkg, componer_geodata
 except:
     print(f'betaraster-> No se ha podido instalar el complemento.')
     iface.messageBar().pushMessage(
@@ -378,6 +383,20 @@ dict_especies = {
     # 'Au': 'Arbutus unedo'
 }
 
+dict_nombres_variables_dasometricas = {
+    'Volumen de madera (fustes)': 'VCC',
+    'Diámetro medio (cuadrático)': 'DCM',
+    'Número de pies por hectárea (densidad)': 'Npies',
+    'Área basimétrica': 'Abas',
+    'Crecimiento anual en volumen': 'IAVC',
+    'Biomasa aérea': 'BA',
+    'Volumen de leñas': 'VLE',
+    'Altura dominante lidar (es una métrica lidar)': 'Hdom',
+}
+dict_nombres_variables_dasometricas_inverso = {}
+for key, variable_dasometrica in dict_nombres_variables_dasometricas.items():
+    dict_nombres_variables_dasometricas_inverso[variable_dasometrica] = key
+
 dict_cod_variables_dasometricas = {
     'VCC': ['Volumen de madera (fustes) (por ha o totales)', 'm3/ha'],
     'DCM': ['Diámetro medio (cuadrático)', 'cm'],
@@ -390,6 +409,26 @@ dict_cod_variables_dasometricas = {
     'VTT': ['Volumen de madera (fustes), m3 totales', 'm3'],
     'otra': ['Otra variable (concretar en comentarios)', 'otra'],
 }
+dict_cod_variables_dasometricas_inverso = {}
+for key, variable_dasometrica in dict_cod_variables_dasometricas.items():
+    dict_cod_variables_dasometricas_inverso[variable_dasometrica[0]] = key
+dict_capas_variables_dasometricas_inverso = {}
+
+dict_capas_metricas_lidar = {
+    'AlturaDominanteLidar_m': 'alt95',
+    'Cob5m_PRT_PNOA2': 'cob5m',
+    'Cob3m_PRT_PNOA2': 'cob3m',
+    'CobEstr_MidHD_TopHD_TLR_PNOA2': 'c_sup',
+    'CobEstr_200cm_MidHD_TLR_PNOA2': 'c_med',
+    'CobEstr_050cm_200cm_TLR_PNOA2': 'c_inf',
+    'CobEstrDe0025a0150cm_TLR_PNOA2': 'c_st1',
+    'CobEstrDe0150a0250cm_TLR_PNOA2': 'c_st2',
+    'CobEstrDe0250a0500cm_TLR_PNOA2': 'c_st3',
+}
+dict_capas_metricas_lidar_inverso = {}
+for key, variable_dasometrica in dict_capas_metricas_lidar.items():
+    dict_capas_metricas_lidar_inverso[variable_dasometrica] = key
+
 dict_capas_variables_dasometricas = {
     'VolumenMadera_m3_ha': 'VCC',
     'DiamMed_cm': 'DCM',
@@ -400,10 +439,8 @@ dict_capas_variables_dasometricas = {
     'VolumenLeñas_m3_ha': 'VLE',
     'AlturaDominanteLidar_m': 'Hdom',
 }
-dict_cod_variables_dasometricas_inverso = {}
-for key, variable_dasometrica in dict_cod_variables_dasometricas.items():
-    dict_cod_variables_dasometricas_inverso[variable_dasometrica[0]] = key
-
+for key, variable_dasometrica in dict_capas_variables_dasometricas.items():
+    dict_capas_variables_dasometricas_inverso[variable_dasometrica] = key
 
 dict_spp_mfe25cyl = leer_csv_codigos1()
 # lista_dict_codigos_especies =  leer_csv_codigos2()
@@ -1339,7 +1376,7 @@ class VentanaAsistente(QDialog):
             except Exception as e:
                 print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
                 print(f'betaraster-> Error: {e}')
-        print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
+        print(f'betaraster-> msg_guardado_ok consulta: {msg_guardado_ok}')
         if tipo_consulta == 'sugerencia' or tipo_consulta == 'bengi':
             if not msg_guardado_ok:
                 QMessageBox.information(
@@ -1726,7 +1763,7 @@ def pedir_datos_parcela_rodal(
             f'puedes ahcerlo enviando un correo electrónico a {EMAIL_DASOLIDAR1}\n'\
             f'También puedes volver al outlook clásico e intentarlo de nuevo\n'\
         )
-        return
+        return (False, [], '', '')
     elif not outlook_disponible:
         QMessageBox.warning(
             iface.mainWindow(),
@@ -1837,6 +1874,36 @@ def pedir_datos_parcela_rodal(
     publicar_en_red_social_checkbox.setChecked(True)
     layout.addWidget(publicar_en_red_social_checkbox)
 
+    # Crear un grupo para los botones de opción
+    grupo_fiabilidad = QGroupBox('Si tienes información de la fiabilidad de los datos, esto ayuda a su interpretación:')
+    grupo_layout = QVBoxLayout()
+
+    # Crear un grupo de botones de opción (radio buttons)
+    fiabilidad_alta = QRadioButton('Fiabilidad alta (error<10% al 95% de confianza: diametros pie a pie con ecuaciones alt-diam y volumen fiables; cortas con remate final o similar)')
+    fiabilidad_media = QRadioButton('Fiabilidad media (error<20% al 90% de confianza: diam. pie a pie pero ecuaciones de fiabilidad incierta, estimación por muestreo intenso y fiable)')
+    fiabilidad_baja = QRadioButton('Fiabilidad baja (muestreos no intenso, estimaciones orientativas, datos en los que no se tiene confianza, etc.)')
+    fiabilidad_desc = QRadioButton('Fiabilidad desconocida (no tengo datos suficientes o no me atrevo a valorar la fiabilidad)')
+
+    # Establecer la opción por defecto (puedes elegir cualquiera)
+    fiabilidad_desc.setChecked(True)
+
+    # # Añadir los botones de opción al layout
+    # layout.addWidget(fiabilidad_alta)
+    # layout.addWidget(fiabilidad_media)
+    # layout.addWidget(fiabilidad_baja)
+
+    # Añadir los botones de opción al layout del grupo
+    grupo_layout.addWidget(fiabilidad_alta)
+    grupo_layout.addWidget(fiabilidad_media)
+    grupo_layout.addWidget(fiabilidad_baja)
+    grupo_layout.addWidget(fiabilidad_desc)
+
+    # Establecer el layout en el grupo
+    grupo_fiabilidad.setLayout(grupo_layout)
+
+    # Añadir el grupo al layout principal
+    layout.addWidget(grupo_fiabilidad)
+
     # Cuadro de texto (varias líneas)
     texto_multilinea_label = QLabel('Comentarios adicionales:')
     layout.addWidget(texto_multilinea_label)
@@ -1943,25 +2010,38 @@ def pedir_datos_parcela_rodal(
             cod_variable = 'error'
 
         publicar_datos = publicar_en_red_social_checkbox.isChecked()
+        if fiabilidad_alta.isChecked():
+            fiabilidad_datos = 3
+        elif fiabilidad_media.isChecked():
+            fiabilidad_datos = 2
+        elif fiabilidad_baja.isChecked():
+            fiabilidad_datos = 1
+        else:
+            fiabilidad_datos = 0
         valor = valor_input.text()
         unidad = unidad_combo.currentText()
-        texto_adicional = texto_multilinea_input.toPlainText()
-        # Modifico texto_adicional para incluir 'Comentario', número de línea y la línea
-        lineas = texto_adicional.splitlines()
-        texto_adicional_modificado = ''
-        for i, linea in enumerate(lineas, start=1):
+        obs_multi_linea = texto_multilinea_input.toPlainText()
+        # Modifico obs_multi_linea para incluir 'Comentario', número de línea y la línea
+        obs_lista_lineas = obs_multi_linea.splitlines()
+        obs_multi_linea_modificado = ''
+        for i, linea in enumerate(obs_lista_lineas, start=1):
             if linea == '':
                 continue
-            texto_adicional_modificado += f'Obs;{i:02};{linea}\n'
-        # if texto_adicional_modificado == '':
-        #     texto_adicional_modificado += f'\n'
+            obs_multi_linea_modificado += f'Obs;{i:02};{linea}\n'
+        # if obs_multi_linea_modificado == '':
+        #     obs_multi_linea_modificado += f'\n'
 
         if unidad == 'otra':
             unidad = otra_unidad_global
-        print(f'Tipo: Especie: {especie}, cod_variable: {cod_variable}, tipo_variable: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {texto_adicional}')
-        return (True, [especie, cod_variable, valor, unidad, texto_adicional_modificado, publicar_datos])
+        print(f'Tipo: Especie: {especie}, cod_variable: {cod_variable}, tipo_variable: {tipo_variable}, Valor: {valor}, Unidad: {unidad}, Comentarios: {obs_multi_linea}')
+        return (
+            True,
+            [especie, cod_variable, valor, unidad, publicar_datos, fiabilidad_datos],
+            obs_lista_lineas,
+            obs_multi_linea_modificado,
+        )
     else:
-        return (False, [])
+        return (False, [], '', '')
 
 
 def guardar_datos_parcela_rodal_en_V(
@@ -1976,8 +2056,8 @@ def guardar_datos_parcela_rodal_en_V(
         try:
             msg_obj.write(cuerpo)
             msg_obj.close()
-            print(f'betaraster-> msg_guardado_ok: {msg_guardado_ok}')
             msg_guardado_ok = True
+            print(f'betaraster-> msg_guardado_ok parcela/rodal: {msg_guardado_ok}')
         except Exception as e:
             print(f'betaraster-> Error al guardar el mensaje en {msg_filename}')
             print(f'betaraster-> Error: {e}')
@@ -2116,28 +2196,74 @@ def pedir_guardar_enviar_data(
     else:
         geojson_pathname = ''
 
-    (enviar_ok, datos_recibidos) = pedir_datos_parcela_rodal(
+    (
+        enviar_ok,
+        datos_recibidos,
+        obs_lista_lineas,
+        obs_multi_linea_modificado,
+    ) = pedir_datos_parcela_rodal(
         tipo_consulta,
         cod_variable_explicada,
         cod_num_asimilada_sp_,
     )
     if enviar_ok:
-        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado, publicar_datos] = datos_recibidos
+        [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = datos_recibidos
     else:
-        [especie_aportada, variable_aportada, valor_aportado, unidad_aportada, texto_adicional_modificado, publicar_datos] = ['Xx', 'nodata', 0, 'nodata', '', False]
+        # [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = ['Xx', 'nodata', 0, 'nodata', False, 0]
         return
+
     texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
     texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
                                  f';{parcela_circular};{radio_parcela};{rodal_hectareas};{num_pixeles}'\
                                  f';{layer_raster_XXX_name_txt};{valor_medio};{unidad_dasolidar}'\
-                                 f';{especie_aportada};{variable_aportada};{valor_aportado};{unidad_aportada}'\
-                                 f';{publicar_datos}\n'\
-                                 f'{texto_adicional_modificado}\n'
+                                 f';{especie_aportada};{variable_aportada};{medicion_aportada};{unidad_aportada}'\
+                                 f';{publicar_datos};{fiabilidad_datos}\n'
+    texto_codificado_consulta += f'{obs_multi_linea_modificado}\n'
+
+    dict_codificado_consulta = {}
+    mis_lineas = texto_codificado_consulta.splitlines()
+    for num_linea, mi_linea in enumerate(mis_lineas):
+        dict_codificado_consulta[num_linea] = mi_linea
 
     msg_guardado_ok = guardar_datos_parcela_rodal_en_V(
         cuerpo=texto_codificado_consulta,
         motivo=tipo_consulta,
     )
+
+    if publicar_datos and publicar_datos != 'False':
+        geopackage_path = r'V:\MA_SCAYLE_VueloLidar\dasonet'
+        geopackage_filename_ok = 'dasoraster_data.gpkg'
+        geopackage_filepath = os.path.join(geopackage_path, geopackage_filename_ok)
+        # geopackage_filepath_all = [geopackage_filepath1, geopackage_filepath2, geopackage_filepath3]
+        geopackage_filepath_all = [geopackage_filepath]
+
+        dict_geodata = componer_geodata(
+            usuario_actual,
+            tipo_consulta,
+            resultado_msg,
+            x_consulta,
+            y_consulta,
+            parcela_circular,
+            radio_parcela,
+            rodal_hectareas,
+            layer_raster_XXX_name_txt,
+            valor_medio,
+            enviar_ok,
+            datos_recibidos,
+            obs_lista_lineas,
+            obs_multi_linea_modificado,
+            dict_nombres_variables_dasometricas,
+            dict_capas_variables_dasometricas,
+            dict_capas_metricas_lidar,
+        )
+
+        guardar_parcela_en_gpkg(
+            geopackage_filepath_all,
+            tipo_geodata=tipo_consulta,
+            dicts_geodata=[dict_geodata],
+            geojson_path=geojson_pathname,
+            # publicar_datos=publicar_datos,
+        )
 
     mail_enviado_ok = enviar_mail_datos_parcela_rodal_consulta(
         cuerpo=texto_codificado_consulta,
@@ -3570,7 +3696,7 @@ class Dasoraster:
                     # resultado_msg += f'\nCuando esté revisado se quitará este mensaje y los valores nulos.'
                     # resultado_msg += f'\n\n'
 
-                    resultado_msg += f'Información del polígono (rodal o lote):'
+                    resultado_msg += f'Información del polígono (rodal, lote, etc.):'
                     resultado_msg += f'\n    Id: {rodal_fid}'
                     resultado_msg += f'\n    Superficie: {rodal_hectareas:0.2f} ha'
                     # if self.buscar_esp_mfe or self.buscar_modelo_regresion:
