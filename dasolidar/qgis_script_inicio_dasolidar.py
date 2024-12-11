@@ -1175,8 +1175,6 @@ def mostrarVideoTip(
 
 
 
-def mostrar_videos_():
-    pass
 # ==============================================================================
 def mostrar_videos():
     videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'

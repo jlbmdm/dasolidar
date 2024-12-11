@@ -239,7 +239,7 @@ try:
     from dasoutil import calcular_valor_medio_parcela_rodal, identifica_especies_mfe, leer_csv_codigos1, leer_csv_codigos3
     # from dasoutil import identifica_especie, leer_raster_float, leer_csv_codigos2
     # from dasoutil import identificar_usuario
-    from dasoutil_gpkg import guardar_parcela_en_gpkg, componer_geodata
+    from dasoutil_gpkg import guardar_parcela_en_gpkg, componer_geodata, codifica_variable_dasometrica
 except:
     print(f'betaraster-> No se ha podido instalar el complemento.')
     iface.messageBar().pushMessage(
@@ -2022,14 +2022,14 @@ def pedir_datos_parcela_rodal(
         unidad = unidad_combo.currentText()
         obs_multi_linea = texto_multilinea_input.toPlainText()
         # Modifico obs_multi_linea para incluir 'Comentario', número de línea y la línea
-        obs_lista_lineas = obs_multi_linea.splitlines()
-        obs_multi_linea_modificado = ''
-        for i, linea in enumerate(obs_lista_lineas, start=1):
+        obs_lista_lineas_sinetiquetar = obs_multi_linea.splitlines()
+        obs_txt_multi_linea_etiquetado = ''
+        for i, linea in enumerate(obs_lista_lineas_sinetiquetar, start=1):
             if linea == '':
                 continue
-            obs_multi_linea_modificado += f'Obs;{i:02};{linea}\n'
-        # if obs_multi_linea_modificado == '':
-        #     obs_multi_linea_modificado += f'\n'
+            obs_txt_multi_linea_etiquetado += f'Obs;{i:02};{linea}\n'
+        # if obs_txt_multi_linea_etiquetado == '':
+        #     obs_txt_multi_linea_etiquetado += f'\n'
 
         if unidad == 'otra':
             unidad = otra_unidad_global
@@ -2037,11 +2037,18 @@ def pedir_datos_parcela_rodal(
         return (
             True,
             [especie, cod_variable, valor, unidad, publicar_datos, fiabilidad_datos],
-            obs_lista_lineas,
-            obs_multi_linea_modificado,
+            obs_lista_lineas_sinetiquetar,
+            obs_txt_multi_linea_etiquetado,
         )
     else:
         return (False, [], '', '')
+
+
+def refrescar_canvas():
+    """Función para refrescar el canvas."""
+    print("Refrescando el canvas...")
+    iface.mapCanvas().setLayers(iface.mapCanvas().layers())  # Forzar el refresco de las capas
+    iface.mapCanvas().refresh()  # Refresca el canvas
 
 
 def guardar_datos_parcela_rodal_en_V(
@@ -2124,10 +2131,11 @@ def enviar_mail_datos_parcela_rodal_consulta(
         )
     if motivo == 'parcela' or motivo == 'rodal':
         if publicar_datos:
-            texto_dasonet = f'Podrás ver tu {motivo} en dasonet en uno o dos minutos.\n'\
+            texto_dasonet = f'Ya puedes ver tu {motivo} en dasonet.\n'\
                 'Por el momento, dasonet son dos capas ubicadas\n'\
                 'en el grupo de capas "dasonet" del proyecto lidarQgis.\n'\
                 'El grupo "dasonet", a su vez, está dentro del grupo CartoRef.'
+            refrescar_canvas()
         else:
             texto_dasonet = ''
         QMessageBox.information(
@@ -2149,14 +2157,13 @@ def enviar_mail_datos_parcela_rodal_consulta(
 
 def pedir_guardar_enviar_data(
     tipo_consulta,
-    resultado_msg,
     x_consulta,
     y_consulta,
     parcela_circular,
     radio_parcela,
     rodal_hectareas,
     layer_raster_XXX_name_txt,
-    valor_medio,
+    medicion_dasolidar,
     unidad_dasolidar,
     num_pixeles,
     cod_2L_especie,
@@ -2199,26 +2206,25 @@ def pedir_guardar_enviar_data(
     (
         enviar_ok,
         datos_recibidos,
-        obs_lista_lineas,
-        obs_multi_linea_modificado,
+        obs_lista_lineas_sinetiquetar,
+        obs_txt_multi_linea_etiquetado,
     ) = pedir_datos_parcela_rodal(
         tipo_consulta,
         cod_variable_explicada,
         cod_num_asimilada_sp_,
     )
-    if enviar_ok:
-        [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = datos_recibidos
-    else:
-        # [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = ['Xx', 'nodata', 0, 'nodata', False, 0]
+    if not enviar_ok:
         return
+
+    [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = datos_recibidos
 
     texto_codificado_consulta = f'COD332;{usuario_actual};{hoy_AAAAMMDD};{ahora_HHMMSS}\n'
     texto_codificado_consulta += f'{tipo_consulta};{x_consulta:0.1f};{y_consulta:0.1f}'\
                                  f';{parcela_circular};{radio_parcela};{rodal_hectareas};{num_pixeles}'\
-                                 f';{layer_raster_XXX_name_txt};{valor_medio};{unidad_dasolidar}'\
+                                 f';{layer_raster_XXX_name_txt};{medicion_dasolidar};{unidad_dasolidar}'\
                                  f';{especie_aportada};{variable_aportada};{medicion_aportada};{unidad_aportada}'\
                                  f';{publicar_datos};{fiabilidad_datos}\n'
-    texto_codificado_consulta += f'{obs_multi_linea_modificado}\n'
+    texto_codificado_consulta += f'{obs_txt_multi_linea_etiquetado}\n'
 
     dict_codificado_consulta = {}
     mis_lineas = texto_codificado_consulta.splitlines()
@@ -2240,21 +2246,17 @@ def pedir_guardar_enviar_data(
         dict_geodata = componer_geodata(
             usuario_actual,
             tipo_consulta,
-            resultado_msg,
             x_consulta,
             y_consulta,
             parcela_circular,
             radio_parcela,
             rodal_hectareas,
             layer_raster_XXX_name_txt,
-            valor_medio,
-            enviar_ok,
-            datos_recibidos,
-            obs_lista_lineas,
-            obs_multi_linea_modificado,
-            dict_nombres_variables_dasometricas,
-            dict_capas_variables_dasometricas,
-            dict_capas_metricas_lidar,
+            medicion_dasolidar,
+            datos_recibidos=datos_recibidos,
+            obs_txt_multi_linea_etiquetado=obs_txt_multi_linea_etiquetado,
+            obs_txt_multi_linea_sinretornos='',
+            obs_lista_lineas_sinetiquetar=obs_lista_lineas_sinetiquetar,  #  No lo uso
         )
 
         guardar_parcela_en_gpkg(
@@ -2302,12 +2304,6 @@ def pedir_guardar_enviar_data(
             f'\nun correo electrónico a {EMAIL_DASOLIDAR1}'
         )
 
-    # def refrescar_canvas():
-    #     """Función para refrescar el canvas."""
-    #     print("Refrescando el canvas...")
-    #     iface.mapCanvas().setLayers(iface.mapCanvas().layers())  # Forzar el refresco de las capas
-    #     iface.mapCanvas().refresh()  # Refresca el canvas
-
     # # Creo un QTimer para que refresque el canvas a las 2 minutos
     # timer = QTimer()
     # timer.setSingleShot(True)
@@ -2340,7 +2336,7 @@ def mostrar_resultado_pedir_datos(
         radio_parcela,
         rodal_hectareas,
         layer_raster_XXX_name_txt,
-        valor_medio,
+        medicion_dasolidar,
         unidad_dasolidar,
         num_pixeles,
         cod_2L_especie,
@@ -2378,14 +2374,13 @@ def mostrar_resultado_pedir_datos(
             dialog.accept(),  #  Cierro el diálogo inmediatamente
             QTimer.singleShot(0, lambda: pedir_guardar_enviar_data(  #  Llamo a la función después de cerrar el diálogo
                 tipo_consulta,
-                resultado_msg,
                 x_consulta,
                 y_consulta,
                 parcela_circular,
                 radio_parcela,
                 rodal_hectareas,
                 layer_raster_XXX_name_txt,
-                valor_medio,
+                medicion_dasolidar,
                 unidad_dasolidar,
                 num_pixeles,
                 cod_2L_especie,
@@ -3223,7 +3218,8 @@ class Dasoraster:
     def identifica_modelo(self):
         # Se deduce la variable dasometrica a la vista de la capa consultada
         if self.layer_raster_XXX_selec_layer.name() in dict_capas_variables_dasometricas.keys():
-            cod_variable_dasometrica = dict_capas_variables_dasometricas[self.layer_raster_XXX_selec_layer.name()]
+            # cod_variable_dasometrica = dict_capas_variables_dasometricas[self.layer_raster_XXX_selec_layer.name()]
+            cod_variable_dasometrica = codifica_variable_dasometrica(self.layer_raster_XXX_selec_layer.name())
         else:
             print(f'betaraster-> self.layer_raster_XXX_selec_layer.name(): {self.layer_raster_XXX_selec_layer.name()}')
             print(f'betaraster-> dict_capas_variables_dasometricas.keys(): {dict_capas_variables_dasometricas.keys()}')
@@ -3529,7 +3525,7 @@ class Dasoraster:
             x_consulta = self.punto_click.x()
             y_consulta = self.punto_click.y()
             if tipo_consulta == 'parcela':
-                valor_medio, num_pixeles, dict_spp_mfe_1, dict_spp_mfe_2 = calcular_valor_medio_parcela_rodal(
+                medicion_dasolidar, num_pixeles, dict_spp_mfe_1, dict_spp_mfe_2 = calcular_valor_medio_parcela_rodal(
                     self.layer_raster_XXX_selec_layer,
                     x_consulta,
                     y_consulta,
@@ -3539,7 +3535,7 @@ class Dasoraster:
                     usar_mfe_raster=usar_mfe_raster,
                 )
             elif tipo_consulta == 'rodal':
-                valor_medio, num_pixeles = 0, 0
+                medicion_dasolidar, num_pixeles = 0, 0
                 rodal_geom = rodal_feat.geometry()
                 dest_crs = QgsCoordinateReferenceSystem('EPSG:25830')
                 if dest_crs == self.layer_crs:
@@ -3553,7 +3549,7 @@ class Dasoraster:
                 if rodal_hectareas > 500:
                     mensaje('Calculando volumen del rodal...', mi_duration=10)
 
-                valor_medio, num_pixeles, dict_spp_mfe_1, dict_spp_mfe_2 = calcular_valor_medio_parcela_rodal(
+                medicion_dasolidar, num_pixeles, dict_spp_mfe_1, dict_spp_mfe_2 = calcular_valor_medio_parcela_rodal(
                     self.layer_raster_XXX_selec_layer,
                     x_consulta,
                     y_consulta,
@@ -3568,7 +3564,7 @@ class Dasoraster:
                 print(f'betaraster-> Revisar este error')
 
             unidad_dasolidar = ''
-            if isinstance(valor_medio, (int, float)):
+            if isinstance(medicion_dasolidar, (int, float)):
                 if (
                     self.layer_raster_XXX_name_txt.upper().startswith('VOL')
                     or self.layer_raster_XXX_name_txt.upper().startswith('VCC')
@@ -3579,20 +3575,20 @@ class Dasoraster:
                         and not 'CRECIM' in self.layer_raster_XXX_name_txt.upper()
                     )
                 ):
-                    valor_medio = int(round(valor_medio))
+                    medicion_dasolidar = int(round(medicion_dasolidar))
                     unidad_dasolidar = 'm3/ha'
                 elif (
                     self.layer_raster_XXX_name_txt.upper().startswith('BA')
                     or self.layer_raster_XXX_name_txt.upper().startswith('BIO')
                     or 'BIOMASA' in self.layer_raster_XXX_name_txt.upper()
                 ):
-                    valor_medio = int(round(valor_medio))
+                    medicion_dasolidar = int(round(medicion_dasolidar))
                     unidad_dasolidar = 't/ha'
                 elif (
                     self.layer_raster_XXX_name_txt.upper().startswith('ALT')
                     or 'ALTURA' in self.layer_raster_XXX_name_txt.upper()
                 ):
-                    valor_medio = round(valor_medio, 1)
+                    medicion_dasolidar = round(medicion_dasolidar, 1)
                     unidad_dasolidar = 'm'
                 elif (
                     self.layer_raster_XXX_name_txt.upper().startswith('COB')
@@ -3600,29 +3596,29 @@ class Dasoraster:
                     or 'CUBIERTA' in self.layer_raster_XXX_name_txt.upper()
                     or 'FRACCION' in self.layer_raster_XXX_name_txt.upper()
                 ):
-                    valor_medio = int(round(valor_medio))
+                    medicion_dasolidar = int(round(medicion_dasolidar))
                     unidad_dasolidar = '%'
                 elif (
                     self.layer_raster_XXX_name_txt.upper().startswith('AB')
                     or 'BASIMETRICA' in self.layer_raster_XXX_name_txt.upper()
                 ):
-                    valor_medio = round(valor_medio, 1)
+                    medicion_dasolidar = round(medicion_dasolidar, 1)
                     unidad_dasolidar = 'm2/ha'
                 elif (
                     self.layer_raster_XXX_name_txt.upper().startswith('IAVC')
                     or self.layer_raster_XXX_name_txt.upper().startswith('CRE')
                     or 'CRECIM' in self.layer_raster_XXX_name_txt.upper()
                 ):
-                    valor_medio = round(valor_medio, 2)
+                    medicion_dasolidar = round(medicion_dasolidar, 2)
                     unidad_dasolidar = 'm3/ha.año'
                 else:
-                    valor_medio = round(valor_medio, 2)
+                    medicion_dasolidar = round(medicion_dasolidar, 2)
                     unidad_dasolidar = ''
             else:
-                valor_medio = -1
+                medicion_dasolidar = -1
 
-            # if math.isnan(valor_medio):
-            if np.isnan(valor_medio):
+            # if math.isnan(medicion_dasolidar):
+            if np.isnan(medicion_dasolidar):
                 iface.messageBar().pushMessage(
                     title='dasoraster',
                     text=f'La capa activa no se puede consultar. Activa una capa ráster para poder hacer consultas.',
@@ -3630,7 +3626,7 @@ class Dasoraster:
                     duration=30,
                     level=Qgis.Warning,
                 )
-            elif valor_medio == -1:
+            elif medicion_dasolidar == -1:
                 QMessageBox.information(
                     self.iface.mainWindow(),
                     'Consulta dasolidar: parcela',
@@ -3685,9 +3681,9 @@ class Dasoraster:
                             cod_modelo_txt,
                         )
                     if unidad_dasolidar == 'm3/ha':
-                        resultado_msg += f'\n\nVolumen medio: {valor_medio} {unidad_dasolidar}'
+                        resultado_msg += f'\n\nVolumen medio: {medicion_dasolidar} {unidad_dasolidar}'
                     else:
-                        resultado_msg += f'\n\n{self.layer_raster_XXX_name_txt}: {valor_medio} {unidad_dasolidar}'
+                        resultado_msg += f'\n\n{self.layer_raster_XXX_name_txt}: {medicion_dasolidar} {unidad_dasolidar}'
                 elif tipo_consulta == 'rodal':
                     rodal_fid = rodal_feat.id()
                     resultado_msg = ''
@@ -3736,12 +3732,12 @@ class Dasoraster:
                         )
                     if unidad_dasolidar == 'm3/ha':
                         resultado_msg += f'\n\nVolumen de madera:'
-                        valor_total = int(round(valor_medio * rodal_hectareas))
-                        resultado_msg += f'\n    Volumen medio:  {str(valor_medio):>8} {unidad_dasolidar}'
+                        valor_total = int(round(medicion_dasolidar * rodal_hectareas))
+                        resultado_msg += f'\n    Volumen medio:  {str(medicion_dasolidar):>8} {unidad_dasolidar}'
                         resultado_msg += f'\n    Volumen total: {str(valor_total):>8} m3'
                     else:
                         resultado_msg += f'\n\nValor medio de la variable:'
-                        resultado_msg += f'\n    {self.layer_raster_XXX_name_txt}: {valor_medio} {unidad_dasolidar}'
+                        resultado_msg += f'\n    {self.layer_raster_XXX_name_txt}: {medicion_dasolidar} {unidad_dasolidar}'
 
                     if usuario_alfa:
                         resultado_msg += f'\n\nNúmero de pixeles: {num_pixeles}'
@@ -3758,7 +3754,7 @@ class Dasoraster:
                     self.radio_parcela,
                     rodal_hectareas,
                     self.layer_raster_XXX_name_txt,
-                    valor_medio,
+                    medicion_dasolidar,
                     unidad_dasolidar,
                     num_pixeles,
                     cod_2L_especie,

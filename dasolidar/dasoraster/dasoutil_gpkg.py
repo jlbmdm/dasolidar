@@ -17,50 +17,52 @@ from datetime import datetime
 
 from osgeo import ogr, osr
 
+
 driver_gpkg = ogr.GetDriverByName('GPKG')
 
+dict_nombres_variables_dasometricas = {
+    'Volumen de madera (fustes)': 'VCC',
+    'Diámetro medio (cuadrático)': 'DCM',
+    'Número de pies por hectárea (densidad)': 'Npies',
+    'Área basimétrica': 'Abas',
+    'Crecimiento anual en volumen': 'IAVC',
+    'Biomasa aérea': 'BA',
+    'Volumen de leñas': 'VLE',
+    'Altura dominante lidar (es una métrica lidar)': 'Hdom',
+}
+dict_nombres_variables_dasometricas_inverso = {}
+for key, variable_dasometrica in dict_nombres_variables_dasometricas.items():
+    dict_nombres_variables_dasometricas_inverso[variable_dasometrica] = key
+dict_capas_variables_dasometricas = {
+    'VolumenMadera_m3_ha': 'VCC',
+    'DiamMed_cm': 'DCM',
+    'NumPies_ha': 'Npies',
+    'AreaBasimetrica_m2_ha': 'Abas',
+    'CrecimientoVolumenMadera_m3_ha.año': 'IAVC',
+    'BiomasaAerea_t_ha': 'BA',
+    'VolumenLeñas_m3_ha': 'VLE',
+    'AlturaDominanteLidar_m': 'alt95',
+}
+dict_capas_variables_dasometricas_inverso = {}
+for key, variable_dasometrica in dict_capas_variables_dasometricas.items():
+    dict_capas_variables_dasometricas_inverso[variable_dasometrica] = key
+dict_capas_metricas_lidar = {
+    'AlturaDominanteLidar_m': 'alt95',
+    'Cob5m_PRT_PNOA2': 'cob5m',
+    'Cob3m_PRT_PNOA2': 'cob3m',
+    'CobEstr_MidHD_TopHD_TLR_PNOA2': 'c_sup',
+    'CobEstr_200cm_MidHD_TLR_PNOA2': 'c_med',
+    'CobEstr_050cm_200cm_TLR_PNOA2': 'c_inf',
+    'CobEstrDe0025a0150cm_TLR_PNOA2': 'c_st1',
+    'CobEstrDe0150a0250cm_TLR_PNOA2': 'c_st2',
+    'CobEstrDe0250a0500cm_TLR_PNOA2': 'c_st3',
+}
+dict_capas_metricas_lidar_inverso = {}
+for key, variable_dasometrica in dict_capas_metricas_lidar.items():
+    dict_capas_metricas_lidar_inverso[variable_dasometrica] = key
 
-def componer_geodata(
-        usuario_actual,
-        tipo_consulta,
-        resultado_msg,
-        x_consulta,
-        y_consulta,
-        parcela_circular,
-        radio_parcela,
-        rodal_hectareas,
-        layer_raster_XXX_name_txt,
-        valor_medio,
-        enviar_ok,
-        datos_recibidos,
-        obs_lista_lineas,
-        obs_multi_linea_modificado,
-        dict_nombres_variables_dasometricas,
-        dict_capas_variables_dasometricas,
-        dict_capas_metricas_lidar,
-    ):
-    hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
-    ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
-    [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = datos_recibidos
 
-    observaciones = ''
-    for num_linea, mi_linea in enumerate(obs_multi_linea_modificado):
-        # list_linea = str(mi_linea.split(';')[2:])
-        # txt_linea = ''
-        # for t_linea in list_linea:
-        #     txt_linea += t_linea.replace('\r\n', ' ').replace('\n', ' ')
-        if len(mi_linea) > 5 and mi_linea[5] == ';':
-            txt_linea = mi_linea[6:].replace('\r\n', ' -/- ').replace('\n', ' -/- ')
-        elif len(mi_linea) > 7:
-            txt_linea = mi_linea[7:].replace('\r\n', ' -/- ').replace('\n', ' -/- ')
-        else:
-            txt_linea = mi_linea.replace('\r\n', ' -/- ').replace('\n', ' -/- ')
-        if ' -/- ' in txt_linea:
-            observaciones += txt_linea
-        else:
-            observaciones += f'{txt_linea} -/- '
-    observaciones = observaciones.replace('\r\n', ' -/- ').replace('\n', ' -/- ')
-
+def codifica_variable_dasometrica(variable_aportada):
     if variable_aportada in dict_nombres_variables_dasometricas:
         cod_variable_dasometrica = dict_nombres_variables_dasometricas[variable_aportada]
     elif variable_aportada in dict_capas_variables_dasometricas:
@@ -69,6 +71,48 @@ def componer_geodata(
         cod_variable_dasometrica = dict_capas_metricas_lidar[variable_aportada]
     else:
         cod_variable_dasometrica = variable_aportada
+    return cod_variable_dasometrica
+
+
+def componer_geodata(
+        usuario_actual,
+        tipo_consulta,
+        x_consulta,
+        y_consulta,
+        parcela_circular,
+        radio_parcela,
+        rodal_hectareas,
+        layer_raster_XXX_name_txt,
+        medicion_dasolidar,
+        datos_recibidos='',
+        obs_txt_multi_linea_etiquetado='',
+        obs_txt_multi_linea_sinretornos='',
+        obs_lista_lineas_sinetiquetar=[],  #  No lo uso
+    ):
+    hoy_AAAAMMDD = datetime.fromtimestamp(time.time()).strftime('%Y%m%d')
+    ahora_HHMMSS = datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')
+    [especie_aportada, variable_aportada, medicion_aportada, unidad_aportada, publicar_datos, fiabilidad_datos] = datos_recibidos
+
+    cod_variable_dasometrica = codifica_variable_dasometrica(variable_aportada)
+
+    if not obs_txt_multi_linea_sinretornos:
+        obs_txt_multi_linea_sinretornos = ''
+        for num_linea, mi_linea in enumerate(obs_txt_multi_linea_etiquetado):
+            # list_linea = str(mi_linea.split(';')[2:])
+            # txt_linea = ''
+            # for t_linea in list_linea:
+            #     txt_linea += t_linea.replace('\r\n', ' ').replace('\n', ' ')
+            if len(mi_linea) > 5 and mi_linea[5] == ';':
+                txt_linea = mi_linea[6:].replace('\r\n', ' -/- ').replace('\n', ' -/- ')
+            elif len(mi_linea) > 7:
+                txt_linea = mi_linea[7:].replace('\r\n', ' -/- ').replace('\n', ' -/- ')
+            else:
+                txt_linea = mi_linea.replace('\r\n', ' -/- ').replace('\n', ' -/- ')
+            if ' -/- ' in txt_linea:
+                obs_txt_multi_linea_sinretornos += txt_linea
+            else:
+                obs_txt_multi_linea_sinretornos += f'{txt_linea} -/- '
+        obs_txt_multi_linea_sinretornos = obs_txt_multi_linea_sinretornos.replace('\r\n', ' -/- ').replace('\n', ' -/- ')
 
     dict_geodata = {
         'x_parcela': float(x_consulta),
@@ -79,9 +123,9 @@ def componer_geodata(
         'UnidadAportada': unidad_aportada,
         'EspecieAportada': especie_aportada[-3:-1],
         'CapaDasolidar': layer_raster_XXX_name_txt,
-        'MedicionDasolidar': float(valor_medio),
+        'MedicionDasolidar': float(medicion_dasolidar),
         'fiabilidad_datos': int(fiabilidad_datos),
-        'Observaciones': observaciones,
+        'Observaciones': obs_txt_multi_linea_sinretornos,
     }
     # if medicion_aportada.isdigit(): -> no conisdera digit el . y ,
     # En origen es texto; admito decimales con '.' y con ',' 
