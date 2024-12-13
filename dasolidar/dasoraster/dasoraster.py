@@ -304,6 +304,10 @@ VERBOSE = False
 UNIDAD_V_PATH = 'V:/MA_SCAYLE_VueloLidar'
 MENSAJES_PATH = os.path.join(UNIDAD_V_PATH, 'dasoraster')
 
+VIDEOS_PATH = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
+ICONOS_PATH = os.path.join(PLUGIN_DIR, 'resources/images')
+print(f'\nbetaraster-> ICONOS_PATH: {ICONOS_PATH}')
+
 
 aux_path_new = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux'
 scripts_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\scripts'
@@ -2408,8 +2412,7 @@ def mostrarVideoTip(
         mi_boton=None,
         videoTip_filename=''
     ):
-    videotips_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
-    videoTip_filepath = os.path.join(videotips_path, videoTip_filename)
+    videoTip_filepath = os.path.join(VIDEOS_PATH, videoTip_filename)
     if videoTip_filename and os.path.exists(videoTip_filepath):
         os.startfile(videoTip_filepath)
 
@@ -3812,19 +3815,18 @@ class Dasoraster:
         print(f'betaraster-> Respuesta: {rpta_ok.returncode}')
 
     def ayudas_dasolidar(self):
-        videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
         dialog = QDialog()
         dialog.setWindowTitle("Ayudas Dasolidar")
         
         # Crear un layout vertical
         layout = QHBoxLayout(dialog)
-
         # Datos de los botones: (icono, texto del botón, pista)
         botones_data = [
-            (os.path.join(videos_path, 'boton_videos.jpg'), 'Videos', 'Tutoriales en video.', self.mostrar_videos),
-            (os.path.join(videos_path, 'boton_ayudas.jpg'), 'Guia', 'Infograma con una guia rápida de primeros pasos.', self.guia_rapida_dasolidar),
-            (os.path.join(videos_path, 'boton_bombilla.webp'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
-            (os.path.join(videos_path, 'boton_manual.jpg'), 'Manual', 'Manual de consulta.', self.manual_dasolidar),
+            (os.path.join(ICONOS_PATH, 'boton_videos.jpg'), 'Videos', 'Tutoriales en video.', self.mostrar_videos),
+            (os.path.join(ICONOS_PATH, 'boton_ayudas.jpg'), 'Guia', 'Infograma con una guia rápida de primeros pasos.', self.guia_rapida_dasolidar),
+            # (os.path.join(ICONOS_PATH, 'boton_bombilla.webp'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
+            (os.path.join(ICONOS_PATH, 'boton_bombilla.png'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
+            (os.path.join(ICONOS_PATH, 'boton_manual.png'), 'Manual', 'Manual de consulta.', self.manual_dasolidar),
         ]
         # Crear y añadir botones al layout
         for icono, texto, pista, funcion in botones_data:
@@ -3847,7 +3849,7 @@ class Dasoraster:
 
         # # Botón 1: Icono relacionado con los videos
         # boton_videos = QPushButton("Videos")
-        # boton_videos.setIcon(QIcon(os.path.join(videos_path, 'boton_videos.jpg')))
+        # boton_videos.setIcon(QIcon(os.path.join(ICONOS_PATH, 'boton_videos.jpg')))
         # boton_videos.setIconSize(QSize(150, 150))
         # boton_videos.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
         # boton_videos.setToolTip('Tutoriales en video.')  # Establecer el texto explicativo al pasar el cursor
@@ -3863,7 +3865,7 @@ class Dasoraster:
 
         # # Botón 2: Otro botón (puedes personalizarlo)
         # boton_ayuda = QPushButton("Guia rápida y consejos")
-        # boton_ayuda.setIcon(QIcon(os.path.join(videos_path, 'boton_bombilla2.webp')))
+        # boton_ayuda.setIcon(QIcon(os.path.join(ICONOS_PATH, 'boton_bombilla2.webp')))
         # boton_ayuda.setIconSize(QSize(150, 150))
         # boton_ayuda.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
         # boton_ayuda.setToolTip('Guía rápida dasolidar.')  # Establecer el texto explicativo al pasar el cursor
@@ -3879,7 +3881,7 @@ class Dasoraster:
 
         # # Botón 3: Otro botón (puedes personalizarlo)
         # boton_manual = QPushButton("Manual de consulta")
-        # boton_manual.setIcon(QIcon(os.path.join(videos_path, 'boton_manual.jpg')))
+        # boton_manual.setIcon(QIcon(os.path.join(ICONOS_PATH, 'boton_manual.png')))
         # boton_manual.setIconSize(QSize(150, 150))
         # boton_manual.setFixedSize(150, 200)  # Ajustar el tamaño del botón (ancho, alto)
         # boton_manual.setToolTip('Manual de consulta.')  # Establecer el texto explicativo al pasar el cursor
@@ -3902,7 +3904,6 @@ class Dasoraster:
 
     # ==============================================================================
     def mostrar_videos(self):
-        videos_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\otrosRecursos\videoTips'
         # Crear una ventana de diálogo
         dialog = QDialog()
         dialog.setWindowTitle("Selecciona un Video Tip")
@@ -3915,18 +3916,18 @@ class Dasoraster:
 
         # Nombres de los botones y sus imágenes
         video_data = [
-            ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video1.png'), 'Descargar una nube de puntos'),
-            ('VideoTip_descargaLazFiles.mp4', os.path.join(videos_path, 'video2.png'), 'Consultar una variable datométrica en una parcela'),
-            ('Prueba1.mp4', os.path.join(videos_path, 'video3.png'), 'Perfil de la nube de puntos (prueba en formato mp4)'),
-            ('Prueba4.webm', os.path.join(videos_path, 'video4.png'), 'Perfil de la nube de puntos (prueba en formato webm)'),
-            ('VideoTip 5', os.path.join(videos_path, 'video5.png'), 'Descripción del VideoTip 5'),
-            ('VideoTip 6', os.path.join(videos_path, 'video6.png'), 'Descripción del VideoTip 6'),
-            ('VideoTip 7', os.path.join(videos_path, 'video7.png'), 'Descripción del VideoTip 7'),
-            ('VideoTip 8', os.path.join(videos_path, 'video8.png'), 'Descripción del VideoTip 8'),
-            ('VideoTip 9', os.path.join(videos_path, 'video9.png'), 'Descripción del VideoTip 9'),
-            ('VideoTip 10', os.path.join(videos_path, 'video10.png'), 'Descripción del VideoTip 10'),
-            ('VideoTip 11', os.path.join(videos_path, 'video11.png'), 'Descripción del VideoTip 11'),
-            ('VideoTip 12', os.path.join(videos_path, 'video12.png'), 'Descripción del VideoTip 12'),
+            ('VideoTip_descargaLazFiles.mp4', os.path.join(ICONOS_PATH, 'video1.png'), 'Descargar una nube de puntos'),
+            ('VideoTip_descargaLazFiles.mp4', os.path.join(ICONOS_PATH, 'video2.png'), 'Consultar una variable datométrica en una parcela'),
+            ('Prueba1.mp4', os.path.join(ICONOS_PATH, 'video3.png'), 'Perfil de la nube de puntos (prueba en formato mp4)'),
+            ('Prueba4.webm', os.path.join(ICONOS_PATH, 'video4.png'), 'Perfil de la nube de puntos (prueba en formato webm)'),
+            ('VideoTip 5', os.path.join(ICONOS_PATH, 'video5.png'), 'Descripción del VideoTip 5'),
+            ('VideoTip 6', os.path.join(ICONOS_PATH, 'video6.png'), 'Descripción del VideoTip 6'),
+            ('VideoTip 7', os.path.join(ICONOS_PATH, 'video7.png'), 'Descripción del VideoTip 7'),
+            ('VideoTip 8', os.path.join(ICONOS_PATH, 'video8.png'), 'Descripción del VideoTip 8'),
+            ('VideoTip 9', os.path.join(ICONOS_PATH, 'video9.png'), 'Descripción del VideoTip 9'),
+            ('VideoTip 10', os.path.join(ICONOS_PATH, 'video10.png'), 'Descripción del VideoTip 10'),
+            ('VideoTip 11', os.path.join(ICONOS_PATH, 'video11.png'), 'Descripción del VideoTip 11'),
+            ('VideoTip 12', os.path.join(ICONOS_PATH, 'video12.png'), 'Descripción del VideoTip 12'),
         ]
 
         # Añadir botones al layout de cuadrícula
