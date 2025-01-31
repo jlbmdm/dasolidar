@@ -139,7 +139,9 @@ from PyQt5.QtCore import (
     QSettings,
     QSize,
     # QObject,
+    QVariant,
 )
+
 from PyQt5.QtGui import QDoubleValidator
 # Esta clase se importa de from qgis.PyQt.QtGui
 from PyQt5.QtGui import QIcon
@@ -492,8 +494,11 @@ def capa_malla_lasfiles(old=False):
         malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2'
         malla_lazfiles_filename = 'lidar_copc.gpkg'
     else:
-        malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2_02'
-        malla_lazfiles_filename = 'lidar_copc_02.gpkg'
+        # malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2_02'
+        # malla_lazfiles_filename = 'lidar_copc_02.gpkg'
+        malla_lazfiles_tocname = 'cargar_nubeDePuntos_LidarPNOA2'
+        malla_lazfiles_filename = 'lidar_copc_EPSG25830.gpkg'
+
     malla_lazfiles_layername = f'{malla_lazfiles_filename}|layername=copc'
     malla_lazfiles_filepath = os.path.join(aux_path, malla_lazfiles_filename)
     malla_lazfiles_layerpath = os.path.join(aux_path, malla_lazfiles_layername)
@@ -649,16 +654,26 @@ def seleccionar_bloques(
     # request1 = QgsFeatureRequest().setFilterGeometry(transformed_point_geometry)  # Filtrar por geometría del punto
     # selected_features1 = layer_selecionado.getFeatures(request1)
 
-    # Creo un objeto de consulta
-    request = QgsFeatureRequest().setFilterRect(
-        QgsRectangle(
-            punto_elegido.x() + desplazamiento_dcha_abajo - buffer_size,
-            punto_elegido.y() - desplazamiento_dcha_abajo - buffer_size,
-            punto_elegido.x() + desplazamiento_dcha_abajo + buffer_size,
-            punto_elegido.y() - desplazamiento_dcha_abajo + buffer_size
-        )
+    search_rect = QgsRectangle(
+        punto_elegido.x() + desplazamiento_dcha_abajo - buffer_size,
+        punto_elegido.y() - desplazamiento_dcha_abajo - buffer_size,
+        punto_elegido.x() + desplazamiento_dcha_abajo + buffer_size,
+        punto_elegido.y() - desplazamiento_dcha_abajo + buffer_size
     )
-    selected_features = layer_selecionado.getFeatures(request)
+    
+    usar_QgsFeatureRequest = True
+    if usar_QgsFeatureRequest:
+        # Creo un objeto de consulta
+        request = QgsFeatureRequest().setFilterRect(search_rect)
+        selected_features = layer_selecionado.getFeatures(request)
+    else:
+        # Obtener todas las características de la capa
+        all_features = layer_selecionado.getFeatures()
+        # Filtrar las características que intersectan con el rectángulo
+        selected_features = [feature for feature in all_features if feature.geometry().intersects(search_rect)]
+        num_elements = len(selected_features)
+        print(f'betaraster-> Número de elementos seleccionados: {num_elements}')
+
     # print(f'betaraster-> selected_features de tipo: {type(selected_features)}. isValid: {selected_features.isValid()}')
     # print(dir(selected_features))
     # ['close', 'compileFailed', 'compileStatus', 'isClosed', 'isValid', 'nextFeature', 'rewind']
@@ -2835,9 +2850,12 @@ class Dasoraster:
     ):
         self.boton_click = boton_click
         self.punto_click = punto_click
-        punto_click_geom = QgsPointXY(punto_click.x(), punto_click.y())
+        punto_click_pointXY = QgsPointXY(punto_click.x(), punto_click.y())
+        punto_click_geom = QgsGeometry.fromPointXY(punto_click_pointXY)
 
         print(f'betaraster-> punto_click 1: ({type(punto_click)}): {punto_click}')  #  (<class 'qgis._core.QgsPointXY'>): <QgsPointXY: POINT(260290 4739779)>
+        print(f'betaraster-> punto_click 2: ({type(punto_click_pointXY)}): {punto_click_pointXY}')
+        print(f'betaraster-> punto_click 3: ({type(punto_click_geom)}): {punto_click_geom}')
         # Podría usar el parametro boton_click para diferenciar entre diferentes tipos de clics si fuera necesario
 
         # Verifico si está dentro de CyL
@@ -2931,12 +2949,20 @@ class Dasoraster:
             num_features = len(features_list)
             print(f'betaraster-> Número de poligonos seleccionados-> {num_features}')
             if num_features == 0:
-                resultado_msg = f'La capa consultada ({self.layer_xxxxx_yyyyvectorlayer.name()}) no tiene ningún polígono en ese punto'
+                if self.perimetro_ok and not self.perimetro_cyl.contains(punto_click_geom):
+                    resultado_msg = f'La capa consultada ({self.layer_xxxxx_yyyyvectorlayer.name()}) no tiene ningún polígono en ese punto porque está fuera de Castilla y León'
+                else:
+                    resultado_msg = f'La capa consultada ({self.layer_xxxxx_yyyyvectorlayer.name()}) no tiene ningún polígono en ese punto: revisar si está fuera del perímetro de la capa consultada'
                 QMessageBox.information(
                     self.iface.mainWindow(),
                     f'Consulta dasolidar: {tipo_consulta}',
                     resultado_msg,
                 )
+            elif num_features > 1:
+                for nfeat, feature in enumerate(features_list):
+                    print(f'betaraster-> {nfeat} -> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
+                    sw_h29h30_ok = feature['lasFileHD']
+                    print(f'          -> sw_h29h30_ok: {sw_h29h30_ok}')
 
             for feature in features_list:
                 if tipo_consulta == 'lasfile':
@@ -2958,7 +2984,23 @@ class Dasoraster:
                     copc_SW_value = feature['COPC_SW']
                     print(f'betaraster-> copc_value {type(copc_1_value)}: {copc_1_value}')
                     print(f'          -> copc_SW_value: {copc_SW_value}')
-                    if not type(copc_1_value) == str:
+                    print(f'betaraster-> copc_1_value -> ({type(copc_1_value)}): {copc_1_value}')
+                    if copc_1_value is None:
+                        print(f'betaraster-> copc_1_value es None: no hay copc en ese bloque')
+                    elif type(copc_1_value) == QVariant:
+                        print(f'betaraster-> copc_1_value es de tipo PyQt5.QtCore.QVariant')
+                        if self.perimetro_ok and not self.perimetro_cyl.contains(punto_click_geom):
+                            resultado_msg = f'No se dispone del fichero copc correspondiente a este bloque (está fuera del perímetro de Castilla y León y del margen volado).'
+                        else:
+                            resultado_msg = f'No se dispone del fichero copc correspondiente a este bloque (son pocos los que faltan; este es uno de ellos).'
+                        QMessageBox.information(
+                            self.iface.mainWindow(),
+                            f'Consulta dasolidar: {tipo_consulta}',
+                            resultado_msg,
+                        )
+
+                    elif not type(copc_1_value) == str:
+                        print(f'betaraster-> copc_1_value -> {type(copc_1_value)}')
                         iface.messageBar().pushMessage(
                             title='dasoraster',
                             text=f'Aviso: código pendiente de revisar. Informar de este aviso al autor de este complemento ({EMAIL_DASOLIDAR1}).',
