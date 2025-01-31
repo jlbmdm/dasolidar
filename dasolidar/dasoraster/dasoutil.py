@@ -2,7 +2,14 @@
 import os
 import math
 import ast
-import pandas as pd
+try:
+    import pandas as pd
+    pandas_ok = True
+except:
+    pandas_ok = False
+# pandas_ok = False
+# print(f'\n------->pandas_ok: {pandas_ok}')
+
 # import sys
 # import subprocess
 
@@ -221,6 +228,10 @@ def leer_csv_codigos1():
 
 
 def leer_csv_codigos3():
+    dict_cod_modelo = {}
+    dict_zonas = {}
+    dict_fechas = {}
+    lista_dict_codigos_estratos = (dict_zonas, dict_fechas, dict_cod_modelo)
     ruta_codelists_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\modelos&ajustes\codelist'
     ruta_codelists_local = os.path.join(PLUGIN_DIR, 'resources/data/codelist')
     rutas_codelists = [ruta_codelists_red, ruta_codelists_local]
@@ -229,21 +240,24 @@ def leer_csv_codigos3():
         cod_modelo_file_name = os.path.join(ruta_codelists, 'ajustesLidar_usados_formateadosPython.csv')
         if os.path.exists(cod_modelo_file_name):
             break
-    cod_modelo_df = pd.read_csv(
-        cod_modelo_file_name,
-        header=0,
-        sep=SEP_CSV_INPUT,
-        encoding='utf-8'
-    )
-    dict_cod_modelo = {}
-    if os.path.exists(cod_modelo_file_name):
-        campo_modelo_num = 'index'
-        campo_modelo_txt = 'id_ajuste'
-        campo_variable_explicada = 'variable_daso'
-        campo_especie_asimilada_num = 'especie'
-        campo_estratozona_txt = 'estrato'
-        if VERBOSE:
-            print(f'\nLista valores de {cod_modelo_file_name}')
+    if not os.path.exists(cod_modelo_file_name):
+        return lista_dict_codigos_estratos
+
+    print(f'\nbetaraster-> pandas_ok: {pandas_ok}')
+    if VERBOSE:
+        print(f'\nLista valores de {cod_modelo_file_name}')
+    campo_modelo_num = 'index'
+    campo_modelo_txt = 'id_ajuste'
+    campo_variable_explicada = 'variable_daso'
+    campo_especie_asimilada_num = 'especie'
+    campo_estratozona_txt = 'estrato'
+    if pandas_ok:
+        cod_modelo_df = pd.read_csv(
+            cod_modelo_file_name,
+            header=0,
+            sep=SEP_CSV_INPUT,
+            encoding='utf-8'
+        )
         for index, mi_row in cod_modelo_df.iterrows():
             if VERBOSE:
                 print(f"índice: {index}, {mi_row[campo_modelo_num]} {mi_row[campo_modelo_txt]}")
@@ -265,54 +279,143 @@ def leer_csv_codigos3():
                         mi_row[campo_estratozona_txt],
                     ]
         # print('dict_cod_modelo', dict_cod_modelo)
+    else:
+        # Sustituyo el dataframe por una lista de dicts
+        cod_modelo_df = []
+        with open(cod_modelo_file_name, mode='r', encoding='utf-8') as file:
+            headers = file.readline().strip().split(SEP_CSV_INPUT)
+            for line in file:
+                values = line.strip().split(SEP_CSV_INPUT)
+                # row_dict = {headers[i]: values[i] for i in range(len(headers))}
+                row_dict = {}
+                for i in range(len(headers)):
+                    if i < len(values):
+                        row_dict[headers[i]] = values[i]
+                    else:
+                        row_dict[headers[i]] = ''
+                cod_modelo_df.append(row_dict)
+        for index, mi_row in enumerate(cod_modelo_df):
+            if VERBOSE:
+                print(f"índice: {index}, {mi_row[campo_modelo_num]} {mi_row[campo_modelo_txt]}")
+            mi_cod_num_modelo = mi_row[campo_modelo_num]
+            if mi_cod_num_modelo in dict_cod_modelo.keys():
+                dict_cod_modelo[mi_cod_num_modelo].append(
+                    [
+                        mi_row[campo_modelo_txt],
+                        mi_row[campo_variable_explicada],
+                        mi_row[campo_especie_asimilada_num],
+                        mi_row[campo_estratozona_txt],
+                    ]
+                )
+            else:
+                dict_cod_modelo[mi_cod_num_modelo] = [
+                        mi_row[campo_modelo_txt],
+                        mi_row[campo_variable_explicada],
+                        mi_row[campo_especie_asimilada_num],
+                        mi_row[campo_estratozona_txt],
+                    ]
+
     # =========================================================================
     for ruta_codelists in rutas_codelists:
         zonas_lidar_file_name = os.path.join(ruta_codelists, 'zonasLidar.csv')
         if os.path.exists(zonas_lidar_file_name):
             break
-    dict_zonas = {}
-    if os.path.exists(zonas_lidar_file_name):
+    if not os.path.exists(zonas_lidar_file_name):
+        return lista_dict_codigos_estratos
+
+    campo_estrato_letra = 'EstratoLetra'
+    campo_estrato_nombre = 'EstratoNombre'
+    campo_estrato_numero = 'EstratoNumero'
+    if pandas_ok:
         zonas_lidar_df = pd.read_csv(
             zonas_lidar_file_name,
             header=0,
             sep=SEP_CSV_INPUT,
             encoding='utf-8'
         )
-        campo_estrato_letra = 'EstratoLetra'
-        campo_estrato_nombre = 'EstratoNombre'
-        campo_estrato_numero = 'EstratoNumero'
         if VERBOSE:
             print(f'\nLista valores de {zonas_lidar_file_name}')
         for index, mi_row in zonas_lidar_df.iterrows():
             if VERBOSE:
                 print(f"índice: {index}, {mi_row[campo_estrato_letra]} {mi_row[campo_estrato_nombre]} {ast.literal_eval(mi_row[campo_estrato_numero])}")
-            dict_zonas[mi_row[campo_estrato_letra]] = [mi_row[campo_estrato_nombre], mi_row[campo_estrato_letra], ast.literal_eval(mi_row[campo_estrato_numero])]
+            if campo_estrato_letra in mi_row.keys() and campo_estrato_nombre in mi_row.keys() and campo_estrato_numero in mi_row.keys():
+                dict_zonas[mi_row[campo_estrato_letra]] = [mi_row[campo_estrato_nombre], mi_row[campo_estrato_letra], ast.literal_eval(mi_row[campo_estrato_numero])]
+    else:
+        # Sustituyo el dataframe por una lista de dicts
+        zonas_lidar_df = []
+        with open(zonas_lidar_file_name, mode='r', encoding='utf-8') as file:
+            headers = file.readline().strip().split(SEP_CSV_INPUT)
+            for line in file:
+                values = line.strip().split(SEP_CSV_INPUT)
+                # row_dict = {headers[i]: values[i] for i in range(len(headers))}
+                row_dict = {}
+                for i in range(len(headers)):
+                    if i < len(values):
+                        row_dict[headers[i]] = values[i]
+                    else:
+                        row_dict[headers[i]] = ''
+                zonas_lidar_df.append(row_dict)
+        for index, mi_row in enumerate(zonas_lidar_df):
+            if VERBOSE:
+                print(f"índice: {index}, {mi_row[campo_estrato_letra]} {mi_row[campo_estrato_nombre]} {ast.literal_eval(mi_row[campo_estrato_numero])}")
+            if campo_estrato_letra in mi_row.keys() and campo_estrato_nombre in mi_row.keys() and campo_estrato_numero in mi_row.keys():
+                dict_zonas[mi_row[campo_estrato_letra]] = [mi_row[campo_estrato_nombre], mi_row[campo_estrato_letra], ast.literal_eval(mi_row[campo_estrato_numero])]
+
     # =========================================================================
     for ruta_codelists in rutas_codelists:
         fecha_lidar_file_name = os.path.join(ruta_codelists, 'fechaLidar.csv')
         if os.path.exists(fecha_lidar_file_name):
             break
-    fecha_lidar_df = pd.read_csv(
-        fecha_lidar_file_name,
-        header=0,
-        sep=SEP_CSV_INPUT,
-        encoding='utf-8'
-    )
-    dict_fechas = {}
-    if os.path.exists(fecha_lidar_file_name):
-        campo_fecha_num = 'fechaNum'
-        campo_fecha_texto = 'fechaTexto'
-        if VERBOSE:
-            print(f'\nLista valores de {fecha_lidar_file_name}')
+    if not os.path.exists(fecha_lidar_file_name):
+        return lista_dict_codigos_estratos
+
+    if VERBOSE:
+        print(f'\nLista valores de {fecha_lidar_file_name}')
+    campo_fecha_num = 'fechaNum'
+    campo_fecha_texto = 'fechaTexto'
+    if pandas_ok:
+        fecha_lidar_df = pd.read_csv(
+            fecha_lidar_file_name,
+            header=0,
+            sep=SEP_CSV_INPUT,
+            encoding='utf-8'
+        )
         for index, mi_row in fecha_lidar_df.iterrows():
             if VERBOSE:
                 print(f"índice: {index}, {mi_row[campo_fecha_num]} {mi_row[campo_fecha_texto]}")
-            cod_fecha_lidar = mi_row[campo_fecha_texto][: 7]
-            if cod_fecha_lidar in dict_fechas.keys():
-                dict_fechas[cod_fecha_lidar].append(mi_row[campo_fecha_num])
-            else:
-                dict_fechas[cod_fecha_lidar] = [mi_row[campo_fecha_num]]
+            if campo_fecha_texto in mi_row.keys() and campo_fecha_num in mi_row.keys():
+                cod_fecha_lidar = mi_row[campo_fecha_texto][: 7]
+                if cod_fecha_lidar in dict_fechas.keys():
+                    dict_fechas[cod_fecha_lidar].append(mi_row[campo_fecha_num])
+                else:
+                    dict_fechas[cod_fecha_lidar] = [mi_row[campo_fecha_num]]
         # print('dict_fechas', dict_fechas)
+    else:
+        # Sustituyo el dataframe por una lista de dicts
+        fecha_lidar_df = []
+        with open(zonas_lidar_file_name, mode='r', encoding='utf-8') as file:
+            headers = file.readline().strip().split(SEP_CSV_INPUT)
+            for line in file:
+                values = line.strip().split(SEP_CSV_INPUT)
+                # row_dict = {headers[i]: values[i] for i in range(len(headers))}
+                row_dict = {}
+                for i in range(len(headers)):
+                    if i < len(values):
+                        row_dict[headers[i]] = values[i]
+                    else:
+                        row_dict[headers[i]] = ''
+                fecha_lidar_df.append(row_dict)
+        for index, mi_row in enumerate(fecha_lidar_df):
+            if VERBOSE:
+                print(f"índice: {index}, {mi_row[campo_fecha_num]} {mi_row[campo_fecha_texto]}")
+            if campo_fecha_texto in mi_row.keys() and campo_fecha_num in mi_row.keys():
+                cod_fecha_lidar = mi_row[campo_fecha_texto][: 7]
+                if cod_fecha_lidar in dict_fechas.keys():
+                    dict_fechas[cod_fecha_lidar].append(mi_row[campo_fecha_num])
+                else:
+                    dict_fechas[cod_fecha_lidar] = [mi_row[campo_fecha_num]]
+        # print('dict_fechas', dict_fechas)
+
     # =========================================================================
     lista_dict_codigos_estratos = (dict_zonas, dict_fechas, dict_cod_modelo)
     return lista_dict_codigos_estratos

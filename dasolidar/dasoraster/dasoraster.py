@@ -28,11 +28,15 @@ import sys
 import math
 import time
 from datetime import datetime
+import json
 import platform
 import subprocess
-import pandas as pd
-
 import numpy as np
+# try:
+#     import pandas as pd
+#     pandas_ok = True
+# except:
+#     pandas_ok = False
 import win32com.client
 import pythoncom
 # from osgeo import gdal
@@ -251,7 +255,7 @@ except:
         duration=30,
         level=Qgis.Warning,
     )
-    sys.exit(1)
+    # sys.exit(1)
 # usuario_actual = identificar_usuario()
 
 try:
@@ -948,7 +952,12 @@ def capa_vector_activa():
 
 # ç
 class VentanaBienvenidaGuiaRapida(QDialog):
-    def __init__(self, parent=None, intro_dasolidar_html_filepath=''):
+    def __init__(
+            self,
+            parent=None,
+            intro_dasolidar_html_filepath='',
+            mostrar_consejo=False,
+        ):
         super().__init__(parent)
         self.ok = True
 
@@ -2422,6 +2431,68 @@ def mostrarVideoTip(
             # self.videoTip02.clicked.connect('Prueba4.webm')
 
 
+class ConsejoDialog(QDialog):
+    def __init__(self, consejos, indice_actual=0):
+        super().__init__()
+        self.consejos = consejos
+        self.indice_actual = indice_actual
+
+        self.setWindowTitle("Consejos de Uso")
+        self.resize(300, 150)  # Ajustar el tamaño de la ventana
+        self.center()  # Centrar la ventana
+
+        layout = QVBoxLayout()
+
+        self.label = QLabel(self.consejos[self.indice_actual])
+        layout.addWidget(self.label)
+
+        # Crear un layout horizontal para los botones
+        button_layout = QHBoxLayout()
+
+        self.boton_anterior = QPushButton("Anterior")
+        self.boton_anterior.clicked.connect(self.mostrar_consejo_anterior)
+        button_layout.addWidget(self.boton_anterior)
+
+        self.boton_siguiente = QPushButton("Siguiente")
+        self.boton_siguiente.clicked.connect(self.mostrar_siguiente_consejo)
+        button_layout.addWidget(self.boton_siguiente)
+
+        self.boton_no_mas = QPushButton("No mostrar más")
+        self.boton_no_mas.clicked.connect(self.no_mostrar_mas)
+        button_layout.addWidget(self.boton_no_mas)
+
+        # Añadir el layout de botones al layout principal
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = self.screen().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def mostrar_siguiente_consejo(self):
+        self.indice_actual += 1
+        if self.indice_actual < len(self.consejos):
+            self.label.setText(self.consejos[self.indice_actual])
+        else:
+            QMessageBox.information(self, "Fin de Consejos", "No hay más consejos para mostrar.")
+            self.close()
+
+    def mostrar_consejo_anterior(self):
+        if self.indice_actual > 0:
+            self.indice_actual -= 1
+            self.label.setText(self.consejos[self.indice_actual])
+        else:
+            QMessageBox.information(self, "Inicio", "Ya estás en el primer consejo.")
+
+    def no_mostrar_mas(self):
+        # Guardar el índice actual en la configuración
+        QSettings().setValue('dasoraster/indice_consejo', self.indice_actual)
+        self.close()  # Cerrar la ventana
+
+
 class Dasoraster:
     '''QGIS Plugin Implementation.'''
 
@@ -2465,6 +2536,8 @@ class Dasoraster:
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
 
+        self.cargar_perimetro_cyl()
+
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Dasoraster')
@@ -2480,6 +2553,29 @@ class Dasoraster:
         # Must be set in initGui() to survive plugin reloads
         self.first_start_run = None
         self.first_start_consulta_rodal = None
+
+
+    def cargar_perimetro_cyl(self):
+        # Ruta al shapefile
+        shapefile_path = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\qgis\cartoBasica\divAdm\auton_ign_e25_etrs89.shp'
+        
+        # Cargar la capa
+        self.perimetro_cyl_layer = QgsVectorLayer(shapefile_path, "Perímetro CyL", "ogr")
+        
+        # Verificar si la capa se ha cargado correctamente
+        if not self.perimetro_cyl_layer.isValid():
+            print("Error: La capa no se ha cargado correctamente.")
+            self.perimetro_ok = False
+            return
+        
+        # Extraer la geometría del primer feature
+        # first_feature = self.perimetro_cyl_layer.getFeatures().next()
+        first_feature = next(self.perimetro_cyl_layer.getFeatures())
+        self.perimetro_cyl = first_feature.geometry()
+        self.perimetro_ok = True
+        
+        print("Perímetro de Castilla y León cargado correctamente.")
+
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -2739,8 +2835,18 @@ class Dasoraster:
     ):
         self.boton_click = boton_click
         self.punto_click = punto_click
+        punto_click_geom = QgsPointXY(punto_click.x(), punto_click.y())
+
         print(f'betaraster-> punto_click 1: ({type(punto_click)}): {punto_click}')  #  (<class 'qgis._core.QgsPointXY'>): <QgsPointXY: POINT(260290 4739779)>
         # Podría usar el parametro boton_click para diferenciar entre diferentes tipos de clics si fuera necesario
+
+        # Verifico si está dentro de CyL
+        # Suponiendo que self.perimetro_cyl es un objeto QgsGeometry que representa el perímetro de CyL
+        if self.perimetro_ok and not self.perimetro_cyl.contains(punto_click_geom):
+            print('betaraster-> El punto está fuera del perímetro de Castilla y León.')
+            distancia = self.perimetro_cyl.distance(punto_click_geom)
+            if distancia <= 2000:
+                print('betaraster-> Pero está a menos de 2 km')
 
         if tipo_consulta == 'lasfile':
             # Obtengo la capa de nube de puntos (layer_malla_yyyyvectorlayer)
@@ -2808,6 +2914,9 @@ class Dasoraster:
                 print(f'betaraster-> self.escala_deseada si: {self.escala_deseada}')
             else:
                 print(f'betaraster-> self.escala_deseada no: {self.escala_deseada}')
+            print(f'betraster-> Selecionando bloques en la capa: {self.layer_xxxxx_yyyyvectorlayer} ({type(self.layer_xxxxx_yyyyvectorlayer)})')  #  QgsVectorLayer
+            layer_name = self.layer_xxxxx_yyyyvectorlayer.name()
+            print(f'         -> Nombre de la capa: {layer_name}')
             selected_features = seleccionar_bloques(
                 transformed_punto_click,
                 self.layer_xxxxx_yyyyvectorlayer,
@@ -2832,7 +2941,11 @@ class Dasoraster:
             for feature in features_list:
                 if tipo_consulta == 'lasfile':
                     print(f'betaraster-> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
+                    sw_h29h30_ok = feature['lasFileHD']
+                    print(f'          -> sw_h29h30_ok: {sw_h29h30_ok}; num bloques: {len(features_list)}')
                     # Obtener el valor del campo COPC1
+                    if sw_h29h30_ok == 'SW_H29H30_ok' and len(features_list) > 1:
+                        continue
                     copc_1_value = feature['COPC1']
                     copc_2_value = feature['COPC2']
                     copc_any_value = feature['COPC_ANY']
@@ -2844,6 +2957,7 @@ class Dasoraster:
                     copc_SE_value = feature['COPC_SE']
                     copc_SW_value = feature['COPC_SW']
                     print(f'betaraster-> copc_value {type(copc_1_value)}: {copc_1_value}')
+                    print(f'          -> copc_SW_value: {copc_SW_value}')
                     if not type(copc_1_value) == str:
                         iface.messageBar().pushMessage(
                             title='dasoraster',
@@ -3825,7 +3939,7 @@ class Dasoraster:
             (os.path.join(ICONOS_PATH, 'boton_videos.jpg'), 'Videos', 'Tutoriales en video.', self.mostrar_videos),
             (os.path.join(ICONOS_PATH, 'boton_ayudas.jpg'), 'Guia', 'Infograma con una guia rápida de primeros pasos.', self.guia_rapida_dasolidar),
             # (os.path.join(ICONOS_PATH, 'boton_bombilla.webp'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
-            (os.path.join(ICONOS_PATH, 'boton_bombilla.png'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.guia_rapida_dasolidar),
+            (os.path.join(ICONOS_PATH, 'boton_bombilla.png'), 'Consejos', 'Consejos para colaborar con el proyecto dasolidar.', self.consejos_dasolidar),
             (os.path.join(ICONOS_PATH, 'boton_manual.png'), 'Manual', 'Manual de consulta.', self.manual_dasolidar),
         ]
         # Crear y añadir botones al layout
@@ -4035,6 +4149,47 @@ class Dasoraster:
         else:
             if platform.system() == 'Windows':
                 os.startfile(intro_dasolidar_html_filepath)
+
+    # ==============================================================================
+    def consejos_dasolidar(self):
+        ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        consejos_filename = 'listaConsejos.txt'
+        consejos_filepath = os.path.join(ruta_ayudas_red, consejos_filename)
+        if os.path.exists(consejos_filepath):
+            with open(consejos_filepath, 'r') as f:
+                consejos = f.readlines()
+        else:
+            return
+
+        # Cargar el índice guardado
+        settings = QSettings()
+        self.indice_actual = settings.value('dasoraster/indice_consejo', 0, type=int)
+        # if os.path.exists('config.json'):
+        #     with open('config.json', 'r') as f:
+        #         config = json.load(f)
+        #         indice_actual = config.get('indice_consejo', 0)
+        # else:
+        #     indice_actual = 0
+
+        dialogo = ConsejoDialog(consejos, self.indice_actual)
+        dialogo.exec_()
+
+        # ruta_ayudas_red = r'\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\doc\ayudaDasolidar'
+        # consejo_dasolidar_html_filepath = os.path.join(ruta_ayudas_red, 'consejo_dasoLidar.html')
+        # if os.path.exists(consejo_dasolidar_html_filepath):
+        #     dialog = VentanaBienvenidaGuiaRapida(intro_dasolidar_html_filepath=consejo_dasolidar_html_filepath)
+        #     if dialog.ok:
+        #         rpta_ok = dialog.exec_()
+        # else:
+        #     iface.messageBar().pushMessage(
+        #         title='dasoraster',
+        #         text='Consejos dasolidar no disponibles. Puede que no estés trabajando dentro de la intranet de la JCyL o no estés dado de alta en el proyecto dasolidar',
+        #         duration=20,
+        #         level=Qgis.Warning,
+        #     )
+        #     self.ok = False
+        #     return
+
 
     # ==============================================================================
     def manual_dasolidar(self):
