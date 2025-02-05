@@ -888,8 +888,39 @@ def cargar_nube_de_puntos(
                         print(f'betaraster-> Se ha agregado la capa a la leyenda (sin grupo lidarDescargado)')
                     carga_ok = 1
                 else:
-                    print(f'betaraster-> No se ha posiso cargar el lazfile.')
+                    print(f'\nbetaraster-> No se ha podido cargar el lazfile.')
+                    print(f'\tPosibles causas:')
+                    print(f'\t1. Descartado que no esté accesible porque el fichero existe ok. Ruta:')
+                    print(f'\t   {copcLazFile_path_name_ok}')
+                    print(f'\t2. Que el fichero esté corrupto: probar a cargarlo con otra aplicación (como Fugro)')
+                    print(f'\t3. Que el PC no tenga suficiente RAM')
                     carga_ok = 0
+                    try:
+                        import psutil
+                        # Obtener información de la memoria
+                        memoria = psutil.virtual_memory()
+                        # Imprimir información sobre el uso de RAM
+                        print(f'Total RAM: {memoria.total / (1024 ** 2):.2f} MB')
+                        print(f'RAM disponible: {memoria.available / (1024 ** 2):.2f} MB')
+                        print(f'RAM usada: {memoria.used / (1024 ** 2):.2f} MB')
+                        print(f'Porcentaje de RAM usada: {memoria.percent}%')
+                        # Verificar si la RAM disponible es baja
+                        if memoria.available < 500 * 1024 * 1024:  # Menos de 500 MB
+                            print('Advertencia: La RAM disponible es baja. Puede que esto cause problemas al cargar la nube de puntos.')
+                        iface.messageBar().pushMessage(
+                            title='No se ha podido cargar el fichero Lidar.',
+                            text='Es posible que tu PC no tenga suficiente RAM disponible para la carga. Disponible: {memoria.available} MB. Contacta con {EMAIL_DASOLIDAR1}.',
+                            duration=10,
+                            level=Qgis.Warning,
+                        )
+                    except:
+                        print(f'No se ha podido importar psutil.')
+                        iface.messageBar().pushMessage(
+                            title='No se ha podido cargar el fichero Lidar (a pesar de que está disponible para este PC).',
+                            text='Contacta con {EMAIL_DASOLIDAR1}.',
+                            duration=10,
+                            level=Qgis.Warning,
+                        )
         else:
             carga_ok = -1
             if verboseLocal and verboseWarning:
