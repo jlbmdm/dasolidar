@@ -720,9 +720,9 @@ def cargar_nube_de_puntos(
     # print(os.path.exists(copc_1_value4))
     # point_cloud_layer = QgsPointCloudLayer(copc_1_value4, 'Nube de Puntos', 'las')
 
-    verboseBase = False
+    verboseBase = True
     verbosePlus = False
-    verboseDebug = False
+    verboseDebug = True
     verboseWarning = True
 
     copcLazFile_path_name_ok = copc_1_value
@@ -731,6 +731,14 @@ def cargar_nube_de_puntos(
 
     if verboseLocal and verboseDebug:
         print(f'betaraster-> Cuadrante principal y secundario: {cuadrante_1_value} / {cuadrante_2_value}')
+        print(f'betaraster-> copc_1_value:   {copc_1_value}')
+        print(f'betaraster-> copc_2_value:   {copc_2_value}')
+        print(f'betaraster-> copc_any_value: {copc_any_value}')
+        print(f'betaraster-> copc_CE_value:  {copc_CE_value}')
+        print(f'betaraster-> copc_NE_value:  {copc_NE_value}')
+        print(f'betaraster-> copc_NW_value:  {copc_NW_value}')
+        print(f'betaraster-> copc_SE_value:  {copc_SE_value}')
+        print(f'betaraster-> copc_SW_value:  {copc_SW_value}')
     if verboseLocal and verbosePlus:
         if cuadrante_1_value and cuadrante_2_value:
             iface.messageBar().pushMessage(
@@ -789,6 +797,13 @@ def cargar_nube_de_puntos(
             else:
                 copcLazFile_path_name_ok = None
 
+    if verboseLocal and verboseDebug:
+        print(f'betaraster-> copcLazFile_path_name_ok ({type(copcLazFile_path_name_ok)}): {copcLazFile_path_name_ok}')
+        if not copcLazFile_path_name_ok is None and not type(copcLazFile_path_name_ok) == QVariant:
+            try:
+                print(f'betaraster-> Existe el fichero: {os.path.exists(copcLazFile_path_name_ok)}')
+            except:
+                pass
     bloque_ya_descargado = False
     if copcLazFile_path_name_ok:
         if os.path.exists(copcLazFile_path_name_ok):
@@ -2990,19 +3005,24 @@ class Dasoraster:
                     resultado_msg,
                 )
             elif num_features > 1:
+                print(f'betaraster-> Lista de bloques seleccionados:')
                 for nfeat, feature in enumerate(features_list):
                     print(f'betaraster-> {nfeat} -> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
-                    sw_h29h30_ok = feature['lasFileHD']
-                    print(f'          -> sw_h29h30_ok: {sw_h29h30_ok}')
-
+                    cuadrante = feature['cuadrante']
+                    if cuadrante.upper() == 'SW':
+                        sw_h29h30_ok = feature['lasFileHD']
+                        print(f'          -> Valor del campo [sw_h29h30_ok] (solo para SW): {sw_h29h30_ok}')
+            if tipo_consulta == 'lasfile':
+                print(f'betaraster-> Selecionando bloque a descargar:')
             for feature in features_list:
                 if tipo_consulta == 'lasfile':
                     print(f'betaraster-> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
-                    sw_h29h30_ok = feature['lasFileHD']
-                    print(f'          -> sw_h29h30_ok: {sw_h29h30_ok}; num bloques: {len(features_list)}')
-                    # Obtener el valor del campo COPC1
-                    if sw_h29h30_ok == 'SW_H29H30_ok' and len(features_list) > 1:
-                        continue
+                    # Esto era provisional, hasta tanto preparaba el nuevo SW
+                    # sw_h29h30_ok = feature['lasFileHD']
+                    # print(f'          -> sw_h29h30_ok: {sw_h29h30_ok}; num bloques: {len(features_list)}')
+                    # # Obtener el valor del campo COPC1
+                    # if sw_h29h30_ok == 'SW_H29H30_ok' and len(features_list) > 1:
+                    #     continue
                     copc_1_value = feature['COPC1']
                     copc_2_value = feature['COPC2']
                     copc_any_value = feature['COPC_ANY']
@@ -3013,8 +3033,6 @@ class Dasoraster:
                     copc_NW_value = feature['COPC_NW']
                     copc_SE_value = feature['COPC_SE']
                     copc_SW_value = feature['COPC_SW']
-                    print(f'betaraster-> copc_value {type(copc_1_value)}: {copc_1_value}')
-                    print(f'          -> copc_SW_value: {copc_SW_value}')
                     print(f'betaraster-> copc_1_value -> ({type(copc_1_value)}): {copc_1_value}')
                     if copc_1_value is None:
                         print(f'betaraster-> copc_1_value es None: no hay copc en ese bloque')
@@ -3029,7 +3047,6 @@ class Dasoraster:
                             f'Consulta dasolidar: {tipo_consulta}',
                             resultado_msg,
                         )
-
                     elif not type(copc_1_value) == str:
                         print(f'betaraster-> copc_1_value -> {type(copc_1_value)}')
                         iface.messageBar().pushMessage(
