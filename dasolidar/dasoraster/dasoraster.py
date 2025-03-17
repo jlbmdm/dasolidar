@@ -203,7 +203,10 @@ metadata_filepath = os.path.join(ruta_codelists_local1, 'metadata.txt')
 if not os.path.exists(metadata_filepath):
     print(f'betaraster-> No se encuentra: {metadata_filepath}')
     metadata_filepath = os.path.join(ruta_codelists_local2, 'metadata.txt')
-__version__ = '0.0.0'
+
+# ATENCION: actualizar la versión en "D:\_clid\dasolidar\dasolidar\dasoraster\metadata.txt"
+#           y en "\\repoarchivohm.jcyl.red\MADGMNSVPI_SCAYLEVueloLIDAR$\dasoLidar\varios\.aux\versionDasolidar.txt"
+__version__ = '0.1.15'
 if os.path.exists(metadata_filepath):
     metadatos_leidos = False
     try:
@@ -486,6 +489,41 @@ def mensaje(mi_text='', mi_title='dasoraster', mi_showMore=None, mi_duration=15,
             duration=mi_duration,
             level=mi_level,
         )
+
+def obtener_memoria_ram():
+    try:
+        memoria_info1 = os.popen('wmic memorychip get capacity').read().strip().split('\n')
+        # print(f'memoria_info1: {memoria_info1}')
+        memoria_total = sum(int(x) for x in memoria_info1 if x.isdigit())
+    except:
+        memoria_total = -1
+    try:
+        memoria_info2 = os.popen('wmic OS get FreePhysicalMemory').read().strip().split('\n')
+        # print(f'memoria_info2: {memoria_info2}')
+        memoria_libre = sum(int(x) for x in memoria_info2 if x.isdigit()) * 1024
+    except Exception as miError:
+        memoria_libre = -1
+
+    # if type(memoria_total) == int or type(memoria_total) == float:
+    #     print(f'\nmemoria_total ({type(memoria_total)}): {memoria_total / 2**30: 0.1f} GB')
+    # else:
+    #     print(f'\nmemoria_total ({type(memoria_total)}): {memoria_total} ---')
+    # if type(memoria_libre) == int or type(memoria_libre) == float:
+    #     print(f'memoria_libre ({type(memoria_libre)}): {memoria_libre / 2**30: 0.1f} GB')
+    # else:
+    #     print(f'memoria_libre ({type(memoria_libre)}): {memoria_libre} ---')
+
+    # # memoria_info3 = os.popen('powershell -command "Get-WmiObject Win32_OperatingSystem | Select-Object FreePhysicalMemory"').read().strip().split('\n')
+    # memoria_info3 = os.popen('powershell -command "Get-WmiObject Win32_OperatingSystem | Select-Object FreePhysicalMemory"').read()
+    # print(f'\nmemoria_info3: {memoria_info3}')
+    # memoria_info3_ = memoria_info3.strip().split('\n')
+    # print(f'\nmemoria_info3_: {memoria_info3_}')
+    # try:
+    #     memoria_libre = int(memoria_info3[0]) * 1024  # Convertir a bytes
+    # except:
+    #     memoria_libre = -1  # Manejo de error si no se puede convertir
+    return memoria_total, memoria_libre
+
 
 
 def capa_malla_lasfiles(old=False):
@@ -911,36 +949,52 @@ def cargar_nube_de_puntos(
                     print(f'\t3. Que el PC no tenga suficiente RAM')
                     carga_ok = 0
                     try:
-                        import psutil
-                        # Obtener información de la memoria
-                        memoria = psutil.virtual_memory()
-                        # Imprimir información sobre el uso de RAM
-                        print(f'Total RAM: {memoria.total / (1024 ** 2):.2f} MB')
-                        print(f'RAM disponible: {memoria.available / (1024 ** 2):.2f} MB')
-                        print(f'RAM usada: {memoria.used / (1024 ** 2):.2f} MB')
-                        print(f'Porcentaje de RAM usada: {memoria.percent}%')
-                        # Verificar si la RAM disponible es baja
-                        if memoria.available < 500 * 1024 * 1024:  # Menos de 500 MB
-                            print('Advertencia: La RAM disponible es baja. Puede que esto cause problemas al cargar la nube de puntos.')
-                        iface.messageBar().pushMessage(
-                            title='No se ha podido cargar el fichero Lidar.',
-                            text='Es posible que tu PC no tenga suficiente RAM disponible para la carga. Disponible: {memoria.available} MB. Contacta con {EMAIL_DASOLIDAR1}.',
-                            duration=10,
-                            level=Qgis.Warning,
-                        )
-                    except:
-                        print(f'No se ha podido importar psutil.')
+                        memoria_total, memoria_libre = obtener_memoria_ram()
+                        texto_memoria = f'  Memoria total: {memoria_total / 2**30: 0.1f} GB\n  Memoria libre: {memoria_libre / 2**30: 0.1f} GB'
+                        print(texto_memoria)
                         iface.messageBar().pushMessage(
                             title='No se ha podido cargar el fichero Lidar (a pesar de que está disponible para este PC).',
-                            text='Contacta con {EMAIL_DASOLIDAR1}.',
-                            duration=10,
+                            text=f'Es posible que tu PC no tenga suficiente RAM disponible para la carga o que este fichero este corrupto. Pulsa el botón "Show more" y contacta con {EMAIL_DASOLIDAR2} ------------------->.',
+                            showMore=f'Fichero laz que esta disponible pero no se carga en Qgis:\n  {copcLazFile_path_name_ok}.\n'\
+                                f'Info sobre tu memoria RAM para ver si es la causa del error de no cargar el fichero laz:\n{texto_memoria}\n\n'\
+                                f'Puedes mandar esta info por mail a: {EMAIL_DASOLIDAR2}\n'\
+                                'Usa el copia-pega o haz un pantallazo.\nGracias por tu colaboración',
+                            duration=60,
                             level=Qgis.Warning,
                         )
+                    except Exception as miError:
+                        print(f'No se ha podido leer lamemoria dsiponible con wmic')
+                        print(f'miError: {miError}')
+                        try:
+                            import psutil
+                            # Obtener información de la memoria
+                            memoria = psutil.virtual_memory()
+                            # Imprimir información sobre el uso de RAM
+                            print(f'Total RAM: {memoria.total / (1024 ** 2):.2f} MB')
+                            print(f'RAM disponible: {memoria.available / (1024 ** 2):.2f} MB')
+                            print(f'RAM usada: {memoria.used / (1024 ** 2):.2f} MB')
+                            print(f'Porcentaje de RAM usada: {memoria.percent}%')
+                            # Verificar si la RAM disponible es baja
+                            if memoria.available < 500 * 1024 * 1024:  # Menos de 500 MB
+                                print('Advertencia: La RAM disponible es baja. Puede que esto cause problemas al cargar la nube de puntos.')
+                            iface.messageBar().pushMessage(
+                                title='No se ha podido cargar el fichero Lidar (a pesar de que está disponible para este PC).',
+                                text='Es posible que tu PC no tenga suficiente RAM disponible para la carga. Disponible: {memoria.available} MB. Contacta con {EMAIL_DASOLIDAR2}.',
+                                showMore=f'Puedes mandar este texto explicativo del error por mail a :{EMAIL_DASOLIDAR2}',
+                                duration=10,
+                                level=Qgis.Warning,
+                            )
+                        except Exception as miError:
+                            print(f'Error al importar o usar psutil.')
+                            print(f'miError: {miError}')
+
+
+
         else:
             carga_ok = -1
             if verboseLocal and verboseWarning:
                 iface.messageBar().pushMessage(
-                    f'Aviso: falta el bloque {copcLazFile_path_name_ok} (pendiente de copiar a \\repoarchivohm.jcyl.red). Notificar a {EMAIL_DASOLIDAR1}',
+                    f'Aviso: falta el bloque {copcLazFile_path_name_ok} (pendiente de copiar a \\repoarchivohm.jcyl.red). Notificar a {EMAIL_DASOLIDAR2}',
                     level=Qgis.Warning,
                     duration=15
                 )
@@ -3005,13 +3059,16 @@ class Dasoraster:
                     resultado_msg,
                 )
             elif num_features > 1:
-                print(f'betaraster-> Lista de bloques seleccionados:')
-                for nfeat, feature in enumerate(features_list):
-                    print(f'betaraster-> {nfeat} -> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
-                    cuadrante = feature['cuadrante']
-                    if cuadrante.upper() == 'SW':
-                        sw_h29h30_ok = feature['lasFileHD']
-                        print(f'          -> Valor del campo [sw_h29h30_ok] (solo para SW): {sw_h29h30_ok}')
+                pass
+                # Esto era provisional, hasta tanto preparaba el nuevo SW
+                # if tipo_consulta == 'lasfile':
+                #     print(f'betaraster-> Lista de bloques seleccionados:')
+                #     for nfeat, feature in enumerate(features_list):
+                #         print(f'betaraster-> {nfeat} -> ID: {feature.id()}, COPC1: {feature["COPC1"]}')
+                #         cuadrante = feature['cuadrante']
+                #         if cuadrante.upper() == 'SW':
+                #             sw_h29h30_ok = feature['lasFileHD']
+                #             print(f'          -> Valor del campo [sw_h29h30_ok] (solo para SW): {sw_h29h30_ok}')
             if tipo_consulta == 'lasfile':
                 print(f'betaraster-> Selecionando bloque a descargar:')
             for feature in features_list:
@@ -4473,6 +4530,17 @@ class Dasoraster:
                     pass
 
     def dasoraster_extra(self):
+        memoria_total, memoria_libre = obtener_memoria_ram()
+        texto_memoria = f'\nMemoria total: {memoria_total / 2**30: 0.1f} GB\nMemoria libre: {memoria_libre / 2**30: 0.1f} GB'
+        print(texto_memoria)
+        iface.messageBar().pushMessage(
+            title='Chequeando memoria RAM...',
+            text=f'Chequeo de memoria RAM sin psutil---> Pulsa en "Show more"',
+            showMore=f'Info sobre tu memoria RAM:\n{texto_memoria}',
+            duration=20,
+            level=Qgis.Info,
+        )
+
         self.iface.messageBar().pushMessage(f'Botón disponible para nuevas utilidades', level=Qgis.Info)
         print(f'betaraster-> self.action_extra.isEnabled() 1: {self.action_extra.isEnabled()}')
         print(f'betaraster-> self.action_extra.isChecked() 1: {self.action_extra.isChecked()}')
