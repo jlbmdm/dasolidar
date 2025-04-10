@@ -3001,20 +3001,22 @@ class Dasoraster:
         point_crs = QgsCoordinateReferenceSystem('EPSG:25830')
         if self.layer_crs != point_crs:
             # Transformar el punto al CRS del self.layer_xxxxx_yyyyvectorlayer
+            transform = QgsCoordinateTransform(point_crs, self.layer_crs, QgsProject.instance())
+            transformed_punto_click = transform.transform(punto_click)
             if self.layer_crs.authid() in ['EPSG:25829', 'EPSG:25830']:
-                transform = QgsCoordinateTransform(point_crs, self.layer_crs, QgsProject.instance())
-                transformed_punto_click = transform.transform(punto_click)
+                print(f'betaraster-> El self.layer_xxxxx_yyyyvectorlayer está en EPSG: {self.layer_crs}.')
                 print(f'betaraster-> Punto transformado: {transformed_punto_click.x()}, {transformed_punto_click.y()}')
             else:
                 print(f'betaraster-> El self.layer_xxxxx_yyyyvectorlayer no está en EPSG:25829 ni EPSG:25830: {self.layer_crs}.')
-                transformed_punto_click = punto_click
-                iface.messageBar().pushMessage(
-                    title='dasoraster',
-                    text=f'Parece que la capa consultada no tiene el siste de referencia de coordenadas adecuado.\n Se asume que EPSG 25830.',
-                    # showMore=f'',
-                    duration=10,
-                    level=Qgis.Info,
-                )
+                # transformed_punto_click = punto_click
+                print(f'betaraster-> Punto transformado: {transformed_punto_click.x()}, {transformed_punto_click.y()}')
+                # iface.messageBar().pushMessage(
+                #     title='dasoraster',
+                #     text=f'Parece que la capa consultada no tiene el sistema de referencia de coordenadas esperado.\n Se asume que EPSG 25830.',
+                #     # showMore=f'',
+                #     duration=10,
+                #     level=Qgis.Info,
+                # )
                 # return None
             # punto_click = QgsPointXY(X, Y)
             print(f'betaraster-> Se han convertido las coordenadas del punto (EPSG:25830) al crs del layer vectorial:')
@@ -3059,7 +3061,13 @@ class Dasoraster:
                     resultado_msg,
                 )
             elif num_features > 1:
-                pass
+                iface.messageBar().pushMessage(
+                    title='dasoraster',
+                    text=f'Info: la capa consultada tiene más de un polígono en el punto consultado (n={num_features}).',
+                    # showMore=f'',
+                    duration=10,
+                    level=Qgis.Info,
+                )
                 # Esto era provisional, hasta tanto preparaba el nuevo SW
                 # if tipo_consulta == 'lasfile':
                 #     print(f'betaraster-> Lista de bloques seleccionados:')
@@ -3802,13 +3810,31 @@ class Dasoraster:
                 medicion_dasolidar, num_pixeles = 0, 0
                 rodal_geom = rodal_feat.geometry()
                 dest_crs = QgsCoordinateReferenceSystem('EPSG:25830')
-                if dest_crs == self.layer_crs:
+                source_crs = self.layer_crs
+                if dest_crs == source_crs:
                     rodal_hectareas = rodal_geom.area() / 10000
+                    iface.messageBar().pushMessage(
+                        title='dasoraster',
+                        text=f'Capa consultada ok',
+                        # showMore=f'',
+                        duration=10,
+                        level=Qgis.Info,
+                    )
                 else:
+                    iface.messageBar().pushMessage(
+                        title='dasoraster',
+                        text=f'Aviso: la capa consultada tiene un srs ({self.layer_crs}) distinto al habitual EPSG:25830. Se intenta reproyectar al vuelo.',
+                        # showMore=f'',
+                        duration=30,
+                        level=Qgis.Warning,
+                    )
                     transformer = QgsCoordinateTransform(self.layer_crs, dest_crs, QgsProject.instance())
-                    rodal_geom_reprojected = rodal_geom.clone()
+                    # rodal_geom_reprojected = rodal_geom.clone()
+                    rodal_geom_reprojected = QgsGeometry.fromWkt(rodal_geom.asWkt())
                     rodal_geom_reprojected.transform(transformer)
                     rodal_hectareas = rodal_geom_reprojected.area() / 10000
+                    rodal_geom = rodal_geom_reprojected
+                    print(f'betaraster-> Se adopta el rodal reproyectado de {source_crs} a {dest_crs}')
                 print(f'betaraster-> Superficie del rodal: {rodal_hectareas:0.2f} ha')
                 if rodal_hectareas > 500:
                     mensaje('Calculando volumen del rodal...', mi_duration=10)
@@ -3823,6 +3849,8 @@ class Dasoraster:
                     rodal_geom=rodal_geom,
                     buscar_esp_mfe=self.buscar_esp_mfe,
                     usar_mfe_raster=usar_mfe_raster,
+                    # dest_crs=dest_crs,
+                    # source_crs=source_crs,
                 )
             else:
                 print(f'betaraster-> Revisar este error')

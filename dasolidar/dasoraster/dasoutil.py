@@ -93,6 +93,7 @@ from qgis.core import (
     # QgsRasterDataProvider,
     # QgsRasterBlock,
     QgsFeatureRequest,
+    QgsCoordinateReferenceSystem,
 )
 # from qgis.analysis import QgsZonalStatistics
 
@@ -630,6 +631,8 @@ def calcular_valor_medio_parcela_rodal(
         rodal_geom=None,
         buscar_esp_mfe=True,
         usar_mfe_raster=True,
+        dest_crs=QgsCoordinateReferenceSystem('EPSG:25830'),
+        source_crs=QgsCoordinateReferenceSystem('EPSG:25830'),
     ):
     # Creo un círculo de consulta
     if rodal_consulta:
@@ -645,12 +648,15 @@ def calcular_valor_medio_parcela_rodal(
             consulta_geom = consulta_cuadrado_geom
 
     consulta_bbox = consulta_geom.boundingBox()
-    print(f'betaraster-> calcular_valor_medio_parcela---> rodal_consulta: {rodal_consulta}')
-    print(f'betaraster-> calcular_valor_medio_parcela---> consulta_geom:  {type(consulta_geom)}')
-    print(f'betaraster-> calcular_valor_medio_parcela---> consulta_bbox:  {type(consulta_bbox)}')
-    print(f'betaraster-> calcular_valor_medio_parcela---> Coord:          {consulta_bbox.xMinimum()} - {consulta_bbox.yMaximum()}')
-    print(f'betaraster-> calcular_valor_medio_parcela---> Dimension:      {consulta_bbox.height()} x {consulta_bbox.width()}')
-    print(f'betaraster-> calcular_valor_medio_parcela---> raster_layer:   {type(raster_layer)}')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> rodal_consulta: {rodal_consulta}')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> consulta_geom:  {type(consulta_geom)}')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> consulta_bbox:  {type(consulta_bbox)}')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> Coord:          {consulta_bbox.xMinimum()} - {consulta_bbox.yMaximum()}')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> Dimension:      {consulta_bbox.height()} x {consulta_bbox.width()} (las unidades dependen del src)')
+    print(f'betaraster-> calcular_valor_medio_parcela_rodal---> raster_layer:   {type(raster_layer)}')
+    if dest_crs == source_crs:
+        print(f'betaraster-> calcular_valor_medio_parcela_rodal---> source_crs:   {source_crs}')
+
 
     # Recorro los pixeles que tocan el rectángulo (extent_explora_pixels) incluye, con seguridad (los excede),
     # los píxeles cuyo centro está dentro de la geometría de consuilta (círculo o cuadrado)
